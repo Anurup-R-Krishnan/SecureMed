@@ -1,11 +1,11 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.utils import timezone
 
 
 class Consent(models.Model):
     """Model for managing patient consent to access their medical data by different departments."""
-    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='consents')
+    patient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='consents')
     department = models.CharField(max_length=100, help_text="e.g., 'Cardiology', 'Radiology'")
     description = models.TextField(help_text="Description of what this consent allows")
     is_granted = models.BooleanField(default=True, help_text="Whether consent is currently active")
@@ -64,7 +64,7 @@ class ConsentHistory(models.Model):
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
     actor = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
         null=True,
         related_name='consent_actions',

@@ -1,8 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Menu, ChevronDown, MapPin, Calendar, Heart as HeartIcon } from 'lucide-react';
+import { Menu, ChevronDown, MapPin, Calendar, Heart as HeartIcon, LogOut, User } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '@/context/auth-context';
 
 interface HeaderProps {
   onLoginClick: (role?: 'patient' | 'doctor' | 'admin') => void;
@@ -11,6 +12,7 @@ interface HeaderProps {
 export default function Header({ onLoginClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const { user, isAuthenticated, logout } = useAuth();
 
   const navigationItems = [
     { label: 'Hospitals', href: '#' },
@@ -51,6 +53,51 @@ export default function Header({ onLoginClick }: HeaderProps) {
                 </div>
               ))}
             </nav>
+
+            {/* Auth Section - Desktop */}
+            <div className="hidden lg:flex items-center gap-3">
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{user?.username}</span>
+                    <span className="text-xs text-muted-foreground">({user?.role})</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={logout}
+                    className="flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onLoginClick('patient')}
+                  >
+                    Patient Login
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onLoginClick('doctor')}
+                  >
+                    Doctor Login
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => onLoginClick('admin')}
+                  >
+                    Admin
+                  </Button>
+                </>
+              )}
+            </div>
 
             {/* Mobile Menu Button */}
             <button
@@ -107,45 +154,70 @@ export default function Header({ onLoginClick }: HeaderProps) {
                 {item.label}
                 {item.label !== 'International Section' && (
                   <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      openDropdown === item.label ? 'rotate-180' : ''
-                    }`}
+                    className={`h-4 w-4 transition-transform ${openDropdown === item.label ? 'rotate-180' : ''
+                      }`}
                   />
                 )}
               </button>
             ))}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full bg-transparent"
-              onClick={() => {
-                onLoginClick('patient');
-                setMobileMenuOpen(false);
-              }}
-            >
-              Patient Login
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full bg-transparent"
-              onClick={() => {
-                onLoginClick('doctor');
-                setMobileMenuOpen(false);
-              }}
-            >
-              Doctor Login
-            </Button>
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={() => {
-                onLoginClick('admin');
-                setMobileMenuOpen(false);
-              }}
-            >
-              Admin
-            </Button>
+
+            {/* Mobile Auth Section */}
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">{user?.username}</span>
+                  <span className="text-xs text-muted-foreground">({user?.role})</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-transparent"
+                  onClick={() => {
+                    onLoginClick('patient');
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Patient Login
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-transparent"
+                  onClick={() => {
+                    onLoginClick('doctor');
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Doctor Login
+                </Button>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    onLoginClick('admin');
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Admin
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
