@@ -30,11 +30,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
           <div className="flex items-center justify-between py-4">
             {/* Logo */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="flex h-10 w-10 items-center justify-center">
-                <svg className="h-10 w-10 text-primary" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" className="fill-primary text-2xl font-bold">F</text>
-                </svg>
-              </div>
+
               <span className="text-2xl font-bold text-primary hidden sm:inline">Fortis</span>
             </div>
 
