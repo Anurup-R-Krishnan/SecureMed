@@ -53,7 +53,7 @@ export default function ResultUploadModal({
         try {
             // 1. Calculate Hash Client-Side
             const fileHash = await calculateHash(file);
-            console.log("Client-calculated hash:", fileHash);
+
 
             // 2. Prepare Form Data
             const formData = new FormData();

@@ -31,7 +31,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
     try {
       // Get access token from auth context via localStorage
       const authTokens = localStorage.getItem('auth_tokens');
-      
+
       if (!authTokens) {
         toast.error('You must be logged in to enable MFA');
         setIsLoading(false);
@@ -41,7 +41,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
       const tokens = JSON.parse(authTokens);
       const accessToken = tokens.access;
 
-      console.log('Starting MFA setup with token:', accessToken?.substring(0, 20) + '...');
+
 
       const response = await fetch('http://localhost:8000/api/auth/mfa/setup/', {
         method: 'POST',
@@ -51,7 +51,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
         },
       });
 
-      console.log('MFA setup response status:', response.status);
+
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -63,11 +63,11 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
       }
 
       const data = await response.json();
-      console.log('MFA setup data received:', data);
-      
+
+
       // Backend returns 'provisioning_uri', not 'otpauth_url'
       const otpauthUrl = data.otpauth_url || data.provisioning_uri;
-      
+
       if (!data.secret || !otpauthUrl) {
         console.error('Missing secret or otpauth_url in response:', data);
         toast.error('Invalid response from server');
@@ -79,7 +79,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
       setSecret(data.secret);
       setOtpauthUrl(otpauthUrl);
       setState('SETUP');
-      
+
       toast.success('MFA setup initiated. Please scan the QR code.');
 
     } catch (error) {
@@ -93,7 +93,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (verificationCode.length !== 6) {
       toast.error('Please enter a 6-digit code');
       return;
@@ -103,7 +103,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
 
     try {
       const authTokens = localStorage.getItem('auth_tokens');
-      
+
       if (!authTokens) {
         toast.error('You must be logged in to verify MFA');
         setIsLoading(false);
@@ -113,7 +113,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
       const tokens = JSON.parse(authTokens);
       const accessToken = tokens.access;
 
-      console.log('Verifying MFA code:', verificationCode);
+
 
       const response = await fetch('http://localhost:8000/api/auth/mfa/verify/', {
         method: 'POST',
@@ -124,10 +124,10 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
         body: JSON.stringify({ otp: verificationCode }),
       });
 
-      console.log('MFA verify response status:', response.status);
+
 
       const data = await response.json();
-      console.log('MFA verify response data:', data);
+
 
       if (!response.ok) {
         toast.error(data.error || 'Invalid verification code');
@@ -151,7 +151,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
     navigator.clipboard.writeText(secret);
     setCopied(true);
     toast.success('Secret key copied to clipboard');
-    
+
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -235,12 +235,12 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
             </div>
             <h4 className="font-medium text-foreground">Scan this QR code with your authenticator app</h4>
           </div>
-          
+
           {otpauthUrl ? (
             <div className="flex justify-center p-8 bg-white rounded-lg border-2 border-border shadow-sm">
-              <QRCodeSVG 
-                value={otpauthUrl} 
-                size={240} 
+              <QRCodeSVG
+                value={otpauthUrl}
+                size={240}
                 level="M"
                 includeMargin={true}
                 bgColor="#FFFFFF"
@@ -276,7 +276,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
             </div>
             <h4 className="font-medium text-foreground">Can't scan? Enter the secret key manually</h4>
           </div>
-          
+
           <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
             <code className="flex-1 text-sm font-mono text-foreground break-all">
               {secret}
@@ -321,7 +321,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
             </div>
             <h4 className="font-medium text-foreground">Enter the 6-digit code from your app</h4>
           </div>
-          
+
           <div className="flex gap-3">
             <Input
               type="text"

@@ -90,7 +90,7 @@ export default function PrivacySettings() {
         setDepartments(response.data);
       } else if (response.data && typeof response.data === 'object') {
         // Backend might return empty object for no data
-        console.log('No consent records found, API returned:', response.data);
+
         setDepartments([]);
       } else {
         console.error('API returned unexpected data format:', response.data);
@@ -106,7 +106,7 @@ export default function PrivacySettings() {
         toast.error('Authentication failed. Please log in again.');
       } else if (error.response?.status === 404) {
         // No consents found - this is OK
-        console.log('No consent records found (404)');
+
       } else {
         toast.error('Failed to load consent settings');
       }
