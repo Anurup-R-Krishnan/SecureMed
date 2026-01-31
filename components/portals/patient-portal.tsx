@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react"
+
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -60,9 +60,8 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-2xl font-bold text-sidebar-primary flex items-center gap-2">
@@ -88,11 +87,10 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
                 setActiveTab(tab.id);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
-              }`}
+                }`}
             >
               {tab.icon}
               {tab.label}
