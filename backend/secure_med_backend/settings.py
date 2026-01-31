@@ -34,7 +34,13 @@ ROOT_URLCONF = 'secure_med_backend.urls'
 
 # CORS Settings
 # CORS Settings
-CORS_ALLOW_ALL_ORIGINS = True # For development
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # SECURITY SETTINGS
 # Note: Django requires these to be UPPERCASE.
