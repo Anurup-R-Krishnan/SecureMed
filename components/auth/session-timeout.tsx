@@ -15,8 +15,8 @@ import {
 } from '@/components/ui/alert-dialog';
 
 // Timeout settings (in milliseconds)
-const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes total
-const WARNING_TIME = 60 * 1000; // Show warning 60 seconds before timeout
+const idleTimeout = 15 * 60 * 1000; // 15 minutes total
+const warningTime = 60 * 1000; // Show warning 60 seconds before timeout
 
 export default function SessionTimeout() {
     const { isAuthenticated, logout } = useAuth();
@@ -71,12 +71,12 @@ export default function SessionTimeout() {
                     return prev - 1;
                 });
             }, 1000);
-        }, IDLE_TIMEOUT - WARNING_TIME);
+        }, idleTimeout - warningTime);
 
         // Set auto-logout timer
         timeoutRef.current = setTimeout(() => {
             handleAutoLogout();
-        }, IDLE_TIMEOUT);
+        }, idleTimeout);
     }, [handleAutoLogout]);
 
     // Handle "Stay Logged In" button
