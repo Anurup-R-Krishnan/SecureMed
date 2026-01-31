@@ -17,13 +17,15 @@ import {
   DollarSign,
   Download,
   Plus,
+  Settings,
 } from 'lucide-react';
 import PatientDashboard from './patient/dashboard';
 import AppointmentBooking from './patient/appointment-booking';
 import MedicalRecords from './patient/medical-records';
 import PatientBilling from './patient/billing';
+import PrivacySettings from './patient/privacy-settings';
 
-type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing';
+type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing' | 'settings';
 
 interface PatientPortalProps {
   onLogout: () => void;
@@ -39,6 +41,7 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
     { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
     { id: 'billing', label: 'Billing', icon: <BarChart3 className="h-5 w-5" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
   return (
@@ -136,6 +139,7 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
             {activeTab === 'appointments' && <AppointmentBooking />}
             {activeTab === 'records' && <MedicalRecords />}
             {activeTab === 'billing' && <PatientBilling />}
+            {activeTab === 'settings' && <PrivacySettings />}
           </div>
         </div>
       </main>

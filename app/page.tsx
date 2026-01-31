@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/context/auth-context';
 import Header from '@/components/layout/header';
 import LandingPage from '@/components/landing-page';
 import LoginModal from '@/components/auth/login-modal';
@@ -9,10 +10,8 @@ import DoctorPortal from '@/components/portals/doctor-portal';
 import AdminPortal from '@/components/portals/admin-portal';
 import TechnicianPortal from '@/components/portals/technician-portal';
 
-type UserRole = 'patient' | 'doctor' | 'admin' | 'technician' | null;
-
 export default function Home() {
-  const [currentUser, setCurrentUser] = useState<UserRole>(null);
+  const { user, logout } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginRole, setLoginRole] = useState<'patient' | 'doctor' | 'admin' | 'technician'>('patient');
 
@@ -21,60 +20,54 @@ export default function Home() {
     setShowLoginModal(true);
   };
 
-  const handleLoginSubmit = () => {
-    setCurrentUser(loginRole);
-    setShowLoginModal(false);
-  };
-
   const handleLogout = () => {
-    setCurrentUser(null);
+    logout();
   };
 
-  const handleSwitchRole = (role: UserRole) => {
-    setCurrentUser(role);
-  };
+  // Determine which portal to show based on authenticated user's role
+  const userRole = user?.role;
 
   // Show patient portal
-  if (currentUser === 'patient') {
+  if (userRole === 'patient') {
     return (
       <PatientPortal
         onLogout={handleLogout}
-        onSwitchRole={handleSwitchRole}
+        onSwitchRole={() => { }} // Not needed with real auth
       />
     );
   }
 
-  // Show doctor portal
-  if (currentUser === 'doctor') {
+  // Show doctor/provider portal
+  if (userRole === 'provider' || userRole === 'doctor') {
     return (
       <DoctorPortal
         onLogout={handleLogout}
-        onSwitchRole={handleSwitchRole}
+        onSwitchRole={() => { }} // Not needed with real auth
       />
     );
   }
 
   // Show admin portal
-  if (currentUser === 'admin') {
+  if (userRole === 'admin') {
     return (
       <AdminPortal
         onLogout={handleLogout}
-        onSwitchRole={handleSwitchRole}
+        onSwitchRole={() => { }} // Not needed with real auth
       />
     );
   }
 
   // Show technician portal
-  if (currentUser === 'technician') {
+  if (userRole === 'technician') {
     return (
       <TechnicianPortal
         onLogout={handleLogout}
-        onSwitchRole={handleSwitchRole}
+        onSwitchRole={() => { }} // Not needed with real auth
       />
     );
   }
 
-  // Show landing page
+  // Show landing page (no user authenticated)
   return (
     <div className="min-h-screen bg-background">
       <Header onLoginClick={handleOpenLogin} />
@@ -83,7 +76,6 @@ export default function Home() {
         isOpen={showLoginModal}
         role={loginRole}
         onClose={() => setShowLoginModal(false)}
-        onSubmit={handleLoginSubmit}
         onChangeRole={setLoginRole}
       />
     </div>

@@ -19,9 +19,11 @@ import {
   Microscope,
   Activity,
   AlertTriangle,
+  Settings,
 } from 'lucide-react';
+import MfaSetup from '@/components/auth/mfa-setup';
 
-type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'lab_orders';
+type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'lab_orders' | 'settings';
 
 interface DoctorPortalProps {
   onLogout: () => void;
@@ -69,6 +71,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     { id: 'patients', label: 'My Patients', icon: <Users className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
     { id: 'lab_orders', label: 'Lab Orders', icon: <Microscope className="h-5 w-5" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
   return (
@@ -281,6 +284,15 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                     <LabOrderList />
                   </div>
                 </div>
+              </div>
+            )}
+            {activeTab === 'settings' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground mb-2">Security Settings</h3>
+                  <p className="text-muted-foreground">Manage your account security and two-factor authentication</p>
+                </div>
+                <MfaSetup />
               </div>
             )}
           </div>

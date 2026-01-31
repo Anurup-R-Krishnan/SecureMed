@@ -1,49 +1,237 @@
 'use client';
 
-import { useState } from 'react';
-import { Shield, Lock, AlertTriangle, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Shield, Lock, AlertTriangle, Trash2, Calendar, Clock } from 'lucide-react';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
+import MfaSetup from '@/components/auth/mfa-setup';
+import { useAuth } from '@/context/auth-context';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
-interface Department {
-  id: string;
-  name: string;
+interface Consent {
+  id: number;
+  patient_username: string;
+  department: string;
   description: string;
-  access: boolean;
+  is_granted: boolean;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  history: Array<{
+    id: number;
+    action: string;
+    timestamp: string;
+    actor_username: string;
+  }>;
 }
 
-const initialDepartments: Department[] = [
-  { id: '1', name: 'Radiology', description: 'X-rays, CT scans, and imaging', access: true },
-  {
-    id: '2',
-    name: 'Oncology',
-    description: 'Cancer treatment and monitoring',
-    access: true,
-  },
-  {
-    id: '3',
-    name: 'Cardiology',
-    description: 'Heart and cardiovascular health',
-    access: false,
-  },
-  {
-    id: '4',
-    name: 'Neurology',
-    description: 'Brain and nervous system',
-    access: true,
-  },
-  { id: '5', name: 'Orthopedics', description: 'Bones and joints', access: false },
-  { id: '6', name: 'Dermatology', description: 'Skin health', access: true },
+const API_BASE_URL = 'http://localhost:8000/api/consents';
+
+const DURATION_OPTIONS = [
+  { label: '24 Hours', value: '24h', hours: 24 },
+  { label: '7 Days', value: '7d', hours: 24 * 7 },
+  { label: '30 Days', value: '30d', hours: 24 * 30 },
 ];
 
 export default function PrivacySettings() {
-  const [departments, setDepartments] = useState<Department[]>(initialDepartments);
+  const { tokens } = useAuth();
+  const [departments, setDepartments] = useState<Consent[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Duration dialog state
+  const [showDurationDialog, setShowDurationDialog] = useState(false);
+  const [selectedConsent, setSelectedConsent] = useState<Consent | null>(null);
+  const [accessType, setAccessType] = useState<'permanent' | 'temporary'>('permanent');
+  const [selectedDuration, setSelectedDuration] = useState<string>('24h');
 
-  const toggleDepartmentAccess = (id: string) => {
+  useEffect(() => {
+    fetchConsents();
+  }, []);
+
+  const getAuthHeaders = () => {
+    if (tokens?.access) {
+      return {
+        'Authorization': `Bearer ${tokens.access}`,
+        'Content-Type': 'application/json',
+      };
+    }
+    return {};
+  };
+
+  const fetchConsents = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get<Consent[]>(API_BASE_URL, {
+        headers: getAuthHeaders(),
+      });
+      
+      // Ensure we have an array
+      if (Array.isArray(response.data)) {
+        setDepartments(response.data);
+      } else if (response.data && typeof response.data === 'object') {
+        // Backend might return empty object for no data
+        console.log('No consent records found, API returned:', response.data);
+        setDepartments([]);
+      } else {
+        console.error('API returned unexpected data format:', response.data);
+        setDepartments([]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching consents:', error);
+      
+      // Ensure departments stays as an array even on error
+      setDepartments([]);
+      
+      if (error.response?.status === 401) {
+        toast.error('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 404) {
+        // No consents found - this is OK
+        console.log('No consent records found (404)');
+      } else {
+        toast.error('Failed to load consent settings');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateExpiryDate = (duration: string): string => {
+    const option = DURATION_OPTIONS.find((opt) => opt.value === duration);
+    if (!option) return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    
+    const futureDate = new Date(Date.now() + option.hours * 60 * 60 * 1000);
+    return futureDate.toISOString();
+  };
+
+  const formatExpiryDate = (isoDate: string): string => {
+    const date = new Date(isoDate);
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMs < 0) return 'Expired';
+    if (diffHours < 24) return `${diffHours}h left`;
+    if (diffDays < 30) return `${diffDays}d left`;
+    
+    return date.toLocaleDateString();
+  };
+
+  const toggleDepartmentAccess = (id: number) => {
+    const consent = departments.find((dept) => dept.id === id);
+    if (!consent) return;
+
+    // If turning OFF, revoke immediately
+    if (consent.is_granted) {
+      revokeAccess(id);
+    } else {
+      // If turning ON, show duration dialog
+      setSelectedConsent(consent);
+      setAccessType('permanent');
+      setSelectedDuration('24h');
+      setShowDurationDialog(true);
+    }
+  };
+
+  const revokeAccess = async (id: number) => {
+    const consent = departments.find((dept) => dept.id === id);
+    if (!consent) return;
+
+    // Optimistic UI update
     setDepartments(
       departments.map((dept) =>
-        dept.id === id ? { ...dept, access: !dept.access } : dept
+        dept.id === id ? { ...dept, is_granted: false, expires_at: null } : dept
       )
     );
+
+    try {
+      await axios.patch(
+        `${API_BASE_URL}/${id}/`,
+        { is_granted: false },
+        { headers: getAuthHeaders() }
+      );
+
+      toast.success(`Access for ${consent.department} revoked`);
+    } catch (error) {
+      console.error('Error revoking consent:', error);
+      
+      // Revert on error
+      setDepartments(
+        departments.map((dept) =>
+          dept.id === id ? consent : dept
+        )
+      );
+
+      toast.error(`Failed to revoke access for ${consent.department}`);
+    }
+  };
+
+  const grantAccess = async () => {
+    if (!selectedConsent) return;
+
+    const expiresAt = accessType === 'temporary' 
+      ? calculateExpiryDate(selectedDuration) 
+      : null;
+
+    // Optimistic UI update
+    setDepartments(
+      departments.map((dept) =>
+        dept.id === selectedConsent.id 
+          ? { ...dept, is_granted: true, expires_at: expiresAt } 
+          : dept
+      )
+    );
+
+    // Close dialog
+    setShowDurationDialog(false);
+
+    try {
+      await axios.patch(
+        `${API_BASE_URL}/${selectedConsent.id}/`,
+        { 
+          is_granted: true,
+          expires_at: expiresAt
+        },
+        { headers: getAuthHeaders() }
+      );
+
+      toast.success(
+        `Access for ${selectedConsent.department} granted${
+          accessType === 'temporary' ? ' temporarily' : ''
+        }`
+      );
+    } catch (error) {
+      console.error('Error granting consent:', error);
+      
+      // Revert on error
+      setDepartments(
+        departments.map((dept) =>
+          dept.id === selectedConsent.id ? selectedConsent : dept
+        )
+      );
+
+      toast.error(`Failed to grant access for ${selectedConsent.department}`);
+    }
   };
 
   return (
@@ -61,33 +249,141 @@ export default function PrivacySettings() {
         </h2>
 
         <div className="space-y-3">
-          {departments.map((dept) => (
-            <div
-              key={dept.id}
-              className="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
-            >
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground">{dept.name}</h3>
-                <p className="text-sm text-muted-foreground">{dept.description}</p>
-              </div>
-
-              {/* Toggle Switch */}
-              <button
-                onClick={() => toggleDepartmentAccess(dept.id)}
-                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                  dept.access ? 'bg-accent' : 'bg-muted'
-                }`}
-              >
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                    dept.access ? 'translate-x-7' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+          {isLoading ? (
+            // Loading skeleton
+            <>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
+                >
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-full max-w-xs" />
+                  </div>
+                  <Skeleton className="h-8 w-14 rounded-full" />
+                </div>
+              ))}
+            </>
+          ) : departments.length === 0 ? (
+            // Empty state
+            <div className="text-center py-8 text-muted-foreground">
+              No consent records found. Please contact support.
             </div>
-          ))}
+          ) : (
+            // Consent list
+            departments.map((dept) => (
+              <div
+                key={dept.id}
+                className="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-foreground">{dept.department}</h3>
+                    {dept.is_granted && dept.expires_at && (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Expires: {formatExpiryDate(dept.expires_at)}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{dept.description}</p>
+                </div>
+
+                {/* Toggle Switch */}
+                <button
+                  onClick={() => toggleDepartmentAccess(dept.id)}
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                    dept.is_granted ? 'bg-accent' : 'bg-muted'
+                  }`}
+                  aria-label={`Toggle access for ${dept.department}`}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                      dept.is_granted ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {/* Two-Factor Authentication */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Lock className="h-5 w-5 text-accent" />
+          Security Settings
+        </h2>
+        <MfaSetup />
+      </div>
+
+      {/* Duration Dialog */}
+      <Dialog open={showDurationDialog} onOpenChange={setShowDurationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-accent" />
+              Grant Access Duration
+            </DialogTitle>
+            <DialogDescription>
+              Choose how long {selectedConsent?.department} can access your medical records.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <RadioGroup value={accessType} onValueChange={(val) => setAccessType(val as 'permanent' | 'temporary')}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="permanent" id="permanent" />
+                <Label htmlFor="permanent" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Permanent Access</div>
+                  <div className="text-sm text-muted-foreground">
+                    Access remains until you revoke it manually
+                  </div>
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="temporary" id="temporary" />
+                <Label htmlFor="temporary" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Temporary Access</div>
+                  <div className="text-sm text-muted-foreground">
+                    Access expires automatically after selected duration
+                  </div>
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {accessType === 'temporary' && (
+              <div className="space-y-2 pl-6">
+                <Label htmlFor="duration">Duration</Label>
+                <Select value={selectedDuration} onValueChange={setSelectedDuration}>
+                  <SelectTrigger id="duration">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DURATION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDurationDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={grantAccess}>
+              Grant Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Audit Log */}
       <div className="mb-8">
