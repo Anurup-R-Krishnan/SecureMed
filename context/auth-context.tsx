@@ -22,7 +22,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     login: (username: string, password: string) => Promise<LoginResult>;
     verifyMfa: (tempToken: string, otp: string) => Promise<boolean>;
-    logout: () => void;
+    logout: () => Promise<void>;
     refreshToken: () => Promise<boolean>;
 }
 
@@ -187,7 +187,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
+        // Call backend logout API to blacklist the refresh token
+        try {
+            if (tokens?.access && tokens?.refresh) {
+                await fetch('http://localhost:8000/api/auth/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${tokens.access}`,
+                    },
+                    body: JSON.stringify({ refresh: tokens.refresh }),
+                });
+            }
+        } catch (error) {
+            // Log error but continue with logout - we always want to clear local state
+            console.error('Backend logout error:', error);
+        }
+
+        // Always clear local state regardless of backend call result
         setUser(null);
         setTokens(null);
         localStorage.removeItem('auth_tokens');
