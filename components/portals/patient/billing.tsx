@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Eye, Filter, CreditCard, TrendingUp } from 'lucide-react';
+import { Download, Eye, Filter, CreditCard, TrendingUp, IndianRupee } from 'lucide-react';
 
 const invoices = [
   {
@@ -55,7 +55,7 @@ export default function PatientBilling() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Total Billed</p>
-              <p className="text-3xl font-bold text-foreground mt-2">₹{billingSummary.totalBilled}</p>
+              <p className="text-3xl font-bold text-foreground mt-2 flex items-center"><IndianRupee className="h-6 w-6 mr-1" />{billingSummary.totalBilled}</p>
             </div>
             <CreditCard className="h-8 w-8 text-primary opacity-20" />
           </div>
@@ -65,7 +65,7 @@ export default function PatientBilling() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Total Paid</p>
-              <p className="text-3xl font-bold text-primary mt-2">₹{billingSummary.totalPaid}</p>
+              <p className="text-3xl font-bold text-primary mt-2 flex items-center"><IndianRupee className="h-6 w-6 mr-1" />{billingSummary.totalPaid}</p>
             </div>
             <TrendingUp className="h-8 w-8 text-primary opacity-20" />
           </div>
@@ -75,7 +75,7 @@ export default function PatientBilling() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Pending</p>
-              <p className="text-3xl font-bold text-destructive mt-2">₹{billingSummary.pending}</p>
+              <p className="text-3xl font-bold text-destructive mt-2 flex items-center"><IndianRupee className="h-6 w-6 mr-1" />{billingSummary.pending}</p>
             </div>
             <CreditCard className="h-8 w-8 text-destructive opacity-20" />
           </div>
@@ -122,7 +122,7 @@ export default function PatientBilling() {
                   <td className="py-3 px-4 text-foreground">{invoice.service}</td>
                   <td className="py-3 px-4 text-muted-foreground">Dr. {invoice.doctor.split(' ')[1]}</td>
                   <td className="py-3 px-4 text-muted-foreground">{invoice.date}</td>
-                  <td className="py-3 px-4 font-semibold text-foreground">₹{invoice.amount}</td>
+                  <td className="py-3 px-4 font-semibold text-foreground flex items-center"><IndianRupee className="h-3 w-3 mr-0.5" />{invoice.amount}</td>
                   <td className="py-3 px-4">
                     <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
                       {invoice.status}

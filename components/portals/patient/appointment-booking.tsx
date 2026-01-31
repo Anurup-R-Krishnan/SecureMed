@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Calendar, MapPin, Search, Star, Clock, CheckCircle, User, AlertCircle, DollarSign } from 'lucide-react';
+import { Calendar, MapPin, Search, Star, Clock, CheckCircle, User, AlertCircle, DollarSign, Check, IndianRupee } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const doctors = [
@@ -183,11 +183,10 @@ export default function AppointmentBooking() {
             {filteredDoctors.map((doc) => (
               <Card
                 key={doc.id}
-                className={`p-6 cursor-pointer transition-all border-2 ${
-                  selectedDoctor === doc.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50 hover:shadow-md'
-                }`}
+                className={`p-6 cursor-pointer transition-all border-2 ${selectedDoctor === doc.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50 hover:shadow-md'
+                  }`}
                 onClick={() => setSelectedDoctor(doc.id)}
               >
                 <div className="flex items-start gap-4 mb-4">
@@ -217,7 +216,7 @@ export default function AppointmentBooking() {
                   <span className="text-muted-foreground text-xs">({doc.reviews})</span>
                 </div>
 
-                <p className="text-sm font-semibold text-foreground">Consultation Fee: ₹{doc.fee}</p>
+                <p className="text-sm font-semibold text-foreground flex items-center"><IndianRupee className="h-4 w-4 mr-0.5" />{doc.fee}</p>
               </Card>
             ))}
           </div>
@@ -249,7 +248,7 @@ export default function AppointmentBooking() {
         {/* Progress Indicator */}
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm">✓</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm"><Check className="h-4 w-4" /></div>
             <span className="font-medium text-foreground">Doctor</span>
           </div>
           <div className="h-0.5 flex-1 bg-primary mx-4"></div>
@@ -280,8 +279,9 @@ export default function AppointmentBooking() {
               <p className="text-sm font-medium text-foreground mb-4">Choose a date (excludes weekends)</p>
               <CalendarComponent
                 mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
+                selected={selectedDate || undefined}
+                onSelect={(date) => setSelectedDate(date || null)}
+                required={false}
                 disabled={isDateDisabled}
                 className="rounded-lg border border-border"
               />
@@ -330,12 +330,12 @@ export default function AppointmentBooking() {
         {/* Progress Indicator */}
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm">✓</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm"><Check className="h-4 w-4" /></div>
             <span className="font-medium text-foreground text-xs md:text-sm">Doctor</span>
           </div>
           <div className="h-0.5 flex-1 bg-primary mx-2 md:mx-4"></div>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm">✓</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm"><Check className="h-4 w-4" /></div>
             <span className="font-medium text-foreground text-xs md:text-sm">Date</span>
           </div>
           <div className="h-0.5 flex-1 bg-primary mx-2 md:mx-4"></div>
@@ -387,13 +387,12 @@ export default function AppointmentBooking() {
                   key={slot}
                   onClick={() => !isBooked && setSelectedTime(slot)}
                   disabled={isBooked}
-                  className={`py-3 px-4 rounded-lg font-medium transition-all border-2 ${
-                    isBooked
-                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
-                      : isSelected
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-white text-foreground border-border hover:border-primary hover:shadow-md'
-                  }`}
+                  className={`py-3 px-4 rounded-lg font-medium transition-all border-2 ${isBooked
+                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
+                    : isSelected
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-white text-foreground border-border hover:border-primary hover:shadow-md'
+                    }`}
                 >
                   {isBooked ? (
                     <div className="flex flex-col items-center">
@@ -471,12 +470,12 @@ export default function AppointmentBooking() {
         {/* Progress Indicator */}
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm">✓</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm"><Check className="h-4 w-4" /></div>
             <span className="font-medium text-foreground text-xs md:text-sm">Doctor</span>
           </div>
           <div className="h-0.5 flex-1 bg-primary mx-2 md:mx-4"></div>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm">✓</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm"><Check className="h-4 w-4" /></div>
             <span className="font-medium text-foreground text-xs md:text-sm">Date</span>
           </div>
           <div className="h-0.5 flex-1 bg-primary mx-2 md:mx-4"></div>

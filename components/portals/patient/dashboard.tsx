@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, Heart, TrendingUp, AlertCircle, Plus, Download } from 'lucide-react';
+import { Calendar, Clock, MapPin, Heart, TrendingUp, AlertCircle, Plus, Download, Activity, Scale, BarChart } from 'lucide-react';
 
 // Mock data
 const upcomingAppointments = [
@@ -27,10 +27,10 @@ const upcomingAppointments = [
 ];
 
 const healthMetrics = [
-  { label: 'Blood Pressure', value: '120/80', status: 'Normal', icon: '💓' },
-  { label: 'Heart Rate', value: '72 bpm', status: 'Normal', icon: '❤️' },
-  { label: 'Weight', value: '72 kg', status: 'Healthy', icon: '⚖️' },
-  { label: 'BMI', value: '23.5', status: 'Normal', icon: '📊' },
+  { label: 'Blood Pressure', value: '120/80', status: 'Normal', icon: Activity, color: 'text-rose-500' },
+  { label: 'Heart Rate', value: '72 bpm', status: 'Normal', icon: Heart, color: 'text-red-500' },
+  { label: 'Weight', value: '72 kg', status: 'Healthy', icon: Scale, color: 'text-blue-500' },
+  { label: 'BMI', value: '23.5', status: 'Normal', icon: BarChart, color: 'text-purple-500' },
 ];
 
 const recentLabResults = [
@@ -47,7 +47,9 @@ export default function PatientDashboard() {
         {healthMetrics.map((metric, idx) => (
           <Card key={idx} className="p-6">
             <div className="flex items-start justify-between mb-4">
-              <div className="text-3xl">{metric.icon}</div>
+              <div className={`p-2 rounded-full bg-muted/30 ${metric.color}`}>
+                <metric.icon className="h-6 w-6" />
+              </div>
               <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
                 {metric.status}
               </span>
