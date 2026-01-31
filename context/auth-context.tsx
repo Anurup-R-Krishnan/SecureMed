@@ -66,7 +66,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify({ username, password }),
             });
 
-            const data = await response.json();
+            let data;
+            const responseText = await response.text();
+
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Failed to parse login response:', responseText);
+                return {
+                    status: 'SUCCESS',
+                    error: 'Server returned invalid response. Please check console.',
+                };
+            }
 
             if (!response.ok) {
                 return {
