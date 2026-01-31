@@ -16,6 +16,7 @@ import {
   DollarSign,
   AlertCircle,
   Pill,
+  IndianRupee,
 } from 'lucide-react';
 
 type AdminTab = 'dashboard' | 'hospitals' | 'staff' | 'patients' | 'billing';
@@ -67,9 +68,8 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-2xl font-bold text-sidebar-primary">Fortis Admin</h1>
@@ -92,11 +92,10 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                 setActiveTab(tab.id);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
+                }`}
             >
               {tab.icon}
               {tab.label}
@@ -163,7 +162,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-muted-foreground text-sm">Total Revenue</p>
-                        <p className="text-3xl font-bold text-primary mt-2">₹28.5L</p>
+                        <p className="text-3xl font-bold text-primary mt-2 flex items-center"><IndianRupee className="h-8 w-8 mr-1 p-1" />28.5L</p>
                       </div>
                       <DollarSign className="h-8 w-8 text-primary opacity-20" />
                     </div>
@@ -262,11 +261,10 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                           <td className="py-3 px-4 text-muted-foreground">{staff.hospital}</td>
                           <td className="py-3 px-4">
                             <span
-                              className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                staff.status === 'Active'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                              }`}
+                              className={`text-xs font-medium px-2 py-1 rounded-full ${staff.status === 'Active'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                                }`}
                             >
                               {staff.status}
                             </span>

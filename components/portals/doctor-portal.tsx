@@ -20,6 +20,7 @@ import {
   Activity,
   AlertTriangle,
   Settings,
+  Circle,
 } from 'lucide-react';
 import MfaSetup from '@/components/auth/mfa-setup';
 
@@ -191,7 +192,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                       >
                         <div>
                           <p className="font-semibold text-foreground">{apt.patient}</p>
-                          <p className="text-sm text-muted-foreground">{apt.time} • {apt.type}</p>
+                          <p className="text-sm text-muted-foreground flex items-center">{apt.time} <Circle className="h-2 w-2 mx-1 fill-current" /> {apt.type}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           {apt.status === 'Completed' && (
@@ -220,7 +221,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                     >
                       <div>
                         <p className="font-semibold text-foreground">{apt.patient}</p>
-                        <p className="text-sm text-muted-foreground">{apt.time} • {apt.type}</p>
+                        <p className="text-sm text-muted-foreground flex items-center">{apt.time} <Circle className="h-2 w-2 mx-1 fill-current" /> {apt.type}</p>
                       </div>
                       <div className="flex gap-2 mt-4 md:mt-0">
                         <Button variant="outline" size="sm">View Patient</Button>

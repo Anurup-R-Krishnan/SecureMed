@@ -44,9 +44,9 @@ interface Consent {
   }>;
 }
 
-const API_BASE_URL = 'http://localhost:8000/api/consents';
+const apiBaseUrl = 'http://localhost:8000/api/consents';
 
-const DURATION_OPTIONS = [
+const durationOptions = [
   { label: '24 Hours', value: '24h', hours: 24 },
   { label: '7 Days', value: '7d', hours: 24 * 7 },
   { label: '30 Days', value: '30d', hours: 24 * 30 },
@@ -57,7 +57,7 @@ export default function PrivacySettings() {
   const [departments, setDepartments] = useState<Consent[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Duration dialog state
   const [showDurationDialog, setShowDurationDialog] = useState(false);
   const [selectedConsent, setSelectedConsent] = useState<Consent | null>(null);
@@ -81,10 +81,10 @@ export default function PrivacySettings() {
   const fetchConsents = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get<Consent[]>(API_BASE_URL, {
+      const response = await axios.get<Consent[]>(apiBaseUrl, {
         headers: getAuthHeaders(),
       });
-      
+
       // Ensure we have an array
       if (Array.isArray(response.data)) {
         setDepartments(response.data);
@@ -98,10 +98,10 @@ export default function PrivacySettings() {
       }
     } catch (error: any) {
       console.error('Error fetching consents:', error);
-      
+
       // Ensure departments stays as an array even on error
       setDepartments([]);
-      
+
       if (error.response?.status === 401) {
         toast.error('Authentication failed. Please log in again.');
       } else if (error.response?.status === 404) {
@@ -116,9 +116,9 @@ export default function PrivacySettings() {
   };
 
   const calculateExpiryDate = (duration: string): string => {
-    const option = DURATION_OPTIONS.find((opt) => opt.value === duration);
+    const option = durationOptions.find((opt) => opt.value === duration);
     if (!option) return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    
+
     const futureDate = new Date(Date.now() + option.hours * 60 * 60 * 1000);
     return futureDate.toISOString();
   };
@@ -133,7 +133,7 @@ export default function PrivacySettings() {
     if (diffMs < 0) return 'Expired';
     if (diffHours < 24) return `${diffHours}h left`;
     if (diffDays < 30) return `${diffDays}d left`;
-    
+
     return date.toLocaleDateString();
   };
 
@@ -166,7 +166,7 @@ export default function PrivacySettings() {
 
     try {
       await axios.patch(
-        `${API_BASE_URL}/${id}/`,
+        `${apiBaseUrl}/${id}/`,
         { is_granted: false },
         { headers: getAuthHeaders() }
       );
@@ -174,7 +174,7 @@ export default function PrivacySettings() {
       toast.success(`Access for ${consent.department} revoked`);
     } catch (error) {
       console.error('Error revoking consent:', error);
-      
+
       // Revert on error
       setDepartments(
         departments.map((dept) =>
@@ -189,15 +189,15 @@ export default function PrivacySettings() {
   const grantAccess = async () => {
     if (!selectedConsent) return;
 
-    const expiresAt = accessType === 'temporary' 
-      ? calculateExpiryDate(selectedDuration) 
+    const expiresAt = accessType === 'temporary'
+      ? calculateExpiryDate(selectedDuration)
       : null;
 
     // Optimistic UI update
     setDepartments(
       departments.map((dept) =>
-        dept.id === selectedConsent.id 
-          ? { ...dept, is_granted: true, expires_at: expiresAt } 
+        dept.id === selectedConsent.id
+          ? { ...dept, is_granted: true, expires_at: expiresAt }
           : dept
       )
     );
@@ -207,8 +207,8 @@ export default function PrivacySettings() {
 
     try {
       await axios.patch(
-        `${API_BASE_URL}/${selectedConsent.id}/`,
-        { 
+        `${apiBaseUrl}/${selectedConsent.id}/`,
+        {
           is_granted: true,
           expires_at: expiresAt
         },
@@ -216,13 +216,12 @@ export default function PrivacySettings() {
       );
 
       toast.success(
-        `Access for ${selectedConsent.department} granted${
-          accessType === 'temporary' ? ' temporarily' : ''
+        `Access for ${selectedConsent.department} granted${accessType === 'temporary' ? ' temporarily' : ''
         }`
       );
     } catch (error) {
       console.error('Error granting consent:', error);
-      
+
       // Revert on error
       setDepartments(
         departments.map((dept) =>
@@ -293,15 +292,13 @@ export default function PrivacySettings() {
                 {/* Toggle Switch */}
                 <button
                   onClick={() => toggleDepartmentAccess(dept.id)}
-                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                    dept.is_granted ? 'bg-accent' : 'bg-muted'
-                  }`}
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${dept.is_granted ? 'bg-accent' : 'bg-muted'
+                    }`}
                   aria-label={`Toggle access for ${dept.department}`}
                 >
                   <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                      dept.is_granted ? 'translate-x-7' : 'translate-x-1'
-                    }`}
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${dept.is_granted ? 'translate-x-7' : 'translate-x-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -363,7 +360,7 @@ export default function PrivacySettings() {
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DURATION_OPTIONS.map((option) => (
+                    {durationOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>

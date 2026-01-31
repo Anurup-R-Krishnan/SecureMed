@@ -1,6 +1,6 @@
 'use client';
 
-import { Beaker, FileText, Pill, Activity } from 'lucide-react';
+import { Beaker, FileText, Pill, Activity, Circle } from 'lucide-react';
 
 interface TimelineEvent {
   id: string;
@@ -105,8 +105,8 @@ export default function PatientTimeline({ patientId }: PatientTimelineProps) {
                     {event.details && (
                       <div className="mt-3 space-y-1">
                         {event.details.map((detail, detailIdx) => (
-                          <p key={detailIdx} className="text-xs text-muted-foreground">
-                            • {detail}
+                          <p key={detailIdx} className="text-xs text-muted-foreground flex items-center">
+                            <Circle className="h-2 w-2 mr-2 fill-current" /> {detail}
                           </p>
                         ))}
                       </div>
@@ -123,6 +123,6 @@ export default function PatientTimeline({ patientId }: PatientTimelineProps) {
       <button className="mt-6 w-full rounded-lg border border-border bg-background px-4 py-2 font-medium text-foreground hover:bg-muted transition-colors">
         Load More Events
       </button>
-    </div>
+    </div >
   );
 }
