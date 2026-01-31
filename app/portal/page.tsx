@@ -43,5 +43,15 @@ export default function PatientPage() {
         router.push('/');
     };
 
-    return <PatientPortal onLogout={handleLogout} />;
+    const handleSwitchRole = (role: 'patient' | 'doctor' | 'admin' | null) => {
+        if (role === 'doctor') {
+            router.push('/doctor');
+        } else if (role === 'patient') {
+            router.push('/portal');
+        } else {
+            router.push('/');
+        }
+    };
+
+    return <PatientPortal onLogout={handleLogout} onSwitchRole={handleSwitchRole} />;
 }

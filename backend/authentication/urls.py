@@ -16,4 +16,10 @@ urlpatterns = [
     path('mfa/setup/', views.mfa_setup_view, name='mfa_setup'),
     path('mfa/verify/', views.mfa_verify_view, name='mfa_verify'),
     path('mfa/login/', views.mfa_login_view, name='mfa_login'),
+    
+    # Logout
+    path('logout/', views.LogoutView.as_view(), name='auth_logout'),
+    
+    # RBAC Testing
+    path('admin-test/', views.admin_test_view, name='admin_test'),
 ]

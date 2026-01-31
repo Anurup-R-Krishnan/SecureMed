@@ -378,3 +378,73 @@ def admin_dashboard_test(request):
         'role': request.user.role
     }, status=status.HTTP_200_OK)
 
+
+# ============================================
+# Session Security - Logout
+# ============================================
+
+from rest_framework.views import APIView
+
+class LogoutView(APIView):
+    """
+    Logout endpoint - blacklists the refresh token to invalidate it.
+    POST /api/auth/logout/
+    
+    Request body:
+    {
+        "refresh": "refresh_token_string"
+    }
+    
+    Response:
+    {
+        "message": "Successfully logged out"
+    }
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"message": "Successfully logged out"}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ============================================
+# RBAC Testing - Admin Only Test View
+# ============================================
+
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_test_view(request):
+    """
+    Test endpoint to verify RBAC is working.
+    Only users with 'Admin' role should be able to access this.
+    
+    GET /api/auth/admin-test/
+    
+    Response:
+    {
+        "message": "Admin access granted",
+        "user": "username",
+        "role": "Admin"
+    }
+    """
+    # Check if user has Admin role
+    if not request.user.groups.filter(name='Admin').exists():
+        return Response(
+            {"error": "Access denied. Admin role required."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    return Response({
+        "message": "Admin access granted",
+        "user": request.user.username,
+        "role": "Admin"
+    }, status=status.HTTP_200_OK)
+
