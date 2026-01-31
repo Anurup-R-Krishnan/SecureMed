@@ -7,15 +7,16 @@ import LoginModal from '@/components/auth/login-modal';
 import PatientPortal from '@/components/portals/patient-portal';
 import DoctorPortal from '@/components/portals/doctor-portal';
 import AdminPortal from '@/components/portals/admin-portal';
+import TechnicianPortal from '@/components/portals/technician-portal';
 
-type UserRole = 'patient' | 'doctor' | 'admin' | null;
+type UserRole = 'patient' | 'doctor' | 'admin' | 'technician' | null;
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<UserRole>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginRole, setLoginRole] = useState<'patient' | 'doctor' | 'admin'>('patient');
+  const [loginRole, setLoginRole] = useState<'patient' | 'doctor' | 'admin' | 'technician'>('patient');
 
-  const handleOpenLogin = (role?: 'patient' | 'doctor' | 'admin') => {
+  const handleOpenLogin = (role?: 'patient' | 'doctor' | 'admin' | 'technician') => {
     if (role) setLoginRole(role);
     setShowLoginModal(true);
   };
@@ -36,8 +37,8 @@ export default function Home() {
   // Show patient portal
   if (currentUser === 'patient') {
     return (
-      <PatientPortal 
-        onLogout={handleLogout} 
+      <PatientPortal
+        onLogout={handleLogout}
         onSwitchRole={handleSwitchRole}
       />
     );
@@ -46,8 +47,8 @@ export default function Home() {
   // Show doctor portal
   if (currentUser === 'doctor') {
     return (
-      <DoctorPortal 
-        onLogout={handleLogout} 
+      <DoctorPortal
+        onLogout={handleLogout}
         onSwitchRole={handleSwitchRole}
       />
     );
@@ -56,8 +57,18 @@ export default function Home() {
   // Show admin portal
   if (currentUser === 'admin') {
     return (
-      <AdminPortal 
-        onLogout={handleLogout} 
+      <AdminPortal
+        onLogout={handleLogout}
+        onSwitchRole={handleSwitchRole}
+      />
+    );
+  }
+
+  // Show technician portal
+  if (currentUser === 'technician') {
+    return (
+      <TechnicianPortal
+        onLogout={handleLogout}
         onSwitchRole={handleSwitchRole}
       />
     );

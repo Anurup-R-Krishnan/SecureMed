@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "backend": "backend/.venv/bin/python3 backend/manage.py runserver"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

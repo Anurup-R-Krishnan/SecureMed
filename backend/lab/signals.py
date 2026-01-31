@@ -21,3 +21,4 @@ def create_result_notification(sender, instance, created, **kwargs):
         
         # In a real app, also trigger email to Patient here
         # send_mail_to_patient(order.patient)
+        print(f"[EMAIL STUB] Sending 'New Result Available' email to Patient: {order.patient.name}")

@@ -15,10 +15,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'corsheaders',
     'lab',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -29,6 +31,21 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'secure_med_backend.urls'
+
+# CORS Settings
+# CORS Settings
+CORS_ALLOW_ALL_ORIGINS = True # For development
+
+# SECURITY SETTINGS
+# Note: Django requires these to be UPPERCASE.
+# Enforce TLS 1.3 by proxy/server config (e.g., Nginx), but here we set HSTS and SSL Redirect.
+SECURE_SSL_REDIRECT = False # Set to True in production
+SECURE_HSTS_SECONDS = 31536000 # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SESSION_COOKIE_SECURE = False # Set to True in production
+CSRF_COOKIE_SECURE = False # Set to True in production
+
 
 TEMPLATES = [
     {

@@ -2,8 +2,9 @@
 
 import React from "react"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import LabOrderForm from '@/components/lab/lab-order-form';
 import {
   Calendar,
   Users,
@@ -15,9 +16,12 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Microscope,
+  Activity,
+  AlertTriangle,
 } from 'lucide-react';
 
-type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records';
+type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'lab_orders';
 
 interface DoctorPortalProps {
   onLogout: () => void;
@@ -64,6 +68,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-5 w-5" /> },
     { id: 'patients', label: 'My Patients', icon: <Users className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
+    { id: 'lab_orders', label: 'Lab Orders', icon: <Microscope className="h-5 w-5" /> },
   ];
 
   return (
@@ -82,9 +87,8 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-2xl font-bold text-sidebar-primary">Fortis</h1>
@@ -107,11 +111,10 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 setActiveTab(tab.id);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
+                }`}
             >
               {tab.icon}
               {tab.label}
@@ -266,9 +269,103 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 <p className="text-muted-foreground">View and manage patient medical records here.</p>
               </div>
             )}
+
+            {activeTab === 'lab_orders' && (
+              <div className="max-w-4xl mx-auto space-y-8">
+                <LabOrderForm />
+
+                {/* Recent Orders / Results List */}
+                <div className="bg-card p-6 rounded-lg border border-border">
+                  <h3 className="text-xl font-bold text-foreground mb-4">Recent Lab Orders & Results</h3>
+                  <div className="overflow-x-auto">
+                    <LabOrderList />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
     </div>
+  );
+}
+
+function LabOrderList() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/lab/orders/')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setOrders(data);
+      })
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div>Loading records...</div>;
+
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b text-muted-foreground">
+          <th className="py-2 text-left">Date</th>
+          <th className="py-2 text-left">Patient</th>
+          <th className="py-2 text-left">Panel</th>
+          <th className="py-2 text-left">Status</th>
+          <th className="py-2 text-left">Result</th>
+          <th className="py-2 text-left">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {orders.map(order => (
+          <tr key={order.id} className="border-b hover:bg-muted/50">
+            <td className="py-3">{new Date(order.created_at).toLocaleDateString()}</td>
+            <td className="py-3 font-medium">{order.patient?.name || `Patient #${order.patient}`}</td>
+            <td className="py-3">{order.panels_details?.map((p: any) => p.name).join(', ')}</td>
+            <td className="py-3">
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                 ${order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                  order.status === 'Processing' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                {order.status}
+              </span>
+            </td>
+            <td className="py-3">
+              {order.result ? (
+                <div className="flex items-center gap-2">
+                  {order.result.is_abnormal ? (
+                    <span className="flex items-center text-destructive font-bold">
+                      <AlertTriangle className="h-4 w-4 mr-1" /> Abnormal
+                    </span>
+                  ) : (
+                    <span className="text-green-600 flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-1" /> Normal
+                    </span>
+                  )}
+                  {order.result.file_hash && (
+                    <span className="text-[10px] text-muted-foreground font-mono" title="SHA-256 Hash Verified">
+                      Hash Verified
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
+            <td className="py-3">
+              {order.result && (
+                <button
+                  onClick={() => alert(`Releasing result ${order.result.id} to Patient Portal... (Mock)`)}
+                  className="text-primary hover:underline text-xs"
+                >
+                  Release to Patient
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

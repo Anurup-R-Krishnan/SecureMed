@@ -6,11 +6,11 @@ from cryptography.hazmat.backends import default_backend
 # 32 bytes = 256 bits key
 # In production, this MUST be loaded from a secure environment variable or Vault
 # Generating a random one for demo if not present
-BACKEND_ENCRYPTION_KEY_HEX = os.environ.get('LAB_ENCRYPTION_KEY', os.urandom(32).hex())
+backend_encryption_key_hex = os.environ.get('LAB_ENCRYPTION_KEY', os.urandom(32).hex())
 
 class AESEncryption:
     def __init__(self, key_hex=None):
-        self.key = bytes.fromhex(key_hex or BACKEND_ENCRYPTION_KEY_HEX)
+        self.key = bytes.fromhex(key_hex or backend_encryption_key_hex)
         if len(self.key) != 32:
             raise ValueError("Encryption key must be 32 bytes (64 hex chars) for AES-256")
 

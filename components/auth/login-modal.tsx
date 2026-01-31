@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 
 interface LoginModalProps {
   isOpen: boolean;
-  role: 'patient' | 'doctor' | 'admin';
+  role: 'patient' | 'doctor' | 'admin' | 'technician';
   onClose: () => void;
   onSubmit: () => void;
-  onChangeRole: (role: 'patient' | 'doctor' | 'admin') => void;
+  onChangeRole: (role: 'patient' | 'doctor' | 'admin' | 'technician') => void;
 }
 
 export default function LoginModal({
@@ -36,6 +36,7 @@ export default function LoginModal({
     patient: 'Patient',
     doctor: 'Doctor',
     admin: 'Administrator',
+    technician: 'Lab Technician',
   };
 
   return (
@@ -60,15 +61,14 @@ export default function LoginModal({
         <div className="p-6 border-b border-border">
           <p className="text-sm font-medium text-muted-foreground mb-3">Login as:</p>
           <div className="flex gap-2">
-            {(['patient', 'doctor', 'admin'] as const).map((r) => (
+            {(['patient', 'doctor', 'technician', 'admin'] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => onChangeRole(r)}
-                className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
-                  role === r
+                className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-colors ${role === r
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-border'
-                }`}
+                  }`}
               >
                 {roleLabels[r]}
               </button>
