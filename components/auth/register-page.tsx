@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react"
+
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
     password_confirm: '',
     role: 'patient' as 'patient' | 'provider',
     medicalLicenseNumber: '', // Optional field for doctors
+    invitationCode: '',
   });
   const { toast } = useToast();
   const { login } = useAuth();
@@ -52,10 +53,10 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
       if (!response.ok) {
         // Handle validation errors
-        const errorMessage = typeof data.error === 'string' 
-          ? data.error 
+        const errorMessage = typeof data.error === 'string'
+          ? data.error
           : Object.values(data).flat().join(', ');
-        
+
         toast({
           title: 'Registration Failed',
           description: errorMessage,
@@ -80,7 +81,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
           title: 'Welcome!',
           description: 'You have been logged in successfully.',
         });
-        
+
         // Redirect to home page which will show the appropriate portal
         setTimeout(() => {
           router.push('/');
