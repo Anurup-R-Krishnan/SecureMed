@@ -63,3 +63,8 @@
 2026-02-07 03:09:43,342 INFO ACCESS: User ID 28 accessed /api/consents/ via GET
 2026-02-07 03:09:43,351 INFO ACCESS: User ID 28 accessed /api/consents/ via GET
 2026-02-07 03:09:52,635 INFO ACCESS: User ID 28 accessed /api/auth/download-policy-receipt/ via GET
+2026-02-07 03:35:38,514 INFO ACCESS: User ID 28 accessed /api/auth/logout/ via POST
+2026-02-07 03:52:23,970 INFO ACCESS: User ID 28 accessed /api/consents/ via GET
+2026-02-07 03:52:23,980 INFO ACCESS: User ID 28 accessed /api/consents/ via GET
+2026-02-07 03:56:49,502 INFO ACCESS: User ID 28 accessed /api/consents/ via GET
+2026-02-07 03:56:49,528 INFO ACCESS: User ID 28 accessed /api/consents/ via GET
