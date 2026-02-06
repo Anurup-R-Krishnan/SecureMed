@@ -40,6 +40,12 @@ class User(AbstractUser):
         null=True,
         help_text='TOTP secret key for MFA'
     )
+    mfa_recovery_codes = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        help_text='Hashed recovery codes for MFA (one-time use)'
+    )
     
     # Account lockout fields
     failed_login_attempts = models.IntegerField(
@@ -50,6 +56,24 @@ class User(AbstractUser):
         blank=True,
         null=True,
         help_text='Account locked until this timestamp'
+    )
+    
+    # Account deletion field (Right to be Forgotten)
+    deletion_requested_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the user requested account deletion"
+    )
+
+    # Policy Acceptance (Story 2.4)
+    accepted_policy_version = models.IntegerField(
+        default=0,
+        help_text="Version of the Terms of Service accepted by the user"
+    )
+    policy_accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the user accepted the latest policy"
     )
     
     # Authentication configuration

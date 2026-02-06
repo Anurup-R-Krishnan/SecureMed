@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Shield, ShieldCheck, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,21 +9,30 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/auth-context';
 
-interface MfaSetupProps {
-  /** Initial MFA status - true if already enabled */
-  initialMfaEnabled?: boolean;
-}
-
 type SetupState = 'IDLE' | 'SETUP' | 'SUCCESS';
 
-export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
-  const { user } = useAuth();
-  const [state, setState] = useState<SetupState>(initialMfaEnabled ? 'SUCCESS' : 'IDLE');
+export default function MfaSetup() {
+  const { user, refreshUserStatus } = useAuth();
+  const [state, setState] = useState<SetupState>('IDLE');
   const [secret, setSecret] = useState('');
   const [otpauthUrl, setOtpauthUrl] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Deactivation state
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState('');
+  const [deactivateOtp, setDeactivateOtp] = useState('');
+
+  // Sync state with user's MFA status from backend
+  useEffect(() => {
+    if (user?.mfa_enabled) {
+      setState('SUCCESS');
+    } else {
+      setState('IDLE');
+    }
+  }, [user?.mfa_enabled]);
 
   const handleStartSetup = async () => {
     setIsLoading(true);
@@ -31,7 +40,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
     try {
       // Get access token from auth context via localStorage
       const authTokens = localStorage.getItem('auth_tokens');
-      
+
       if (!authTokens) {
         toast.error('You must be logged in to enable MFA');
         setIsLoading(false);
@@ -64,10 +73,10 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
 
       const data = await response.json();
       console.log('MFA setup data received:', data);
-      
+
       // Backend returns 'provisioning_uri', not 'otpauth_url'
       const otpauthUrl = data.otpauth_url || data.provisioning_uri;
-      
+
       if (!data.secret || !otpauthUrl) {
         console.error('Missing secret or otpauth_url in response:', data);
         toast.error('Invalid response from server');
@@ -79,7 +88,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
       setSecret(data.secret);
       setOtpauthUrl(otpauthUrl);
       setState('SETUP');
-      
+
       toast.success('MFA setup initiated. Please scan the QR code.');
 
     } catch (error) {
@@ -93,7 +102,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (verificationCode.length !== 6) {
       toast.error('Please enter a 6-digit code');
       return;
@@ -103,7 +112,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
 
     try {
       const authTokens = localStorage.getItem('auth_tokens');
-      
+
       if (!authTokens) {
         toast.error('You must be logged in to verify MFA');
         setIsLoading(false);
@@ -135,8 +144,18 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
         return;
       }
 
-      setState('SUCCESS');
-      toast.success('Two-Factor Authentication activated successfully!');
+      // Refresh user status from backend to get updated mfa_enabled value
+      const refreshed = await refreshUserStatus();
+
+      if (refreshed) {
+        setState('SUCCESS');
+        toast.success('Two-Factor Authentication activated successfully!');
+      } else {
+        // Fallback: still show success but warn about sync issue
+        setState('SUCCESS');
+        toast.success('MFA activated! Please refresh the page to see updated status.');
+      }
+
       setVerificationCode('');
 
     } catch (error) {
@@ -151,8 +170,75 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
     navigator.clipboard.writeText(secret);
     setCopied(true);
     toast.success('Secret key copied to clipboard');
-    
+
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDeactivate = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!deactivatePassword || deactivateOtp.length !== 6) {
+      toast.error('Please provide both password and 6-digit OTP code');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const authTokens = localStorage.getItem('auth_tokens');
+
+      if (!authTokens) {
+        toast.error('You must be logged in to deactivate MFA');
+        setIsLoading(false);
+        return;
+      }
+
+      const tokens = JSON.parse(authTokens);
+      const accessToken = tokens.access;
+
+      console.log('[MFA DEACTIVATE] Sending deactivation request');
+
+      const response = await fetch('http://localhost:8000/api/auth/mfa/deactivate/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          password: deactivatePassword,
+          otp: deactivateOtp
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[MFA DEACTIVATE] Failed:', data);
+        toast.error(data.error || data.password?.[0] || 'Failed to deactivate MFA');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('[MFA DEACTIVATE] Success:', data);
+
+      // Refresh user status to update UI
+      const refreshed = await refreshUserStatus();
+
+      if (refreshed) {
+        toast.success('Two-Factor Authentication deactivated successfully');
+        setIsDeactivating(false);
+        setDeactivatePassword('');
+        setDeactivateOtp('');
+      } else {
+        toast.success('MFA deactivated! Please refresh the page.');
+      }
+
+    } catch (error) {
+      console.error('[MFA DEACTIVATE] Error:', error);
+      toast.error('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // SUCCESS state - MFA already enabled
@@ -173,10 +259,88 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
             <p className="text-sm text-muted-foreground mb-4">
               Your account is protected with two-factor authentication. You'll be asked for a verification code when signing in.
             </p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
               <ShieldCheck className="h-4 w-4" />
               <span>Enhanced security enabled</span>
             </div>
+
+            {/* Deactivation Section */}
+            {!isDeactivating ? (
+              <div className="pt-4 border-t border-border">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeactivating(true)}
+                  className="text-destructive hover:bg-destructive/10"
+                >
+                  Disable Two-Factor Authentication
+                </Button>
+              </div>
+            ) : (
+              <div className="pt-4 border-t border-border space-y-4">
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <p className="text-sm font-medium text-destructive mb-2">⚠️ Security Warning</p>
+                  <p className="text-xs text-muted-foreground">
+                    Disabling two-factor authentication will reduce your account security.
+                    You'll need to provide your password and current OTP code to confirm.
+                  </p>
+                </div>
+
+                <form onSubmit={handleDeactivate} className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1 block">
+                      Password
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="Enter your password"
+                      value={deactivatePassword}
+                      onChange={(e) => setDeactivatePassword(e.target.value)}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1 block">
+                      Current OTP Code
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="000000"
+                      value={deactivateOtp}
+                      onChange={(e) => setDeactivateOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="text-center text-lg font-mono tracking-widest"
+                      maxLength={6}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      disabled={isLoading || !deactivatePassword || deactivateOtp.length !== 6}
+                      className="flex-1"
+                    >
+                      {isLoading ? 'Deactivating...' : 'Confirm Deactivation'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsDeactivating(false);
+                        setDeactivatePassword('');
+                        setDeactivateOtp('');
+                      }}
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -235,12 +399,12 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
             </div>
             <h4 className="font-medium text-foreground">Scan this QR code with your authenticator app</h4>
           </div>
-          
+
           {otpauthUrl ? (
             <div className="flex justify-center p-8 bg-white rounded-lg border-2 border-border shadow-sm">
-              <QRCodeSVG 
-                value={otpauthUrl} 
-                size={240} 
+              <QRCodeSVG
+                value={otpauthUrl}
+                size={240}
                 level="M"
                 includeMargin={true}
                 bgColor="#FFFFFF"
@@ -276,7 +440,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
             </div>
             <h4 className="font-medium text-foreground">Can't scan? Enter the secret key manually</h4>
           </div>
-          
+
           <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
             <code className="flex-1 text-sm font-mono text-foreground break-all">
               {secret}
@@ -321,7 +485,7 @@ export default function MfaSetup({ initialMfaEnabled = false }: MfaSetupProps) {
             </div>
             <h4 className="font-medium text-foreground">Enter the 6-digit code from your app</h4>
           </div>
-          
+
           <div className="flex gap-3">
             <Input
               type="text"

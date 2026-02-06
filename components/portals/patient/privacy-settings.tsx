@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Shield, Lock, AlertTriangle, Trash2, Calendar, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Shield, Lock, AlertTriangle, Trash2, Calendar, Clock, FileText, Download } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,7 +45,7 @@ interface Consent {
   }>;
 }
 
-const API_BASE_URL = 'http://localhost:8000/api/consents';
+const API_BASE_URL = 'http://localhost:8000/api/consents/';
 
 const DURATION_OPTIONS = [
   { label: '24 Hours', value: '24h', hours: 24 },
@@ -53,11 +54,12 @@ const DURATION_OPTIONS = [
 ];
 
 export default function PrivacySettings() {
-  const { tokens } = useAuth();
+  const { tokens, logout } = useAuth();
+  const router = useRouter();
   const [departments, setDepartments] = useState<Consent[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Duration dialog state
   const [showDurationDialog, setShowDurationDialog] = useState(false);
   const [selectedConsent, setSelectedConsent] = useState<Consent | null>(null);
@@ -84,7 +86,7 @@ export default function PrivacySettings() {
       const response = await axios.get<Consent[]>(API_BASE_URL, {
         headers: getAuthHeaders(),
       });
-      
+
       // Ensure we have an array
       if (Array.isArray(response.data)) {
         setDepartments(response.data);
@@ -98,10 +100,10 @@ export default function PrivacySettings() {
       }
     } catch (error: any) {
       console.error('Error fetching consents:', error);
-      
+
       // Ensure departments stays as an array even on error
       setDepartments([]);
-      
+
       if (error.response?.status === 401) {
         toast.error('Authentication failed. Please log in again.');
       } else if (error.response?.status === 404) {
@@ -118,7 +120,7 @@ export default function PrivacySettings() {
   const calculateExpiryDate = (duration: string): string => {
     const option = DURATION_OPTIONS.find((opt) => opt.value === duration);
     if (!option) return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    
+
     const futureDate = new Date(Date.now() + option.hours * 60 * 60 * 1000);
     return futureDate.toISOString();
   };
@@ -133,7 +135,7 @@ export default function PrivacySettings() {
     if (diffMs < 0) return 'Expired';
     if (diffHours < 24) return `${diffHours}h left`;
     if (diffDays < 30) return `${diffDays}d left`;
-    
+
     return date.toLocaleDateString();
   };
 
@@ -166,7 +168,7 @@ export default function PrivacySettings() {
 
     try {
       await axios.patch(
-        `${API_BASE_URL}/${id}/`,
+        `${API_BASE_URL}${id}/`,
         { is_granted: false },
         { headers: getAuthHeaders() }
       );
@@ -174,7 +176,7 @@ export default function PrivacySettings() {
       toast.success(`Access for ${consent.department} revoked`);
     } catch (error) {
       console.error('Error revoking consent:', error);
-      
+
       // Revert on error
       setDepartments(
         departments.map((dept) =>
@@ -189,15 +191,15 @@ export default function PrivacySettings() {
   const grantAccess = async () => {
     if (!selectedConsent) return;
 
-    const expiresAt = accessType === 'temporary' 
-      ? calculateExpiryDate(selectedDuration) 
+    const expiresAt = accessType === 'temporary'
+      ? calculateExpiryDate(selectedDuration)
       : null;
 
     // Optimistic UI update
     setDepartments(
       departments.map((dept) =>
-        dept.id === selectedConsent.id 
-          ? { ...dept, is_granted: true, expires_at: expiresAt } 
+        dept.id === selectedConsent.id
+          ? { ...dept, is_granted: true, expires_at: expiresAt }
           : dept
       )
     );
@@ -207,8 +209,8 @@ export default function PrivacySettings() {
 
     try {
       await axios.patch(
-        `${API_BASE_URL}/${selectedConsent.id}/`,
-        { 
+        `${API_BASE_URL}${selectedConsent.id}/`,
+        {
           is_granted: true,
           expires_at: expiresAt
         },
@@ -216,13 +218,12 @@ export default function PrivacySettings() {
       );
 
       toast.success(
-        `Access for ${selectedConsent.department} granted${
-          accessType === 'temporary' ? ' temporarily' : ''
+        `Access for ${selectedConsent.department} granted${accessType === 'temporary' ? ' temporarily' : ''
         }`
       );
     } catch (error) {
       console.error('Error granting consent:', error);
-      
+
       // Revert on error
       setDepartments(
         departments.map((dept) =>
@@ -293,15 +294,13 @@ export default function PrivacySettings() {
                 {/* Toggle Switch */}
                 <button
                   onClick={() => toggleDepartmentAccess(dept.id)}
-                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                    dept.is_granted ? 'bg-accent' : 'bg-muted'
-                  }`}
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${dept.is_granted ? 'bg-accent' : 'bg-muted'
+                    }`}
                   aria-label={`Toggle access for ${dept.department}`}
                 >
                   <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                      dept.is_granted ? 'translate-x-7' : 'translate-x-1'
-                    }`}
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${dept.is_granted ? 'translate-x-7' : 'translate-x-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -432,6 +431,55 @@ export default function PrivacySettings() {
         </div>
       </div>
 
+      {/* Legal & Compliance */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+          <FileText className="h-5 w-5 text-accent" />
+          Legal & Compliance
+        </h2>
+        <div className="rounded-lg border border-border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-foreground">Terms of Service & Privacy Policy</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                You have accepted the latest version (v1) of our policies.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  const receiptUrl = API_BASE_URL.replace('consents/', 'auth/download-policy-receipt/');
+                  const response = await axios.get(receiptUrl, {
+                    headers: getAuthHeaders(),
+                    responseType: 'blob'
+                  });
+
+                  const blob = new Blob([response.data], { type: 'application/pdf' });
+                  const url = window.URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', 'policy_receipt_v1.pdf');
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  window.URL.revokeObjectURL(url);
+
+                  toast.success('Policy receipt downloaded successfully.');
+                } catch (error) {
+                  console.error('Failed to download receipt:', error);
+                  toast.error('Failed to download policy receipt.');
+                }
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Download Signed Policy (v1)
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Danger Zone */}
       <div className="rounded-lg border-2 border-destructive bg-destructive/5 p-6">
         <h2 className="text-lg font-semibold text-destructive mb-2 flex items-center gap-2">
@@ -469,9 +517,46 @@ export default function PrivacySettings() {
                 Cancel
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowDeleteModal(false);
-                  // Handle deletion
+
+                  try {
+                    // Single API call: Fetch certificate (auto-marks account for deletion)
+                    const certificateUrl = API_BASE_URL.replace('consents/', 'auth/deletion-certificate/');
+
+                    const certificateResponse = await axios.get(certificateUrl, {
+                      headers: getAuthHeaders(),
+                      responseType: 'blob'
+                    });
+
+                    // Trigger browser download
+                    const certificateBlob = new Blob([certificateResponse.data], { type: 'application/pdf' });
+                    const blobUrl = window.URL.createObjectURL(certificateBlob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.setAttribute('download', 'deletion_certificate.pdf');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+
+                    // Show success message
+                    toast.success('Account scheduled for deletion. Your certificate has been downloaded.');
+
+                    // Wait 2 seconds for download to complete
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // Logout user
+                    logout();
+
+                    // Redirect to login with message
+                    router.push('/login?message=Account scheduled for deletion');
+                  } catch (error: any) {
+                    console.error('Error requesting account deletion:', error);
+                    toast.error(
+                      error.response?.data?.error || 'Failed to request account deletion'
+                    );
+                  }
                 }}
                 className="w-full rounded-lg bg-destructive px-4 py-2 font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
               >

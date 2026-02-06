@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Consent, ConsentHistory
 
 
@@ -34,10 +35,6 @@ class ConsentSerializer(serializers.ModelSerializer):
     
     def validate_expires_at(self, value):
         """Ensure expires_at is in the future if provided."""
-        if value and value <= serializers.DateTimeField().to_internal_value(
-            serializers.DateTimeField().to_representation(
-                serializers.datetime.datetime.now(serializers.timezone.utc)
-            )
-        ):
+        if value and value <= timezone.now():
             raise serializers.ValidationError("Expiration date must be in the future.")
         return value

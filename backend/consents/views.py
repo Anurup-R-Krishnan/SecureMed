@@ -18,6 +18,7 @@ class ConsentViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ConsentSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None  # Disable pagination - return plain array
     http_method_names = ['get', 'put', 'patch', 'head', 'options']  # No POST/DELETE
     
     def get_queryset(self):

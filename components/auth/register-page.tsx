@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Mail, Lock, User, Code, ShieldCheck, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, User, Code, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 interface RegisterPageProps {
   onSuccess: (role: 'patient' | 'doctor') => void;
@@ -20,7 +21,14 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
   const [tokenError, setTokenError] = useState('');
   const [invitationEmail, setInvitationEmail] = useState('');
   const [invitationToken, setInvitationToken] = useState('');
-  const [captchaChecked, setCaptchaChecked] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  // Google reCAPTCHA Site Key
+  // For development: uses Google's test key (always passes)
+  // For production: set NEXT_PUBLIC_RECAPTCHA_SITE_KEY environment variable
+  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || 
+    '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
 
   const [formData, setFormData] = useState({
     username: '',
@@ -83,10 +91,14 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
     });
   };
 
+  const handleCaptchaChange = (token: string | null) => {
+    setCaptchaToken(token);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!captchaChecked) {
+    if (!captchaToken) {
       toast({
         title: 'CAPTCHA Required',
         description: 'Please verify that you are not a robot.',
@@ -106,7 +118,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
         body: JSON.stringify({
           ...formData,
           token: invitationToken,
-          captcha_token: captchaChecked,
+          captcha_token: captchaToken,
         }),
       });
 
@@ -122,6 +134,10 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
           description: errorMessage,
           variant: 'destructive',
         });
+        
+        // Reset reCAPTCHA on error
+        recaptchaRef.current?.reset();
+        setCaptchaToken(null);
         setIsLoading(false);
         return;
       }
@@ -160,6 +176,10 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
         description: 'Network error. Please try again.',
         variant: 'destructive',
       });
+      
+      // Reset reCAPTCHA on error
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -399,32 +419,26 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                 </div>
               )}
 
-              {/* CAPTCHA Placeholder */}
-              <div className="p-4 rounded-lg border border-border bg-muted/30">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={captchaChecked}
-                    onChange={(e) => setCaptchaChecked(e.target.checked)}
-                    className="w-5 h-5 rounded border-border text-primary focus:ring-2 focus:ring-primary/50"
-                    disabled={isLoading}
-                  />
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium text-foreground">
-                      I am not a robot
-                    </span>
-                  </div>
-                </label>
-                <p className="mt-2 text-xs text-muted-foreground ml-8">
-                  CAPTCHA placeholder - In production, this would use reCAPTCHA
-                </p>
+              {/* Google reCAPTCHA v2 */}
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={RECAPTCHA_SITE_KEY}
+                  onChange={handleCaptchaChange}
+                  theme="light"
+                />
               </div>
+
+              {process.env.NODE_ENV === 'development' && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Using Google's test reCAPTCHA key (always passes in dev mode)
+                </p>
+              )}
 
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading || !captchaChecked}
+                disabled={isLoading || !captchaToken}
                 className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Creating Account...' : 'Create Account'}

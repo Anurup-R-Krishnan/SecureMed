@@ -4,7 +4,7 @@ from .views import ConsentViewSet
 
 # Create a router and register our viewset
 router = DefaultRouter()
-router.register(r'consents', ConsentViewSet, basename='consent')
+router.register(r'', ConsentViewSet, basename='consent')
 
 # The API URLs are determined automatically by the router
 urlpatterns = [

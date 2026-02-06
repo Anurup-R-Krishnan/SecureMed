@@ -1,8 +1,6 @@
 'use client';
 
-import React from "react"
-
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, X, Shield } from 'lucide-react';
@@ -30,14 +28,33 @@ export default function LoginModal({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login, verifyMfa, user } = useAuth();
+  const { login, verifyMfa, triggerPolicyCheck } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
   if (!isOpen) return null;
+
+  const handleLoginSuccess = () => {
+    toast({
+      title: 'Welcome back!',
+      description: 'You have been successfully logged in.',
+    });
+    handleClose();
+
+    // 🚦 TRAFFIC CONTROLLER (REDIRECTS)
+    if (role === 'doctor') {
+      router.push('/doctor');
+    } else if (role === 'patient') {
+      router.push('/portal');
+    } else if (role === 'admin') {
+      window.location.href = 'http://localhost:8000/admin';
+    }
+  };
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,22 +82,17 @@ export default function LoginModal({
           description: 'Please enter your 6-digit authentication code.',
         });
       } else if (result.status === 'SUCCESS') {
-        // Login successful
-        toast({
-          title: 'Welcome back!',
-          description: 'You have been successfully logged in.',
-        });
-        handleClose();
-
-        // 🚦 TRAFFIC CONTROLLER (REDIRECTS)
-        // Use the role prop from the modal, not user.role (which may not be updated yet)
-        if (role === 'doctor') {
-          router.push('/doctor');
-        } else if (role === 'patient') {
-          router.push('/portal');
-        } else if (role === 'admin') {
-          window.location.href = 'http://localhost:8000/admin';
+        // Check for policy acceptance
+        if (result.requires_policy_acceptance && result.tokens) {
+          console.log("Delegating Policy Check to Global Context");
+          triggerPolicyCheck(result.tokens.access);
+          // Close modal without redirecting, Context handles the rest
+          handleClose();
+          return;
         }
+
+        // Login successful
+        handleLoginSuccess();
       }
     } catch (error) {
       toast({
@@ -89,7 +101,13 @@ export default function LoginModal({
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      // Only reset if we didn't delegate (delegation calls handleClose which resets)
+      // Actually handleClose resets isLoading, so we don't need to do it here if checking logic flow?
+      // But if we returned early, we need to ensure isLoading is false? 
+      // handleClose sets isLoading(false).
+      // So if we didn't return early, we set it false here.
+      // But since we navigate away on success, component might unmount.
+      if (isOpen) setIsLoading(false);
     }
   };
 
@@ -98,24 +116,30 @@ export default function LoginModal({
     setIsLoading(true);
 
     try {
-      const success = await verifyMfa(tempToken, otpCode);
+      // Use recovery code if toggled, otherwise use OTP
+      const code = useRecoveryCode ? recoveryCode : otpCode;
+      const result = await verifyMfa(tempToken, code, useRecoveryCode);
 
-      if (success) {
+      if (result.error) {
         toast({
-          title: 'Welcome back!',
-          description: 'You have been successfully logged in.',
-        });
-        handleClose();
+          title: 'MFA Verification Failed',
+          description: result.error,
+          variant: 'destructive',
 
-        // 🚦 TRAFFIC CONTROLLER (REDIRECTS) - After MFA
-        // Use the role prop from the modal, not user.role
-        if (role === 'doctor') {
-          router.push('/doctor');
-        } else if (role === 'patient') {
-          router.push('/portal');
-        } else if (role === 'admin') {
-          window.location.href = 'http://localhost:8000/admin';
-        }
+        });
+        return;
+      }
+
+      // Check for policy acceptance
+      if (result.requires_policy_acceptance && result.tokens) {
+        console.log("Delegating Policy Check to Global Context");
+        triggerPolicyCheck(result.tokens.access);
+        handleClose();
+        return;
+      }
+
+      if (result.status === 'SUCCESS') {
+        handleLoginSuccess();
       }
     } catch (error) {
       toast({
@@ -124,7 +148,7 @@ export default function LoginModal({
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      if (isOpen) setIsLoading(false);
     }
   };
 
@@ -134,6 +158,8 @@ export default function LoginModal({
     setUsername('');
     setPassword('');
     setOtpCode('');
+    setRecoveryCode('');
+    setUseRecoveryCode(false);
     setTempToken('');
     setShowPassword(false);
     setIsLoading(false);
@@ -286,26 +312,59 @@ export default function LoginModal({
                 <Shield className="h-8 w-8 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground">
-                Enter the 6-digit code from your authenticator app
+                {useRecoveryCode
+                  ? 'Enter one of your 8-character recovery codes'
+                  : 'Enter the 6-digit code from your authenticator app'
+                }
               </p>
             </div>
 
-            {/* OTP Input */}
+            {/* OTP or Recovery Code Input */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Authentication Code
+                {useRecoveryCode ? 'Recovery Code' : 'Authentication Code'}
               </label>
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-2xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                required
-                maxLength={6}
+              {useRecoveryCode ? (
+                <input
+                  type="text"
+                  value={recoveryCode}
+                  onChange={(e) => setRecoveryCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+                  placeholder="ABC12345"
+                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  required
+                  maxLength={8}
+                  disabled={isLoading}
+                  autoFocus
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-2xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  required
+                  maxLength={6}
+                  disabled={isLoading}
+                  autoFocus
+                />
+              )}
+            </div>
+
+            {/* Toggle Recovery Code Link */}
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRecoveryCode(!useRecoveryCode);
+                  setOtpCode('');
+                  setRecoveryCode('');
+                }}
+                className="text-sm text-primary hover:underline"
                 disabled={isLoading}
-                autoFocus
-              />
+              >
+                {useRecoveryCode ? 'Use authenticator code instead' : 'Use recovery code instead'}
+              </button>
             </div>
 
             {/* Verify Button */}
@@ -313,7 +372,7 @@ export default function LoginModal({
               type="submit"
               className="w-full"
               size="lg"
-              disabled={isLoading || otpCode.length !== 6}
+              disabled={isLoading || (useRecoveryCode ? recoveryCode.length !== 8 : otpCode.length !== 6)}
             >
               {isLoading ? 'Verifying...' : 'Verify Code'}
             </Button>
@@ -326,6 +385,8 @@ export default function LoginModal({
               onClick={() => {
                 setStep('STEP_CREDENTIALS');
                 setOtpCode('');
+                setRecoveryCode('');
+                setUseRecoveryCode(false);
                 setTempToken('');
               }}
               disabled={isLoading}

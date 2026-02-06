@@ -1,7 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { TermsOfServiceModal } from '@/components/auth/terms-of-service-modal';
 
 interface User {
     id: number;
@@ -21,15 +23,19 @@ interface AuthContextType {
     tokens: Tokens | null;
     isAuthenticated: boolean;
     login: (username: string, password: string) => Promise<LoginResult>;
-    verifyMfa: (tempToken: string, otp: string) => Promise<boolean>;
+    verifyMfa: (tempToken: string, code: string, isRecoveryCode?: boolean) => Promise<LoginResult>;
     logout: () => Promise<void>;
     refreshToken: () => Promise<boolean>;
+    refreshUserStatus: () => Promise<boolean>;
+    triggerPolicyCheck: (token: string) => void;
 }
 
 interface LoginResult {
     status: 'SUCCESS' | 'MFA_REQUIRED';
     tempToken?: string;
     error?: string;
+    requires_policy_acceptance?: boolean;
+    tokens?: Tokens;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,7 +43,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [tokens, setTokens] = useState<Tokens | null>(null);
+    const [pendingPolicyToken, setPendingPolicyToken] = useState<string | null>(null);
     const { toast } = useToast();
+    const router = useRouter();
 
     // Load tokens from localStorage on mount
     useEffect(() => {
@@ -55,6 +63,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         }
     }, []);
+
+    const triggerPolicyCheck = (token: string) => {
+        setPendingPolicyToken(token);
+    };
+
+    const handlePolicyAccepted = () => {
+        setPendingPolicyToken(null);
+
+        // Redirect based on user role
+        if (user) {
+            if (user.role === 'doctor') {
+                router.push('/doctor');
+            } else if (user.role === 'patient') {
+                router.push('/portal');
+            } else if (user.role === 'admin') {
+                window.location.href = 'http://localhost:8000/admin';
+            }
+        }
+    };
 
     const login = async (username: string, password: string): Promise<LoginResult> => {
         try {
@@ -96,7 +123,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('auth_tokens', JSON.stringify(newTokens));
             localStorage.setItem('auth_user', JSON.stringify(data.user));
 
-            return { status: 'SUCCESS' };
+            return {
+                status: 'SUCCESS',
+                requires_policy_acceptance: data.requires_policy_acceptance,
+                tokens: newTokens
+            };
         } catch (error) {
             console.error('Login error:', error);
             return {
@@ -106,25 +137,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const verifyMfa = async (tempToken: string, otp: string): Promise<boolean> => {
+    const verifyMfa = async (tempToken: string, code: string, isRecoveryCode: boolean = false): Promise<LoginResult> => {
         try {
+            // Build request body based on whether it's a recovery code or OTP
+            const requestBody = isRecoveryCode
+                ? { temp_token: tempToken, recovery_code: code }
+                : { temp_token: tempToken, otp: code };
+
             const response = await fetch('http://localhost:8000/api/auth/mfa/login/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ temp_token: tempToken, otp }),
+                body: JSON.stringify(requestBody),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                toast({
-                    title: 'MFA Verification Failed',
-                    description: data.error || 'Invalid OTP code',
-                    variant: 'destructive',
-                });
-                return false;
+                return {
+                    status: 'SUCCESS', // Using SUCCESS status with error field to match pattern, or could define FAILED
+                    error: data.error || (isRecoveryCode ? 'Invalid recovery code' : 'Invalid OTP code')
+                };
             }
 
             // Store tokens and user
@@ -140,15 +174,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('auth_tokens', JSON.stringify(newTokens));
             localStorage.setItem('auth_user', JSON.stringify(data.user));
 
-            return true;
+            return {
+                status: 'SUCCESS',
+                requires_policy_acceptance: data.requires_policy_acceptance,
+                tokens: newTokens
+            };
         } catch (error) {
             console.error('MFA verification error:', error);
-            toast({
-                title: 'Error',
-                description: 'Network error. Please try again.',
-                variant: 'destructive',
-            });
-            return false;
+            return {
+                status: 'SUCCESS',
+                error: 'Network error. Please try again.'
+            };
         }
     };
 
@@ -187,22 +223,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const refreshUserStatus = async (): Promise<boolean> => {
+        try {
+            if (!tokens?.access) {
+                console.error('No access token available');
+                return false;
+            }
+
+            const response = await fetch('http://localhost:8000/api/auth/user/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${tokens.access}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                console.error('Failed to fetch user profile');
+                return false;
+            }
+
+            const userData = await response.json();
+
+            // Update user state and localStorage
+            setUser(userData);
+            localStorage.setItem('auth_user', JSON.stringify(userData));
+
+            return true;
+        } catch (error) {
+            console.error('Error refreshing user status:', error);
+            return false;
+        }
+    };
+
     const logout = async () => {
         // Call backend logout API to blacklist the refresh token
         try {
-            if (tokens?.access && tokens?.refresh) {
-                await fetch('http://localhost:8000/api/auth/logout/', {
+            // Try to get refresh token from state first, then fallback to localStorage
+            let refreshToken = tokens?.refresh;
+
+            if (!refreshToken) {
+                // Fallback: try to get from localStorage
+                const storedTokens = localStorage.getItem('auth_tokens');
+                if (storedTokens) {
+                    try {
+                        const parsedTokens = JSON.parse(storedTokens);
+                        refreshToken = parsedTokens.refresh;
+                    } catch (e) {
+                        console.error('Failed to parse stored tokens:', e);
+                    }
+                }
+            }
+
+            // Only call backend if we have both access and refresh tokens
+            if (tokens?.access && refreshToken) {
+                console.log('[LOGOUT] Sending logout request to backend');
+                console.log('[LOGOUT] Refresh token:', refreshToken.substring(0, 30) + '...');
+
+                const response = await fetch('http://localhost:8000/api/auth/logout/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${tokens.access}`,
                     },
-                    body: JSON.stringify({ refresh: tokens.refresh }),
+                    body: JSON.stringify({ refresh: refreshToken }),
                 });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('[LOGOUT] Backend logout failed:', response.status, errorData);
+                } else {
+                    console.log('[LOGOUT] Backend logout successful');
+                }
+            } else {
+                console.log('[LOGOUT] Skipping backend call - no tokens available');
             }
         } catch (error) {
             // Log error but continue with logout - we always want to clear local state
-            console.error('Backend logout error:', error);
+            console.error('[LOGOUT] Backend logout error:', error);
         }
 
         // Always clear local state regardless of backend call result
@@ -225,9 +323,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         verifyMfa,
         logout,
         refreshToken,
+        refreshUserStatus,
+        triggerPolicyCheck,
     };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+            <TermsOfServiceModal
+                isOpen={!!pendingPolicyToken}
+                token={pendingPolicyToken}
+                onAccept={handlePolicyAccepted}
+            />
+        </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {

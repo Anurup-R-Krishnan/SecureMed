@@ -21,7 +21,7 @@ from authentication import views as auth_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')),
-    path('api/', include('consents.urls')),
+    path('api/consents/', include('consents.urls')),
     
     # RBAC Test Endpoints
     path('api/doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
