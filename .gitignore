@@ -1,27 +1,99 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Root .gitignore for SecureMed monorepo 🔧
+# Purpose: cover Node (frontend), Python/Django (backend), and shared tooling
 
-# dependencies
-/node_modules
+# --------------------------------------
+# Node / JavaScript
+# --------------------------------------
+# Node modules (any package location)
+**/node_modules/
 
-# next.js
-/.next/
-/out/
+# Dependency manager artifacts
+package-lock.json
+yarn.lock
+# Keep `pnpm-lock.yaml` committed for reproducible installs (do NOT ignore)
 
-# production
-/build
+# Next.js build / outputs
+**/.next/
+**/.next/cache/
+**/.next/static/
+**/out/
 
-# debug
+# Vercel / deployment outputs
+.vercel/
+.vercel_build_output/
+
+# General build outputs
+/dist/
+/build/
+
+# Logs
 npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+*.log
 
-# env files
-.env*
-
-# vercel
-.vercel
-
-# typescript
+# TypeScript
 *.tsbuildinfo
+# NOTE: keep `next-env.d.ts` committed (do NOT ignore)
+
+# Environment (sensitive) — allow `.env.example`
+.env*
+!.env.example
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Caches
+/.cache/
+.parcel-cache/
+.turbo/
+
+# --------------------------------------
+# Python / Django
+# --------------------------------------
+__pycache__/
+**/*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Django DB
+**/db.sqlite3
+**/db.sqlite3-journal
+
+# Python packaging / builds
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Testing
+.pytest_cache/
+coverage/
+
+# --------------------------------------
+# Editors / OS
+# --------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Keys / certs
+*.pem
+*.key
+*.crt
+
+# Misc
+*.pid
+*.seed
+*.tgz
 next-env.d.ts

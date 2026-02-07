@@ -1,34 +1,68 @@
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Improved .gitignore for securemed-frontend 🔧
+# Keep pnpm lock file committed: `pnpm-lock.yaml` should NOT be ignored
 
-# testing
-/coverage
+# Node dependencies
+/node_modules/
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Debug / log files
 npm-debug.log*
+pmn-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
-.env
+# Dependency manager artifacts
+/.pnp/
+.pnp.js
+package-lock.json
+yarn.lock
 
-# vercel
-.vercel
+# Next.js build / output
+/.next/
+/.next/cache/
+/.next/static/
+/out/
 
-# typescript
+# Vercel / deployment artifacts
+.vercel/
+.vercel_build_output/
+
+# General build outputs
+/build/
+/dist/
+
+# Environment files (sensitive) — allow `.env.example`
+.env*
+!.env.example
+
+# TypeScript
 *.tsbuildinfo
-next-env.d.ts
+# NOTE: keep `next-env.d.ts` committed (do NOT ignore)
+
+# Coverage & reports
+/coverage/
+.nyc_output/
+
+# Caches
+/.cache/
+.parcel-cache/
+.turbo/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Keys / certs / secrets
+*.pem
+*.key
+*.crt
+
+# Misc
+*.log
+*.pid
+*.seed
+*.tgz
