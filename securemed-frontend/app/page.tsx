@@ -29,19 +29,19 @@ export default function Home() {
   // Show patient portal
   if (userRole === 'patient') {
     return (
-      <PatientPortal 
-        onLogout={handleLogout} 
-        onSwitchRole={() => {}} // Not needed with real auth
+      <PatientPortal
+        onLogout={handleLogout}
+        onSwitchRole={() => { }} // Not needed with real auth
       />
     );
   }
 
   // Show doctor/provider portal
-  if (userRole === 'provider') {
+  if (userRole === 'doctor' || userRole === 'provider') {
     return (
-      <DoctorPortal 
-        onLogout={handleLogout} 
-        onSwitchRole={() => {}} // Not needed with real auth
+      <DoctorPortal
+        onLogout={handleLogout}
+        onSwitchRole={() => { }} // Not needed with real auth
       />
     );
   }
@@ -49,9 +49,9 @@ export default function Home() {
   // Show admin portal
   if (userRole === 'admin') {
     return (
-      <AdminPortal 
-        onLogout={handleLogout} 
-        onSwitchRole={() => {}} // Not needed with real auth
+      <AdminPortal
+        onLogout={handleLogout}
+        onSwitchRole={() => { }} // Not needed with real auth
       />
     );
   }

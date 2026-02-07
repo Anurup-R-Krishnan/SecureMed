@@ -66,7 +66,7 @@ export default function AppointmentBooking() {
     return booked;
   }, [selectedDate]);
 
-  const specialties = [...new Set(doctors.map((d) => d.specialization))];
+  const specialties = [...new Set((Array.isArray(doctors) ? doctors : []).map((d) => d.specialization))];
 
   // Check if date is a weekend or in the past
   const isDateDisabled = (date: Date) => {
@@ -283,8 +283,9 @@ export default function AppointmentBooking() {
               <CalendarComponent
                 mode="single"
                 selected={selectedDate || undefined}
-                onSelect={setSelectedDate}
+                onSelect={(date) => setSelectedDate(date || null)}
                 disabled={isDateDisabled}
+                required={false}
                 className="rounded-lg border border-border"
               />
             </div>

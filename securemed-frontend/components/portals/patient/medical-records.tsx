@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Eye, FileText, Pill, Stethoscope } from 'lucide-react';
+import { Download, Eye, FileText, Pill, Stethoscope, FileJson } from 'lucide-react';
 import { medicalRecordService } from '@/services/appointments';
+import FHIRExportButton from '@/components/portals/patient/fhir-export-button';
 
 export default function MedicalRecords() {
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
@@ -145,6 +146,18 @@ export default function MedicalRecords() {
             <p className="text-2xl font-bold text-foreground mt-1">{medicalRecords.length}</p>
           </div>
         </div>
+      </Card>
+
+      {/* FHIR Export Section */}
+      <Card className="p-6">
+        <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+          <FileJson className="h-5 w-5 text-primary" />
+          Export Medical History
+        </h3>
+        <p className="text-muted-foreground mb-4">
+          Download your complete medical records in FHIR R4 format for portability or sharing with other healthcare providers.
+        </p>
+        <FHIRExportButton />
       </Card>
     </div>
   );

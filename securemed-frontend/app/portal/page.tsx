@@ -18,8 +18,8 @@ export default function PatientPage() {
 
         // Security: Redirect if user is not a patient
         if (user?.role !== 'patient') {
-            // If they're a doctor, send them to doctor portal
-            if (user?.role === 'provider') {
+            // If they're a doctor (either 'doctor' or 'provider' role), send them to doctor portal
+            if (user?.role === 'doctor' || user?.role === 'provider') {
                 router.push('/doctor');
             } else {
                 // Otherwise send them home

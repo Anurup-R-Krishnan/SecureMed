@@ -31,4 +31,16 @@ urlpatterns = [
     # Appointments & Medical Records
     path('api/appointments/', include('appointments.urls')),
     path('api/medical-records/', include('medical_records.urls')),
+    
+    # Telemedicine
+    path('api/telemedicine/', include('telemedicine.urls')),
+    
+    # Analytics (Epic 8)
+    path('api/admin/', include('analytics.urls')),
+    
+    # Epic 8: Doctor AI Decision Support
+    path('api/doctor/', include('analytics.doctor_urls')),
+    
+    # Epic 8: Patient FHIR Export
+    path('api/patient/', include('analytics.patient_urls')),
 ]

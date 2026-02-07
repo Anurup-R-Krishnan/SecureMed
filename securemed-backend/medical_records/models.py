@@ -46,6 +46,17 @@ class MedicalRecord(models.Model):
 
 
 class Prescription(models.Model):
+    """
+    Prescription model with digital signing support.
+    Once signed, a prescription becomes immutable (locked).
+    """
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('signed', 'Signed'),
+        ('dispensed', 'Dispensed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
     medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='prescriptions')
     medication_name = models.CharField(max_length=200)
     dosage = models.CharField(max_length=100)
@@ -53,12 +64,63 @@ class Prescription(models.Model):
     duration = models.CharField(max_length=100)
     instructions = models.TextField(blank=True)
     
+    # Digital Signing Fields
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    is_signed = models.BooleanField(default=False, help_text='Whether this prescription has been digitally signed')
+    signed_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when prescription was signed')
+    signed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        null=True, 
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='signed_prescriptions',
+        help_text='Doctor who signed this prescription'
+    )
+    signature_hash = models.CharField(
+        max_length=64, 
+        blank=True, 
+        help_text='SHA-256 hash of prescription content for integrity verification'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
         db_table = 'prescriptions'
-        ordering = ['medication_name']
+        ordering = ['-created_at', 'medication_name']
     
     def __str__(self):
-        return f"{self.medication_name} - {self.dosage}"
+        status_str = " [SIGNED]" if self.is_signed else ""
+        return f"{self.medication_name} - {self.dosage}{status_str}"
+    
+    def generate_signature_hash(self):
+        """Generate SHA-256 hash of prescription content for integrity verification."""
+        import hashlib
+        content = f"{self.medication_name}|{self.dosage}|{self.frequency}|{self.duration}|{self.instructions}"
+        return hashlib.sha256(content.encode()).hexdigest()
+    
+    def sign(self, user):
+        """
+        Digitally sign the prescription, locking it from further edits.
+        
+        Args:
+            user: The User (doctor) signing the prescription
+        """
+        from django.utils import timezone
+        
+        if self.is_signed:
+            raise ValueError("Prescription is already signed")
+        
+        self.is_signed = True
+        self.signed_at = timezone.now()
+        self.signed_by = user
+        self.signature_hash = self.generate_signature_hash()
+        self.status = 'signed'
+        self.save()
+    
+    def is_locked(self):
+        """Check if prescription is locked (signed prescriptions cannot be modified)."""
+        return self.is_signed
 
 
 class LabTest(models.Model):

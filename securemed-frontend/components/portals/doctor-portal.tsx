@@ -16,10 +16,12 @@ import {
   CheckCircle,
   AlertCircle,
   Settings,
+  Brain,
 } from 'lucide-react';
 import MfaSetup from '@/components/auth/mfa-setup';
+import AIDecisionSupport from '@/components/portals/doctor/ai-decision-support';
 
-type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'settings';
+type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'ai-assistant' | 'settings';
 
 interface DoctorPortalProps {
   onLogout: () => void;
@@ -66,6 +68,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-5 w-5" /> },
     { id: 'patients', label: 'My Patients', icon: <Users className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: <Brain className="h-5 w-5" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
@@ -85,9 +88,8 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-2xl font-bold text-sidebar-primary">Fortis</h1>
@@ -110,11 +112,10 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 setActiveTab(tab.id);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
-              }`}
+                }`}
             >
               {tab.icon}
               {tab.label}
@@ -268,6 +269,10 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 <h3 className="text-xl font-bold text-foreground mb-6">Medical Records</h3>
                 <p className="text-muted-foreground">View and manage patient medical records here.</p>
               </div>
+            )}
+
+            {activeTab === 'ai-assistant' && (
+              <AIDecisionSupport />
             )}
 
             {activeTab === 'settings' && (

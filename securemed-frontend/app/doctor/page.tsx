@@ -16,15 +16,15 @@ export default function DoctorPage() {
             return;
         }
 
-        // Security: Redirect if user is not a doctor (provider)
-        if (user?.role !== 'provider') {
+        // Security: Redirect if user is not a doctor (doctor or provider role)
+        if (user?.role !== 'doctor' && user?.role !== 'provider') {
             router.push('/portal');
             return;
         }
     }, [isAuthenticated, user, router]);
 
     // Don't render until we've verified the user
-    if (!isAuthenticated || user?.role !== 'provider') {
+    if (!isAuthenticated || (user?.role !== 'doctor' && user?.role !== 'provider')) {
         return null;
     }
 

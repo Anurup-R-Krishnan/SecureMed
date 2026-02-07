@@ -1,7 +1,7 @@
 'use client';
 
 import React from "react"
-
+import ClinicalAnalytics from '@/components/portals/admin/clinical-analytics';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,7 @@ import {
   Pill,
 } from 'lucide-react';
 
-type AdminTab = 'dashboard' | 'hospitals' | 'staff' | 'patients' | 'billing';
+type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing';
 
 interface AdminPortalProps {
   onLogout: () => void;
@@ -45,6 +45,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="h-5 w-5" /> },
+    { id: 'analytics', label: 'Analytics', icon: <Activity className="h-5 w-5" /> },
     { id: 'hospitals', label: 'Hospitals', icon: <Building2 className="h-5 w-5" /> },
     { id: 'staff', label: 'Staff', icon: <Users className="h-5 w-5" /> },
     { id: 'patients', label: 'Patients', icon: <Users className="h-5 w-5" /> },
@@ -67,9 +68,8 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-6 border-b border-sidebar-border">
           <h1 className="text-2xl font-bold text-sidebar-primary">Fortis Admin</h1>
@@ -92,11 +92,10 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                 setActiveTab(tab.id);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
-              }`}
+                }`}
             >
               {tab.icon}
               {tab.label}
@@ -202,6 +201,10 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
               </div>
             )}
 
+            {activeTab === 'analytics' && (
+              <ClinicalAnalytics />
+            )}
+
             {activeTab === 'hospitals' && (
               <div className="space-y-4">
                 <Button className="mb-4">Add Hospital</Button>
@@ -262,11 +265,10 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                           <td className="py-3 px-4 text-muted-foreground">{staff.hospital}</td>
                           <td className="py-3 px-4">
                             <span
-                              className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                staff.status === 'Active'
+                              className={`text-xs font-medium px-2 py-1 rounded-full ${staff.status === 'Active'
                                   ? 'bg-green-100 text-green-700'
                                   : 'bg-yellow-100 text-yellow-700'
-                              }`}
+                                }`}
                             >
                               {staff.status}
                             </span>

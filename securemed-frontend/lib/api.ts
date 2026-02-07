@@ -9,10 +9,38 @@ const api = axios.create({
     },
 });
 
+// Helper function to get access token from localStorage
+const getAccessToken = (): string | null => {
+    try {
+        const storedTokens = localStorage.getItem('auth_tokens');
+        if (storedTokens) {
+            const tokens = JSON.parse(storedTokens);
+            return tokens.access || null;
+        }
+    } catch (e) {
+        console.error('Failed to parse auth tokens:', e);
+    }
+    return null;
+};
+
+// Helper function to get refresh token from localStorage
+const getRefreshToken = (): string | null => {
+    try {
+        const storedTokens = localStorage.getItem('auth_tokens');
+        if (storedTokens) {
+            const tokens = JSON.parse(storedTokens);
+            return tokens.refresh || null;
+        }
+    } catch (e) {
+        console.error('Failed to parse auth tokens:', e);
+    }
+    return null;
+};
+
 // Add a request interceptor to add the auth token to every request
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('access_token');
+        const token = getAccessToken();
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -23,7 +51,7 @@ api.interceptors.request.use(
     }
 );
 
-// Add a response interceptor to handle token refresh (optional but good practice)
+// Add a response interceptor to handle token refresh
 api.interceptors.response.use(
     (response) => {
         return response;
@@ -36,24 +64,34 @@ api.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                const checkToken = localStorage.getItem('refresh_token');
-                if (checkToken) {
-                    const refreshToken = localStorage.getItem('refresh_token');
-                    const response = await axios.post(`${API_URL}/auth/token/refresh/`, {
+                const refreshToken = getRefreshToken();
+                if (refreshToken) {
+                    const response = await axios.post(`${API_URL}/auth/refresh/`, {
                         refresh: refreshToken,
                     });
 
                     if (response.status === 200) {
-                        localStorage.setItem('access_token', response.data.access);
+                        // Update tokens in localStorage
+                        const storedTokens = localStorage.getItem('auth_tokens');
+                        if (storedTokens) {
+                            const tokens = JSON.parse(storedTokens);
+                            tokens.access = response.data.access;
+                            if (response.data.refresh) {
+                                tokens.refresh = response.data.refresh;
+                            }
+                            localStorage.setItem('auth_tokens', JSON.stringify(tokens));
+                        }
+
                         api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+                        originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
                         return api(originalRequest);
                     }
                 }
             } catch (refreshError) {
-                // If refresh fails, redirect to login or handle logout
-                localStorage.removeItem('access_token');
-                localStorage.removeItem('refresh_token');
-                window.location.href = '/login';
+                // If refresh fails, clear tokens and redirect to login
+                localStorage.removeItem('auth_tokens');
+                localStorage.removeItem('auth_user');
+                window.location.href = '/';
                 return Promise.reject(refreshError);
             }
         }
