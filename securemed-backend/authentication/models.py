@@ -84,6 +84,10 @@ class User(AbstractUser):
         db_table = 'users'
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+        indexes = [
+            models.Index(fields=['email']),
+            models.Index(fields=['role', 'is_active']),
+        ]
     
     def __str__(self):
         return f"{self.username} ({self.email})"

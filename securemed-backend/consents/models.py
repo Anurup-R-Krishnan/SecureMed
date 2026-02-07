@@ -22,6 +22,10 @@ class Consent(models.Model):
         ordering = ['-updated_at']
         verbose_name = 'Consent'
         verbose_name_plural = 'Consents'
+        indexes = [
+            models.Index(fields=['patient', 'is_granted']),
+            models.Index(fields=['department', 'is_granted']),
+        ]
 
     def __str__(self):
         status = "Granted" if self.is_granted else "Revoked"
