@@ -1,55 +1,35 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, Eye, FileText, Pill, Stethoscope } from 'lucide-react';
-
-const medicalRecords = [
-  {
-    id: 1,
-    type: 'Lab Report',
-    title: 'Complete Blood Count',
-    date: 'Jan 15, 2025',
-    doctor: 'Dr. Amit Patel',
-    file: 'CBC_Report_2025.pdf',
-    status: 'Normal',
-  },
-  {
-    id: 2,
-    type: 'Prescription',
-    title: 'Cardiac Medications',
-    date: 'Jan 10, 2025',
-    doctor: 'Dr. Amit Patel',
-    file: 'Prescription_2025_01.pdf',
-    status: 'Active',
-  },
-  {
-    id: 3,
-    type: 'Diagnosis',
-    title: 'Hypertension Management',
-    date: 'Dec 28, 2024',
-    doctor: 'Dr. Sarah Johnson',
-    file: 'Diagnosis_Dec2024.pdf',
-    status: 'Ongoing',
-  },
-  {
-    id: 4,
-    type: 'Lab Report',
-    title: 'Thyroid Function Test',
-    date: 'Dec 20, 2024',
-    doctor: 'Dr. Rajesh Kumar',
-    file: 'TFT_Report_2024.pdf',
-    status: 'Normal',
-  },
-];
-
-const activePrescriptions = [
-  { id: 1, medicine: 'Aspirin', dosage: '100mg', frequency: 'Once daily', duration: '30 days', endDate: 'Feb 15, 2025' },
-  { id: 2, medicine: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', duration: 'Ongoing', endDate: 'N/A' },
-  { id: 3, medicine: 'Atorvastatin', dosage: '20mg', frequency: 'Once daily at night', duration: 'Ongoing', endDate: 'N/A' },
-];
+import { medicalRecordService } from '@/services/appointments';
 
 export default function MedicalRecords() {
+  const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      try {
+        const data = await medicalRecordService.getMedicalRecords();
+        setMedicalRecords(data);
+      } catch (error) {
+        console.error("Failed to fetch medical records", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecords();
+  }, []);
+
+  const activePrescriptions = [
+    { id: 1, medicine: 'Aspirin', dosage: '100mg', frequency: 'Once daily', duration: '30 days', endDate: 'Feb 15, 2025' },
+    { id: 2, medicine: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', duration: 'Ongoing', endDate: 'N/A' },
+    { id: 3, medicine: 'Atorvastatin', dosage: '20mg', frequency: 'Once daily at night', duration: 'Ongoing', endDate: 'N/A' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Active Prescriptions */}
@@ -94,50 +74,56 @@ export default function MedicalRecords() {
           Medical Records
         </h3>
 
-        <div className="space-y-3">
-          {medicalRecords.map((record) => (
-            <div
-              key={record.id}
-              className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-start gap-3 mb-2">
-                    <div className="flex-shrink-0 p-2 bg-primary/10 rounded-lg">
-                      <Stethoscope className="h-5 w-5 text-primary" />
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">Loading medical records...</div>
+        ) : medicalRecords.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">No medical records found.</div>
+        ) : (
+          <div className="space-y-3">
+            {medicalRecords.map((record) => (
+              <div
+                key={record.id}
+                className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-start gap-3 mb-2">
+                      <div className="flex-shrink-0 p-2 bg-primary/10 rounded-lg">
+                        <Stethoscope className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground">{record.record_type_display || 'Medical Record'}</p>
+                        <p className="text-xs text-muted-foreground">{record.diagnosis}</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-foreground">{record.title}</p>
-                      <p className="text-xs text-muted-foreground">{record.type}</p>
+                    <div className="ml-11 flex flex-col sm:flex-row sm:gap-4 text-sm text-muted-foreground">
+                      <span>{record.record_date}</span>
+                      <span>•</span>
+                      <span>{record.doctor_name || 'Dr. Unknown'}</span>
                     </div>
                   </div>
-                  <div className="ml-11 flex flex-col sm:flex-row sm:gap-4 text-sm text-muted-foreground">
-                    <span>{record.date}</span>
-                    <span>•</span>
-                    <span>Dr. {record.doctor.split(' ')[1]}</span>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                      Available
+                    </span>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
-                    {record.status}
-                  </span>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent">
-                    <Eye className="h-4 w-4" />
-                    View
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent">
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent">
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent">
+                      <Download className="h-4 w-4" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Health Summary */}
@@ -146,7 +132,9 @@ export default function MedicalRecords() {
         <div className="grid md:grid-cols-3 gap-6">
           <div>
             <p className="text-muted-foreground text-sm">Last Checkup</p>
-            <p className="text-2xl font-bold text-foreground mt-1">Jan 15, 2025</p>
+            <p className="text-2xl font-bold text-foreground mt-1">
+              {medicalRecords.length > 0 ? medicalRecords[0].record_date : 'N/A'}
+            </p>
           </div>
           <div>
             <p className="text-muted-foreground text-sm">Active Medications</p>

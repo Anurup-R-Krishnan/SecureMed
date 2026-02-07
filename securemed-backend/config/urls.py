@@ -27,4 +27,8 @@ urlpatterns = [
     path('api/doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
     path('api/patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),
     path('api/admin/test-dashboard/', auth_views.admin_dashboard_test, name='admin_test'),
+
+    # Appointments & Medical Records
+    path('api/appointments/', include('appointments.urls')),
+    path('api/medical-records/', include('medical_records.urls')),
 ]
