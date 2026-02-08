@@ -22,6 +22,7 @@ import {
   Loader2,
   ShieldAlert,
 } from 'lucide-react';
+import { NotificationCenter } from '@/components/ui/notification-center';
 
 type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing' | 'audit-logs';
 
@@ -146,11 +147,14 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
       <main className="md:ml-64 min-h-screen">
         {/* Top Bar */}
         <div className="bg-card border-b border-border p-6">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl font-bold text-foreground">
-              {tabs.find((t) => t.id === activeTab)?.label}
-            </h2>
-            <p className="text-muted-foreground mt-1">Manage hospital operations and resources</p>
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">
+                {tabs.find((t) => t.id === activeTab)?.label}
+              </h2>
+              <p className="text-muted-foreground mt-1">Manage hospital operations and resources</p>
+            </div>
+            <NotificationCenter />
           </div>
         </div>
 

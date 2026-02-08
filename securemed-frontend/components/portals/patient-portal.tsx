@@ -19,6 +19,7 @@ import MedicalRecords from './patient/records/medical-records';
 import PatientBilling from './patient/billing/billing';
 import PrivacySettings from './patient/settings/privacy-settings';
 import ProfileEditor from './patient/settings/profile-editor';
+import { NotificationCenter } from '@/components/ui/notification-center';
 
 type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing' | 'profile' | 'settings';
 
@@ -84,8 +85,8 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
                 setSidebarOpen(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
                 }`}
             >
               {tab.icon}
@@ -116,13 +117,16 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
       <main className="md:ml-64 min-h-screen">
         {/* Top Bar */}
         <div className="bg-card border-b border-border p-6">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl font-bold text-foreground">
-              {tabs.find((t) => t.id === activeTab)?.label}
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Manage your health and appointments
-            </p>
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">
+                {tabs.find((t) => t.id === activeTab)?.label}
+              </h2>
+              <p className="text-muted-foreground mt-1">
+                Manage your health and appointments
+              </p>
+            </div>
+            <NotificationCenter />
           </div>
         </div>
 

@@ -32,6 +32,7 @@ import DoctorDashboard from '@/components/portals/doctor/dashboard/doctor-dashbo
 import AppointmentManager from '@/components/portals/doctor/appointments/appointment-manager';
 import { appointmentService, Appointment } from '@/services/appointments';
 import api from '@/lib/api';
+import { NotificationCenter } from '@/components/ui/notification-center';
 
 type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'prescriptions' | 'labs' | 'ai-assistant' | 'availability' | 'settings';
 
@@ -260,7 +261,8 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
               </h2>
               <p className="text-sm font-medium text-muted-foreground">Manage your practice and patients</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-4 items-center">
+              <NotificationCenter />
               <Button variant="outline" size="sm" className="hidden sm:flex border-destructive/30 hover:bg-destructive/10 text-destructive font-bold" onClick={() => setShowEmergencyModal(true)}>
                 <ShieldAlert className="h-4 w-4 mr-2" />
                 Break Glass
