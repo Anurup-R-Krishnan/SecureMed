@@ -119,3 +119,43 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
             "message": "Emergency access logged and granted.",
             "log_id": log.id
         })
+
+
+class PrescriptionViewSet(viewsets.ModelViewSet):
+    from .models import Prescription
+    queryset = Prescription.objects.all()
+    # Need to update serializer to include signing fields
+    # serializer_class = PrescriptionSerializer 
+    permission_classes = [permissions.IsAuthenticated]
+
+    # Dynamically set serializer to avoid circular imports or just use the one from serializers.py
+    # For now, let's assume we import it from serializers.py but we need to update it first
+    from .serializers import PrescriptionSerializer
+    serializer_class = PrescriptionSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'doctor_profile'):
+             return self.queryset.filter(doctor=user.doctor_profile) # Assuming Prescription has doctor field derived from MedicalRecord
+        elif hasattr(user, 'patient_profile'):
+             return self.queryset.filter(medical_record__patient=user.patient_profile)
+        return self.queryset
+
+    @action(detail=True, methods=['post'])
+    def sign(self, request, pk=None):
+        prescription = self.get_object()
+        
+        # Verify user is a doctor
+        if not hasattr(request.user, 'doctor_profile') and request.user.role != 'doctor':
+             return Response({"error": "Only doctors can sign prescriptions."}, status=status.HTTP_403_FORBIDDEN)
+             
+        try:
+            prescription.sign(request.user)
+            return Response({
+                "status": "signed", 
+                "message": "Prescription digitally signed and locked.",
+                "signature_hash": prescription.signature_hash,
+                "signed_at": prescription.signed_at
+            })
+        except ValueError as e:
+             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

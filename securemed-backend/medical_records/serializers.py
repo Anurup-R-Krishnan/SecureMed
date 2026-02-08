@@ -5,7 +5,11 @@ from appointments.serializers import DoctorSerializer
 class PrescriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prescription
-        fields = ['id', 'medication_name', 'dosage', 'frequency', 'duration', 'instructions']
+        fields = [
+            'id', 'medication_name', 'dosage', 'frequency', 'duration', 'instructions',
+            'status', 'is_signed', 'signed_at', 'signed_by', 'signature_hash'
+        ]
+        read_only_fields = ['status', 'is_signed', 'signed_at', 'signed_by', 'signature_hash']
 
 class MedicalRecordSerializer(serializers.ModelSerializer):
     doctor_name = serializers.CharField(source='doctor.user.get_full_name', read_only=True)

@@ -1,10 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import MedicalRecordViewSet
+from .views import MedicalRecordViewSet, PrescriptionViewSet
 from .signing import sign_prescription, verify_prescription_signature
 
 router = DefaultRouter()
 router.register(r'records', MedicalRecordViewSet, basename='medical-record')
+router.register(r'prescriptions', PrescriptionViewSet, basename='prescription')
 
 urlpatterns = [
     path('', include(router.urls)),
