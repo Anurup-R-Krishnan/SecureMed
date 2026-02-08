@@ -32,8 +32,14 @@ export const appointmentService = {
             if (specialty) params.append('specialty', specialty);
             if (search) params.append('search', search);
 
-            const response = await api.get<Doctor[]>(`/appointments/doctors/?${params.toString()}`);
-            // Ensure we always return an array
+            const response = await api.get<any>(`/appointments/doctors/?${params.toString()}`);
+
+            // Handle pagination (Django REST Framework default)
+            if (response.data && Array.isArray(response.data.results)) {
+                return response.data.results;
+            }
+
+            // Handle plain array response
             return Array.isArray(response.data) ? response.data : [];
         } catch (error) {
             console.error('Error fetching doctors:', error);

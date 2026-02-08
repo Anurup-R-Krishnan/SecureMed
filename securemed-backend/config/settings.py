@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'billing',
     'telemedicine',
     'analytics',
+    'labs',
 ]
 
 MIDDLEWARE = [

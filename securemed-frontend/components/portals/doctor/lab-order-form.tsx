@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import api from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,22 +45,6 @@ interface LabOrderFormProps {
     onSubmitOrder: (order: any) => Promise<void>;
 }
 
-// Sample lab tests
-const LAB_TESTS: LabTest[] = [
-    { id: 'cbc', name: 'Complete Blood Count (CBC)', category: 'Hematology', code: 'CBC01', description: 'Measures red and white blood cells, hemoglobin, and platelets', turnaroundTime: '24 hours' },
-    { id: 'bmp', name: 'Basic Metabolic Panel', category: 'Chemistry', code: 'BMP01', description: 'Glucose, calcium, electrolytes, kidney function', turnaroundTime: '24 hours' },
-    { id: 'cmp', name: 'Comprehensive Metabolic Panel', category: 'Chemistry', code: 'CMP01', description: 'BMP plus liver function tests', turnaroundTime: '24 hours' },
-    { id: 'lipid', name: 'Lipid Panel', category: 'Chemistry', code: 'LIP01', description: 'Cholesterol, triglycerides, HDL, LDL', turnaroundTime: '24 hours' },
-    { id: 'hba1c', name: 'Hemoglobin A1C', category: 'Chemistry', code: 'HBA01', description: 'Average blood sugar over 2-3 months', turnaroundTime: '48 hours' },
-    { id: 'tsh', name: 'Thyroid Stimulating Hormone', category: 'Endocrine', code: 'TSH01', description: 'Thyroid function screening', turnaroundTime: '24 hours' },
-    { id: 'urinalysis', name: 'Urinalysis', category: 'Urinalysis', code: 'UA01', description: 'Physical, chemical, microscopic examination of urine', turnaroundTime: '4 hours' },
-    { id: 'pt', name: 'Prothrombin Time (PT/INR)', category: 'Coagulation', code: 'PT01', description: 'Blood clotting function', turnaroundTime: '4 hours' },
-    { id: 'culture', name: 'Blood Culture', category: 'Microbiology', code: 'BC01', description: 'Detect bacteria or fungi in blood', turnaroundTime: '48-72 hours' },
-    { id: 'covid', name: 'COVID-19 PCR', category: 'Molecular', code: 'COV01', description: 'SARS-CoV-2 detection', turnaroundTime: '24-48 hours' },
-];
-
-const CATEGORIES = [...new Set(LAB_TESTS.map(t => t.category))];
-
 const PRIORITY_OPTIONS = [
     { value: 'routine', label: 'Routine', description: 'Standard turnaround time' },
     { value: 'urgent', label: 'Urgent', description: 'Results within 4-6 hours' },
@@ -76,8 +61,25 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
     const [fasting, setFasting] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [labTests, setLabTests] = useState<LabTest[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
 
-    const filteredTests = LAB_TESTS.filter(test => {
+    useEffect(() => {
+        const fetchTests = async () => {
+            try {
+                const response = await api.get('/labs/tests/');
+                setLabTests(response.data);
+                // Extract unique categories
+                const uniqueCategories = Array.from(new Set(response.data.map((t: LabTest) => t.category))) as string[];
+                setCategories(uniqueCategories);
+            } catch (error) {
+                console.error("Failed to fetch lab tests", error);
+            }
+        };
+        fetchTests();
+    }, []);
+
+    const filteredTests = labTests.filter(test => {
         const matchesSearch = test.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             test.code.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = selectedCategory === 'all' || test.category === selectedCategory;
@@ -100,9 +102,9 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
         setIsSubmitting(true);
 
         try {
-            await onSubmitOrder({
+            await api.post('/labs/orders/', {
                 patient_id: selectedPatient,
-                tests: selectedTests.map(t => t.id),
+                items: selectedTests.map(t => t.id),
                 priority,
                 clinical_notes: clinicalNotes,
                 fasting_required: fasting,
@@ -186,8 +188,8 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
                   `}
                                 >
                                     <p className={`font-medium ${option.value === 'stat' ? 'text-red-700' :
-                                            option.value === 'urgent' ? 'text-amber-700' :
-                                                'text-slate-700'
+                                        option.value === 'urgent' ? 'text-amber-700' :
+                                            'text-slate-700'
                                         }`}>
                                         {option.label}
                                     </p>
@@ -234,7 +236,7 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Categories</SelectItem>
-                                {CATEGORIES.map(cat => (
+                                {categories.map(cat => (
                                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                                 ))}
                             </SelectContent>

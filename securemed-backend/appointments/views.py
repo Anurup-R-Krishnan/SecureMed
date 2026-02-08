@@ -10,7 +10,7 @@ import uuid
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Allow browsing doctors without auth
     
     def get_queryset(self):
         queryset = Doctor.objects.filter(is_active=True, is_available=True)
@@ -28,6 +28,47 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
             )
             
         return queryset
+
+    @action(detail=True, methods=['get'])
+    def available_slots(self, request, pk=None):
+        doctor = self.get_object()
+        date_str = request.query_params.get('date')
+        
+        if not date_str:
+            return Response({"error": "Date parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            from datetime import datetime, timedelta
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({"error": "Invalid date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate slots from 9 AM to 5 PM
+        slots = []
+        start_time = datetime.combine(date, datetime.min.time()).replace(hour=9)
+        end_time = datetime.combine(date, datetime.min.time()).replace(hour=17)
+        
+        current = start_time
+        while current < end_time:
+            time_str = current.strftime('%H:%M')
+            
+            # Check availability (simple check against existing appointments)
+            # In a real app, check duration and overlaps more carefully
+            is_booked = Appointment.objects.filter(
+                doctor=doctor,
+                start_time__date=date,
+                start_time__hour=current.hour,
+                start_time__minute=current.minute,
+                status__in=['scheduled', 'confirmed']
+            ).exists()
+            
+            slots.append({
+                "time": time_str,
+                "available": not is_booked
+            })
+            current += timedelta(minutes=30)
+            
+        return Response(slots)
 
 class AppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer

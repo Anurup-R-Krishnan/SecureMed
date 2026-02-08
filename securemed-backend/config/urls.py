@@ -43,4 +43,7 @@ urlpatterns = [
     
     # Epic 8: Patient FHIR Export
     path('api/patient/', include('analytics.patient_urls')),
+    
+    # Epic 4: Labs
+    path('api/labs/', include('labs.urls')),
 ]

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,12 +61,28 @@ export function AppointmentCalendar({ doctors, onBookAppointment }: AppointmentC
     const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
     const [step, setStep] = useState<'doctor' | 'date' | 'time' | 'confirm'>('doctor');
 
-    // Regenerate time slots when date changes
+    // Fetch available slots from API
     useEffect(() => {
-        if (selectedDate) {
-            setTimeSlots(generateTimeSlots());
+        async function fetchSlots() {
+            if (selectedDate && selectedDoctor) {
+                try {
+                    // Format date as YYYY-MM-DD (local time)
+                    const offset = selectedDate.getTimezoneOffset();
+                    const localDate = new Date(selectedDate.getTime() - (offset * 60 * 1000));
+                    const dateStr = localDate.toISOString().split('T')[0];
+
+                    const response = await api.get(`/appointments/doctors/${selectedDoctor.id}/available_slots/`, {
+                        params: { date: dateStr }
+                    });
+                    setTimeSlots(response.data);
+                } catch (error) {
+                    console.error("Failed to fetch slots", error);
+                    setTimeSlots([]);
+                }
+            }
         }
-    }, [selectedDate]);
+        fetchSlots();
+    }, [selectedDate, selectedDoctor]);
 
     const getDaysInMonth = (date: Date) => {
         return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -168,7 +185,7 @@ export function AppointmentCalendar({ doctors, onBookAppointment }: AppointmentC
                         </div>
                         {i < 3 && (
                             <div className={`w-16 h-1 ${['doctor', 'date', 'time', 'confirm'].indexOf(step) > i ?
-                                    'bg-green-500' : 'bg-slate-200'
+                                'bg-green-500' : 'bg-slate-200'
                                 }`} />
                         )}
                     </React.Fragment>
