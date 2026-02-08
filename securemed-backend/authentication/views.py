@@ -1165,6 +1165,48 @@ class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
             })
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['post'])
+    def request_deletion(self, request, pk=None):
+        """
+        Request account deletion (Right to be Forgotten).
+        POST /api/auth/users/{id}/request_deletion/
+        
+        Response:
+        {
+            "message": "Deletion request submitted. Your account will be deleted in 30 days.",
+            "deletion_date": "2026-03-10T12:00:00Z"
+        }
+        """
+        user = self.get_object()
+        
+        # Only allow users to delete their own account
+        if user.id != request.user.id and not request.user.is_staff:
+            return Response(
+                {"error": "You can only request deletion of your own account."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if deletion already requested
+        if user.deletion_requested_at:
+            return Response(
+                {
+                    "error": "Deletion already requested",
+                    "deletion_date": user.deletion_requested_at + timedelta(days=30)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Set deletion request timestamp
+        user.deletion_requested_at = timezone.now()
+        user.save()
+        
+        deletion_date = user.deletion_requested_at + timedelta(days=30)
+        
+        return Response({
+            "message": "Deletion request submitted. Your account will be deleted in 30 days.",
+            "deletion_date": deletion_date
+        }, status=status.HTTP_200_OK)
 
 
 # ============================================

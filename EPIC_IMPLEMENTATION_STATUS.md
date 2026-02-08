@@ -4,8 +4,8 @@
 
 | Epic | Status | Completion |
 |------|--------|------------|
-| EPIC-01: Identity & RBAC | ✅ **COMPLETE** | 95% |
-| EPIC-02: Compliance & Consent | ✅ **MOSTLY COMPLETE** | 80% |
+| EPIC-01: Identity & RBAC | ✅ **COMPLETE** | 100% |
+| EPIC-02: Compliance & Consent | ✅ **COMPLETE** | 95% |
 | EPIC-03: Clinical Patient Management | ✅ **COMPLETE** | 100% |
 | EPIC-04: Laboratory & Diagnostics | ✅ **MOSTLY COMPLETE** | 80% |
 | EPIC-05: Pharmacy & Prescriptions | 🔶 **PARTIAL** | 50% |
@@ -37,8 +37,8 @@
 ### Story 1.3: Session Security ✅ COMPLETE
 | Task | Status | Location |
 |------|--------|----------|
-| Idle activity tracker (frontend) | ❌ | NOT IMPLEMENTED |
-| Warning popup before expiration | ❌ | NOT IMPLEMENTED |
+| Idle activity tracker (frontend) | ✅ | `components/session-timeout.tsx` |
+| Warning popup before expiration | ✅ | `components/session-timeout.tsx` |
 | Token blacklisting on logout | ✅ | `authentication/views.py` - `LogoutView` |
 | HttpOnly/Secure cookies | ✅ | `config/settings.py` |
 
@@ -70,12 +70,12 @@
 | Research export data cleaning | ✅ | `consents/management/commands/export_research_data.py` |
 | UUIDs in logs (not real names) | ✅ | Privacy logging middleware |
 
-### Story 2.3: Right to be Forgotten 🔶 PARTIAL
+### Story 2.3: Right to be Forgotten ✅ COMPLETE
 | Task | Status | Location |
 |------|--------|----------|
-| "Request Deletion" button | ❌ | NOT IMPLEMENTED |
+| "Request Deletion" button | ✅ | `authentication/views.py` - `request_deletion` |
 | Soft delete logic | ✅ | `authentication/models.py` - `deletion_requested_at` |
-| Automated 30-day PII scrub job | ❌ | NOT IMPLEMENTED |
+| Automated 30-day PII scrub job | ✅ | `authentication/management/commands/process_deletions.py` |
 | Deletion Certificate PDF | ✅ | `VERIFIED_CERTIFICATE.pdf` exists |
 
 ### Story 2.4: Policy Updates ✅ COMPLETE
