@@ -1,9 +1,10 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Menu, ChevronDown, MapPin, Calendar, Heart as HeartIcon, LogOut, User } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, Activity, User, LogOut, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
+import Link from 'next/link';
 
 interface HeaderProps {
   onLoginClick: (role?: 'patient' | 'doctor' | 'admin') => void;
@@ -11,213 +12,150 @@ interface HeaderProps {
 
 export default function Header({ onLoginClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const { user, isAuthenticated, logout } = useAuth();
+  const [scrolled, setScrolled] = useState(false);
 
-  const navigationItems = [
-    { label: 'Hospitals', href: '#' },
-    { label: 'Specialities', href: '#' },
-    { label: 'Centre of Excellence', href: '#' },
-    { label: 'Media Centre', href: '#' },
-    { label: 'Medical Services', href: '#' },
-    { label: 'Patient Corner', href: '#' },
-    { label: 'International Section', href: '#' },
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToSection = (id: string) => {
+    setMobileMenuOpen(false);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // If not on home page, could redirect there (optional for now as we are mostly single page)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const navItems = [
+    { label: 'Find a Doctor', action: () => scrollToSection('specialists') },
+    { label: 'Why Us', action: () => scrollToSection('features') },
+    { label: 'Testimonials', action: () => scrollToSection('testimonials') },
+    // { label: 'Services', action: () => scrollToSection('services') }, // Future
   ];
 
   return (
-    <header className="bg-background border-b border-border">
-      {/* Top Navigation Bar */}
-      <div className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            {/* Logo */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="flex h-10 w-10 items-center justify-center">
-                <svg className="h-10 w-10 text-primary" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" className="fill-primary text-2xl font-bold">F</text>
-                </svg>
-              </div>
-              <span className="text-2xl font-bold text-primary hidden sm:inline">Fortis</span>
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
+          ? 'bg-background/95 backdrop-blur-md border-b border-border shadow-sm py-2'
+          : 'bg-transparent py-4'
+        }`}
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <div
+            className="flex items-center gap-2 cursor-pointer group"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+              <Activity className="h-6 w-6 text-primary" />
             </div>
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Secure<span className="text-primary">Med</span>
+            </span>
+          </div>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-6">
-              {navigationItems.map((item) => (
-                <div key={item.label} className="relative group">
-                  <button className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1 py-4">
-                    {item.label}
-                    {item.label !== 'International Section' && (
-                      <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
-                    )}
-                  </button>
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-8">
+            {navItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={item.action}
+                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Desktop Auth Actions */}
+          <div className="hidden md:flex items-center gap-4">
+            {isAuthenticated ? (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">{user?.username}</span>
                 </div>
-              ))}
-            </nav>
+                <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground hover:text-destructive">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+                <Button onClick={() => onLoginClick(user?.role as any)}>
+                  Dashboard <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" onClick={() => onLoginClick('patient')} className="font-semibold">
+                  Log in
+                </Button>
+                <Button onClick={() => onLoginClick('patient')} className="shadow-lg shadow-primary/20">
+                  Book Appointment
+                </Button>
+              </div>
+            )}
+          </div>
 
-            {/* Auth Section - Desktop */}
-            <div className="hidden lg:flex items-center gap-3">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-foreground hover:bg-muted rounded-md"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-background border-b border-border shadow-xl animate-in slide-in-from-top-5">
+          <div className="p-4 space-y-4">
+            {navItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={item.action}
+                className="block w-full text-left px-4 py-3 text-sm font-medium hover:bg-muted rounded-lg"
+              >
+                {item.label}
+              </button>
+            ))}
+            <div className="pt-4 border-t border-border space-y-3">
               {isAuthenticated ? (
                 <>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2 px-4 py-2">
                     <User className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">{user?.username}</span>
-                    <span className="text-xs text-muted-foreground">({user?.role})</span>
+                    <span className="font-medium">{user?.username}</span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={logout}
-                    className="flex items-center gap-2"
-                  >
-                    <LogOut className="h-4 w-4" />
+                  <Button className="w-full" onClick={() => onLoginClick(user?.role as any)}>
+                    Go to Dashboard
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={logout}>
                     Logout
                   </Button>
                 </>
               ) : (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onLoginClick('patient')}
-                  >
+                  <Button variant="outline" className="w-full justify-start" onClick={() => { onLoginClick('patient'); setMobileMenuOpen(false); }}>
                     Patient Login
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onLoginClick('doctor')}
-                  >
-                    Doctor Login
+                  <Button variant="outline" className="w-full justify-start" onClick={() => { onLoginClick('doctor'); setMobileMenuOpen(false); }}>
+                    Doctor / Staff Login
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => onLoginClick('admin')}
-                  >
-                    Admin
+                  <Button className="w-full" onClick={() => { onLoginClick('patient'); setMobileMenuOpen(false); }}>
+                    Book Appointment Now
                   </Button>
                 </>
               )}
             </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-foreground hover:text-primary"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Bar */}
-      <div className="bg-background border-b border-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 items-start sm:items-center justify-between py-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-6">
-              <button
-                onClick={() => onLoginClick('patient')}
-                className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
-              >
-                <MapPin className="h-5 w-5 text-primary" />
-                Request a Callback
-              </button>
-              <button
-                onClick={() => onLoginClick('patient')}
-                className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
-              >
-                <HeartIcon className="h-5 w-5 text-primary" />
-                Get Health Checkup
-              </button>
-            </div>
-            <Button
-              onClick={() => onLoginClick('patient')}
-              className="bg-orange-100 text-orange-600 hover:bg-orange-200 flex items-center gap-2 whitespace-nowrap"
-            >
-              <Calendar className="h-4 w-4" />
-              Book Appointment
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-border bg-card">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 space-y-2">
-            {navigationItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
-                className="w-full text-left px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-lg flex items-center justify-between"
-              >
-                {item.label}
-                {item.label !== 'International Section' && (
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${openDropdown === item.label ? 'rotate-180' : ''
-                      }`}
-                  />
-                )}
-              </button>
-            ))}
-
-            {/* Mobile Auth Section */}
-            {isAuthenticated ? (
-              <>
-                <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
-                  <User className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">{user?.username}</span>
-                  <span className="text-xs text-muted-foreground">({user?.role})</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    logout();
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full bg-transparent"
-                  onClick={() => {
-                    onLoginClick('patient');
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Patient Login
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full bg-transparent"
-                  onClick={() => {
-                    onLoginClick('doctor');
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Doctor Login
-                </Button>
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    onLoginClick('admin');
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Admin
-                </Button>
-              </>
-            )}
           </div>
         </div>
       )}

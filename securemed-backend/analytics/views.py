@@ -4,11 +4,215 @@ from rest_framework.response import Response
 from django.db.models import Count
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth import get_user_model
 import random
 import uuid
+import os
+from django.conf import settings
+
+User = get_user_model()
+
+
+# ============================================
+# Admin Dashboard API Endpoints
+# ============================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_dashboard_stats(request):
+    """
+    Returns admin dashboard statistics.
+    GET /api/admin/dashboard/stats/
+    """
+    from patients.models import Patient
+    from appointments.models import Appointment, Doctor
+    
+    # Get real counts from database
+    try:
+        total_patients = Patient.objects.count()
+    except:
+        total_patients = 0
+    
+    try:
+        active_doctors = Doctor.objects.filter(is_available=True).count()
+    except:
+        active_doctors = User.objects.filter(role='doctor', is_active=True).count()
+    
+    try:
+        # Get appointments for today
+        today = timezone.now().date()
+        today_appointments = Appointment.objects.filter(
+            appointment_date=today
+        ).count()
+    except:
+        today_appointments = 0
+    
+    # Calculate hospital occupancy (placeholder - would need beds/admissions model)
+    occupancy = min(65 + (total_patients % 30), 95)  # Simulate occupancy 65-95%
+    
+    # Calculate revenue (placeholder - would need billing integration)
+    avg_revenue_per_patient = 2500  # In INR
+    total_revenue = total_patients * avg_revenue_per_patient
+    if total_revenue >= 10000000:
+        revenue_str = f"₹{total_revenue / 10000000:.1f}Cr"
+    elif total_revenue >= 100000:
+        revenue_str = f"₹{total_revenue / 100000:.1f}L"
+    else:
+        revenue_str = f"₹{total_revenue:,}"
+    
+    return Response({
+        'totalPatients': total_patients,
+        'hospitalOccupancy': f'{occupancy}%',
+        'totalRevenue': revenue_str,
+        'activeDoctors': active_doctors,
+        'todayAppointments': today_appointments,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_hospitals(request):
+    """
+    Returns list of hospitals/facilities.
+    GET /api/admin/hospitals/
+    
+    Note: In a real system, this would query a Hospital model.
+    Currently returns static facility data.
+    """
+    # In production, this would come from a Hospital model
+    # For now, return facility info based on departments
+    hospitals = [
+        {
+            'id': 1,
+            'name': 'SecureMed Main Hospital',
+            'location': 'Main Campus',
+            'beds': 350,
+            'occupancy': '78%',
+            'doctors': User.objects.filter(role='doctor', is_active=True).count(),
+        },
+        {
+            'id': 2,
+            'name': 'SecureMed Specialty Center',
+            'location': 'Downtown',
+            'beds': 150,
+            'occupancy': '65%',
+            'doctors': 12,
+        },
+    ]
+    
+    return Response(hospitals)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_staff(request):
+    """
+    Returns list of staff members (doctors and providers).
+    GET /api/admin/staff/
+    """
+    from appointments.models import Doctor
+    
+    staff_list = []
+    
+    # Get doctors from Doctor model
+    try:
+        doctors = Doctor.objects.select_related('user').all()[:20]  # Limit to 20
+        for doc in doctors:
+            staff_list.append({
+                'id': doc.id,
+                'name': f"Dr. {doc.user.first_name} {doc.user.last_name}".strip() or f"Dr. {doc.user.email}",
+                'role': doc.specialty or 'General Practitioner',
+                'hospital': 'SecureMed Main Hospital',
+                'status': 'Active' if doc.is_available else 'On Leave',
+                'email': doc.user.email,
+            })
+    except Exception as e:
+        # Fallback to User model for doctors
+        doctor_users = User.objects.filter(role='doctor', is_active=True)[:20]
+        for user in doctor_users:
+            staff_list.append({
+                'id': user.id,
+                'name': f"Dr. {user.first_name} {user.last_name}".strip() or f"Dr. {user.email}",
+                'role': 'Doctor',
+                'hospital': 'SecureMed Main Hospital',
+                'status': 'Active',
+                'email': user.email,
+            })
+    
+    # Get providers
+    providers = User.objects.filter(role='provider', is_active=True)[:10]
+    for user in providers:
+        staff_list.append({
+            'id': user.id,
+            'name': f"{user.first_name} {user.last_name}".strip() or user.email,
+            'role': 'Healthcare Provider',
+            'hospital': 'SecureMed Main Hospital',
+            'status': 'Active',
+            'email': user.email,
+        })
+    
+    return Response(staff_list)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_alerts(request):
+    """
+    Returns system alerts for admin dashboard.
+    GET /api/admin/alerts/
+    """
+    from patients.models import Patient
+    from appointments.models import Appointment
+    
+    alerts = []
+    
+    # Generate alerts based on real data
+    try:
+        patient_count = Patient.objects.count()
+        if patient_count > 100:
+            alerts.append({
+                'id': 1,
+                'type': 'info',
+                'title': f'Growing Patient Base',
+                'message': f'{patient_count} patients registered in the system',
+                'timestamp': timezone.now().isoformat(),
+            })
+    except:
+        pass
+    
+    try:
+        today = timezone.now().date()
+        pending = Appointment.objects.filter(
+            appointment_date=today,
+            status='scheduled'
+        ).count()
+        if pending > 0:
+            alerts.append({
+                'id': 2,
+                'type': 'warning',
+                'title': 'Pending Appointments Today',
+                'message': f'{pending} appointments scheduled for today',
+                'timestamp': timezone.now().isoformat(),
+            })
+    except:
+        pass
+    
+    # Default alert if none
+    if not alerts:
+        alerts.append({
+            'id': 0,
+            'type': 'success',
+            'title': 'System Operating Normally',
+            'message': 'All systems are functioning correctly',
+            'timestamp': timezone.now().isoformat(),
+        })
+    
+    return Response(alerts)
+
 
 # Epic 8 Story 8.1: Clinical Analytics Dashboard API
 # Returns privacy-preserving aggregated data (no PII)
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])  # For now, can restrict to admin later
@@ -353,3 +557,24 @@ def health_check(request):
         'service': 'SecureMed Analytics',
         'timestamp': timezone.now().isoformat()
     })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_audit_logs(request):
+    """
+    Returns the content of privacy_audit.log.
+    GET /api/admin/audit-logs/
+    """
+    log_file_path = os.path.join(settings.BASE_DIR, 'privacy_audit.log')
+    logs = []
+    try:
+        if os.path.exists(log_file_path):
+            with open(log_file_path, 'r') as f:
+                # Read last 100 lines for performance
+                lines = f.readlines()
+                logs = [line.strip() for line in lines[-100:]]
+                logs.reverse() # Newest first
+    except Exception as e:
+        print(f"Error reading audit log: {e}")
+        
+    return Response({'logs': logs})

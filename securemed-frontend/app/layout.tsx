@@ -13,7 +13,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Fortis Healthcare - Hospital Management System',
   description: 'Comprehensive hospital management system for patients, doctors, and administrators',
-  generator: 'v0.app',
   icons: {
     icon: [
       {

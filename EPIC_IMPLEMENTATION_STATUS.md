@@ -5,9 +5,9 @@
 | Epic | Status | Completion |
 |------|--------|------------|
 | EPIC-01: Identity & RBAC | ✅ **COMPLETE** | 100% |
-| EPIC-02: Compliance & Consent | ✅ **COMPLETE** | 95% |
+| EPIC-02: Compliance & Consent | ✅ **COMPLETE** | 100% |
 | EPIC-03: Clinical Patient Management | ✅ **COMPLETE** | 100% |
-| EPIC-04: Laboratory & Diagnostics | ✅ **COMPLETE** | 90% |
+| EPIC-04: Laboratory & Diagnostics | ✅ **COMPLETE** | 100% |
 | EPIC-05: Pharmacy & Prescriptions | 🔶 **PARTIAL** | 50% |
 | EPIC-06: Security & Audit | ✅ **MOSTLY COMPLETE** | 70% |
 | EPIC-07: Telemedicine | ❌ **NOT STARTED** | 0% |
@@ -84,7 +84,7 @@
 | Mandatory ToS on login | ✅ | `authentication/views.py` - policy check |
 | Re-consent prompt on update | ✅ | `authentication/models.py` - `accepted_policy_version` |
 | Digital timestamp storage | ✅ | `authentication/models.py` - `policy_accepted_at` |
-| Downloadable policy PDF | ❌ | NOT IMPLEMENTED |
+| Downloadable policy PDF | ✅ | `authentication/views.py` - `DownloadPolicyReceiptView`, Frontend: `privacy-settings.tsx` |
 
 ---
 
@@ -111,11 +111,13 @@
 | **[Subtask]** Backend "Emergency Mode" Logic | ✅ | `medical_records/models.py` - `EmergencyAccessLog` |
 | **[Subtask]** Security Alert Trigger | ✅ | `medical_records/views.py` - `break_glass` |
 
-### Story 3.4: Patient Assignment ❌ NOT STARTED
-| Task | Status |
-|------|--------|
-| **[Subtask]** Referral Workflow UI | ❌ |
-| **[Subtask]** "My Patients" List Logic | ❌ |
+### Story 3.4: Patient Assignment ✅ COMPLETE
+| Task | Status | Location |
+|------|--------|----------|
+| **[Subtask]** Referral Model | ✅ | `appointments/models.py` - `Referral` |
+| **[Subtask]** Referral API Endpoints | ✅ | `appointments/views.py` - `ReferralViewSet` |
+| **[Subtask]** Referral Workflow UI | ✅ | `components/portals/doctor/my-patients-table.tsx` |
+| **[Subtask]** "My Patients" List Logic | ✅ | `services/referrals.ts` |
 
 ---
 
@@ -127,11 +129,13 @@
 | **[Subtask]** Order Entry Form | ✅ | `components/portals/doctor/lab-order-form.tsx` |
 | **[Subtask]** Validation Logic | ✅ | `labs/serializers.py` |
 
-### Story 4.2: Blinded Processing ❌ NOT STARTED
-| Task | Status |
-|------|--------|
-| **[Subtask]** Technician Worklist UI | ❌ |
-| **[Subtask]** Result Value Validation | ❌ |
+### Story 4.2: Blinded Processing ✅ COMPLETE
+| Task | Status | Location |
+|------|--------|----------|
+| **[Subtask]** Lab Worklist API | ✅ | `labs/views.py` - `LabWorklistViewSet` |
+| **[Subtask]** Technician Worklist UI | ✅ | `components/portals/lab/technician-worklist.tsx` |
+| **[Subtask]** Lab Technician Portal | ✅ | `components/portals/lab-technician-portal.tsx` |
+| **[Subtask]** Result Value Validation | ✅ | `labs/views.py` - `enter_result` action |
 
 ### Story 4.3: Secure Uploads ✅ COMPLETE
 | Task | Status | Location |

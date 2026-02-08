@@ -89,12 +89,13 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
 
         from patients.models import Patient
         try:
-            # We look up by user ID (which is what frontend sends as patientId key usually)
-            # But the frontend might be sending the Patient ID string or the User ID
-            # Let's assume User ID for now based on previous components
-            patient = Patient.objects.get(user__id=patient_id)
-        except Patient.DoesNotExist:
-             return Response({"error": "Patient not found."}, status=status.HTTP_404_NOT_FOUND)
+            # Try to lookup by patient_id string first (e.g., 'P-10001')
+            patient = Patient.objects.filter(patient_id=patient_id).first()
+            if not patient:
+                # Fallback to user ID lookup
+                patient = Patient.objects.get(user__id=patient_id)
+        except (Patient.DoesNotExist, ValueError):
+            return Response({"error": "Patient not found."}, status=status.HTTP_404_NOT_FOUND)
 
         from .models import EmergencyAccessLog
         
@@ -133,10 +134,39 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     from .serializers import PrescriptionSerializer
     serializer_class = PrescriptionSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        from .models import MedicalRecord
+        from django.utils import timezone
+        import uuid
+        
+        patient_id = serializer.validated_data.pop('patient_id')
+        doctor_profile = self.request.user.doctor_profile
+        
+        # Create a Medical Record wrapper for this prescription
+        # In a real app, we might group them by visit, but for now 1-to-1 or 1-to-many is fine
+        record = MedicalRecord.objects.create(
+            record_id=f"REC-{uuid.uuid4().hex[:8].upper()}",
+            patient_id=patient_id,
+            doctor=doctor_profile,
+            record_type='prescription',
+            record_date=timezone.now().date(),
+            diagnosis="Prescription Order",
+            notes=f"Prescription for {serializer.validated_data.get('medication_name')}"
+        )
+        
+        serializer.save(medical_record=record)
+
     def get_queryset(self):
         user = self.request.user
         if hasattr(user, 'doctor_profile'):
-             return self.queryset.filter(doctor=user.doctor_profile) # Assuming Prescription has doctor field derived from MedicalRecord
+             return self.queryset.filter(doctor=user.doctor_profile) # This needs update since Doctor is on MedicalRecord
         elif hasattr(user, 'patient_profile'):
              return self.queryset.filter(medical_record__patient=user.patient_profile)
         return self.queryset

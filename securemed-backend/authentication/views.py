@@ -228,6 +228,30 @@ def register_view(request):
         # Mark invitation as used
         invitation.mark_as_used(user)
         
+        # Auto-create Patient profile for patient role users
+        if user.role == 'patient':
+            from patients.models import Patient
+            import uuid
+            
+            # Generate unique patient ID
+            patient_id = f"PT-{uuid.uuid4().hex[:8].upper()}"
+            
+            # Create patient profile with minimal required data
+            # User can update their profile later
+            Patient.objects.create(
+                user=user,
+                patient_id=patient_id,
+                date_of_birth=request.data.get('date_of_birth', '1990-01-01'),  # Default, user updates later
+                gender=request.data.get('gender', 'O'),  # 'O' for Other as default
+                phone=request.data.get('phone', '+0000000000'),  # Placeholder
+                emergency_contact=request.data.get('emergency_contact', '+0000000000'),
+                address=request.data.get('address', 'Not provided'),
+                city=request.data.get('city', 'Not provided'),
+                state=request.data.get('state', 'Not provided'),
+                postal_code=request.data.get('postal_code', '000000'),
+            )
+            print(f"Patient profile created: {patient_id}")
+        
         print(f"Status: SUCCESS - User registered")
         print(f"User ID: {user.id}")
         print(f"Invitation marked as used")
@@ -855,6 +879,65 @@ class LogoutView(APIView):
             return Response({"message": "Successfully logged out"}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetRequestView(APIView):
+    """
+    Request password reset email.
+    POST /api/auth/password-reset/
+    
+    Request body:
+    {
+        "email": "user@example.com"
+    }
+    
+    Response (always 200 to prevent email enumeration):
+    {
+        "message": "If an account exists with this email, a password reset link has been sent."
+    }
+    """
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        
+        if not email:
+            return Response({
+                'error': 'Email is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Log the request for audit purposes
+        print(f"\n{'='*70}")
+        print(f"PASSWORD RESET REQUEST")
+        print(f"{'='*70}")
+        print(f"Timestamp: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        print(f"Email: {email}")
+        
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+            
+            # Generate reset token (valid for 1 hour)
+            reset_token = secrets.token_urlsafe(32)
+            user.password_reset_token = reset_token
+            user.password_reset_expires = timezone.now() + timedelta(hours=1)
+            user.save(update_fields=['password_reset_token', 'password_reset_expires'])
+            
+            # TODO: Send email with reset link
+            # For now, log the token (in production, this would send an email)
+            print(f"Reset token generated: {reset_token}")
+            print(f"Expires: {user.password_reset_expires}")
+            print(f"Reset URL would be: /reset-password?token={reset_token}")
+            
+        except User.DoesNotExist:
+            # Don't reveal if email exists or not
+            print(f"No user found with email: {email}")
+        
+        print(f"{'='*70}\n")
+        
+        # Always return success to prevent email enumeration
+        return Response({
+            'message': 'If an account exists with this email, a password reset link has been sent.'
+        }, status=status.HTTP_200_OK)
 
 
 # ============================================

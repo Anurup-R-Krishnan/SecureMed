@@ -46,4 +46,7 @@ urlpatterns = [
     
     # Epic 4: Labs
     path('api/labs/', include('labs.urls')),
+    
+    # Patients (Timeline, Profile)
+    path('api/patients/', include('patients.urls')),
 ]

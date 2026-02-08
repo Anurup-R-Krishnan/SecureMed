@@ -8,6 +8,7 @@ import { AlertTriangle, AlertCircle } from 'lucide-react';
 import api from '@/lib/api';
 
 interface EmergencyAccessModalProps {
+  isOpen: boolean;
   patientId: string;
   patientName: string;
   onClose: () => void;
@@ -15,6 +16,7 @@ interface EmergencyAccessModalProps {
 }
 
 export default function EmergencyAccessModal({
+  isOpen,
   patientId,
   patientName,
   onClose,
@@ -38,13 +40,15 @@ export default function EmergencyAccessModal({
         onSubmit();
         onClose();
       } catch (err: any) {
-        console.error("Failed to requests emergency access", err);
+        console.error("Failed to request emergency access", err);
         setError(err.response?.data?.error || "Failed to grant emergency access. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4 z-50">

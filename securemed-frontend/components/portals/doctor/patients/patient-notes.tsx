@@ -15,24 +15,33 @@ import {
 import AIDecisionSupport from './ai-decision-support';
 import { AIDiagnosisSuggestion } from '@/lib/types';
 
-// Mock patient data for demonstration
-const mockPatient = {
-    id: 'P12345',
-    name: 'John Doe',
-    age: 39,
-    gender: 'Male',
-    dateOfBirth: '1985-06-15',
-    bloodType: 'O+',
-    allergies: ['Penicillin'],
-    medicalHistory: ['Hypertension', 'Type 2 Diabetes'],
-};
+interface PatientNotesProps {
+    patient: {
+        id: string;
+        name: string;
+        age: number;
+        gender: string;
+        dateOfBirth: string;
+        bloodType: string;
+        allergies: string[];
+        medicalHistory: string[];
+    };
+}
 
-export default function PatientNotes() {
+export default function PatientNotes({ patient }: PatientNotesProps) {
     const [notes, setNotes] = useState('');
     const [finalDiagnosis, setFinalDiagnosis] = useState('');
     const [acceptedSuggestions, setAcceptedSuggestions] = useState<AIDiagnosisSuggestion[]>([]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+
+    if (!patient) {
+        return (
+            <Card className="p-6 text-center text-muted-foreground">
+                <p>No patient selected. Please select a patient to view notes.</p>
+            </Card>
+        );
+    }
 
     const handleAcceptSuggestion = (suggestion: AIDiagnosisSuggestion) => {
         if (!acceptedSuggestions.find(s => s.id === suggestion.id)) {
@@ -86,19 +95,19 @@ export default function PatientNotes() {
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                         <p className="text-xs text-muted-foreground">Patient Name</p>
-                        <p className="font-medium text-foreground">{mockPatient.name}</p>
+                        <p className="font-medium text-foreground">{patient.name}</p>
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground">Patient ID</p>
-                        <p className="font-medium text-foreground">{mockPatient.id}</p>
+                        <p className="font-medium text-foreground">{patient.id}</p>
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground">Age / Gender</p>
-                        <p className="font-medium text-foreground">{mockPatient.age} years / {mockPatient.gender}</p>
+                        <p className="font-medium text-foreground">{patient.age} years / {patient.gender}</p>
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground">Blood Type</p>
-                        <p className="font-medium text-foreground">{mockPatient.bloodType}</p>
+                        <p className="font-medium text-foreground">{patient.bloodType}</p>
                     </div>
                 </div>
 
@@ -106,7 +115,7 @@ export default function PatientNotes() {
                     <div>
                         <p className="text-xs text-muted-foreground mb-1">Known Allergies</p>
                         <div className="flex flex-wrap gap-1">
-                            {mockPatient.allergies.map((allergy) => (
+                            {patient.allergies.map((allergy: string) => (
                                 <span
                                     key={allergy}
                                     className="text-xs px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded"
@@ -119,7 +128,7 @@ export default function PatientNotes() {
                     <div>
                         <p className="text-xs text-muted-foreground mb-1">Medical History</p>
                         <div className="flex flex-wrap gap-1">
-                            {mockPatient.medicalHistory.map((condition) => (
+                            {patient.medicalHistory.map((condition: string) => (
                                 <span
                                     key={condition}
                                     className="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded"

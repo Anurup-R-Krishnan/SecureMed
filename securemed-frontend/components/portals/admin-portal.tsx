@@ -1,9 +1,13 @@
 'use client';
 
-import React from "react"
+import React, { useState, useEffect } from "react";
 import ClinicalAnalytics from '@/components/portals/admin/clinical-analytics';
-import { useState } from 'react';
+import HospitalManager from '@/components/portals/admin/hospital-manager';
+import StaffManager from '@/components/portals/admin/staff-manager';
+import PatientManager from '@/components/portals/admin/patient-manager';
+import AuditLogViewer from '@/components/portals/admin/audit-log-viewer';
 import { Button } from '@/components/ui/button';
+import { adminService, Hospital, StaffMember, DashboardStats } from '@/services/admin';
 import {
   BarChart3,
   Users,
@@ -15,33 +19,49 @@ import {
   Activity,
   DollarSign,
   AlertCircle,
-  Pill,
+  Loader2,
+  ShieldAlert,
 } from 'lucide-react';
 
-type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing';
+type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing' | 'audit-logs';
 
 interface AdminPortalProps {
   onLogout: () => void;
   onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
 }
 
-const hospitalData = [
-  { id: 1, name: 'Fortis Delhi', location: 'Aravali, Delhi', beds: 350, occupancy: '78%', doctors: 45 },
-  { id: 2, name: 'Fortis Mumbai', location: 'Mulund, Mumbai', beds: 400, occupancy: '82%', doctors: 52 },
-  { id: 3, name: 'Fortis Bangalore', location: 'Whitefield, Bangalore', beds: 300, occupancy: '71%', doctors: 38 },
-  { id: 4, name: 'Fortis Chennai', location: 'Nungambakkam, Chennai', beds: 250, occupancy: '65%', doctors: 32 },
-];
-
-const staffData = [
-  { id: 1, name: 'Dr. Amit Patel', role: 'Cardiologist', hospital: 'Fortis Delhi', status: 'Active' },
-  { id: 2, name: 'Dr. Sarah Johnson', role: 'Neurologist', hospital: 'Fortis Mumbai', status: 'Active' },
-  { id: 3, name: 'Dr. Rajesh Kumar', role: 'Orthopedist', hospital: 'Fortis Bangalore', status: 'Active' },
-  { id: 4, name: 'Nurse Priya Singh', role: 'Senior Nurse', hospital: 'Fortis Delhi', status: 'On Leave' },
-];
-
 export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [hospitalsData, staffData, statsData, patientsData] = await Promise.all([
+          adminService.getHospitals(),
+          adminService.getStaff(),
+          adminService.getDashboardStats(),
+          adminService.getPatients(),
+        ]);
+        setHospitals(hospitalsData);
+        setStaff(staffData);
+        setPatients(patientsData);
+        setStats(statsData);
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="h-5 w-5" /> },
@@ -50,6 +70,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
     { id: 'staff', label: 'Staff', icon: <Users className="h-5 w-5" /> },
     { id: 'patients', label: 'Patients', icon: <Users className="h-5 w-5" /> },
     { id: 'billing', label: 'Billing', icon: <DollarSign className="h-5 w-5" /> },
+    { id: 'audit-logs', label: 'Audit Logs', icon: <ShieldAlert className="h-5 w-5" /> },
   ];
 
   return (
@@ -93,8 +114,8 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                 setSidebarOpen(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
                 }`}
             >
               {tab.icon}
@@ -144,7 +165,9 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-muted-foreground text-sm">Total Patients</p>
-                        <p className="text-3xl font-bold text-foreground mt-2">12,450</p>
+                        <p className="text-3xl font-bold text-foreground mt-2">
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalPatients?.toLocaleString() || '0')}
+                        </p>
                       </div>
                       <Users className="h-8 w-8 text-primary opacity-20" />
                     </div>
@@ -153,7 +176,9 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-muted-foreground text-sm">Hospital Occupancy</p>
-                        <p className="text-3xl font-bold text-primary mt-2">74%</p>
+                        <p className="text-3xl font-bold text-primary mt-2">
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.hospitalOccupancy || '0%')}
+                        </p>
                       </div>
                       <Activity className="h-8 w-8 text-primary opacity-20" />
                     </div>
@@ -162,7 +187,9 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-muted-foreground text-sm">Total Revenue</p>
-                        <p className="text-3xl font-bold text-primary mt-2">₹28.5L</p>
+                        <p className="text-3xl font-bold text-primary mt-2">
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalRevenue || '₹0')}
+                        </p>
                       </div>
                       <DollarSign className="h-8 w-8 text-primary opacity-20" />
                     </div>
@@ -171,7 +198,9 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-muted-foreground text-sm">Active Doctors</p>
-                        <p className="text-3xl font-bold text-primary mt-2">167</p>
+                        <p className="text-3xl font-bold text-primary mt-2">
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.activeDoctors || '0')}
+                        </p>
                       </div>
                       <TrendingUp className="h-8 w-8 text-primary opacity-20" />
                     </div>
@@ -206,91 +235,15 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
             )}
 
             {activeTab === 'hospitals' && (
-              <div className="space-y-4">
-                <Button className="mb-4">Add Hospital</Button>
-                <div className="bg-card rounded-lg border border-border overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Hospital Name</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Location</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Beds</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Occupancy</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Doctors</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {hospitalData.map((hospital) => (
-                        <tr key={hospital.id} className="border-b border-border hover:bg-muted/50">
-                          <td className="py-3 px-4 font-medium text-foreground">{hospital.name}</td>
-                          <td className="py-3 px-4 text-muted-foreground">{hospital.location}</td>
-                          <td className="py-3 px-4 text-foreground">{hospital.beds}</td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                              {hospital.occupancy}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-foreground">{hospital.doctors}</td>
-                          <td className="py-3 px-4">
-                            <Button variant="ghost" size="sm">Edit</Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <HospitalManager hospitals={hospitals} />
             )}
 
             {activeTab === 'staff' && (
-              <div className="space-y-4">
-                <Button className="mb-4">Add Staff Member</Button>
-                <div className="bg-card rounded-lg border border-border overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Name</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Role</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Hospital</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Status</th>
-                        <th className="text-left py-3 px-4 font-semibold text-foreground">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffData.map((staff) => (
-                        <tr key={staff.id} className="border-b border-border hover:bg-muted/50">
-                          <td className="py-3 px-4 font-medium text-foreground">{staff.name}</td>
-                          <td className="py-3 px-4 text-muted-foreground">{staff.role}</td>
-                          <td className="py-3 px-4 text-muted-foreground">{staff.hospital}</td>
-                          <td className="py-3 px-4">
-                            <span
-                              className={`text-xs font-medium px-2 py-1 rounded-full ${staff.status === 'Active'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                                }`}
-                            >
-                              {staff.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Button variant="ghost" size="sm">Edit</Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <StaffManager staff={staff} />
             )}
 
             {activeTab === 'patients' && (
-              <div className="bg-card p-6 rounded-lg border border-border text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-foreground font-semibold mb-2">Patient Management</p>
-                <p className="text-muted-foreground mb-6">View and manage all patient records</p>
-                <Button>View All Patients</Button>
-              </div>
+              <PatientManager patients={patients} />
             )}
 
             {activeTab === 'billing' && (
@@ -300,6 +253,10 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                 <p className="text-muted-foreground mb-6">Manage invoices and payments</p>
                 <Button>View Billing Reports</Button>
               </div>
+            )}
+
+            {activeTab === 'audit-logs' && (
+              <AuditLogViewer />
             )}
           </div>
         </div>

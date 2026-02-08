@@ -8,6 +8,7 @@ import LoginModal from '@/components/auth/login-modal';
 import PatientPortal from '@/components/portals/patient-portal';
 import DoctorPortal from '@/components/portals/doctor-portal';
 import AdminPortal from '@/components/portals/admin-portal';
+import LabTechnicianPortal from '@/components/portals/lab-technician-portal';
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -31,7 +32,7 @@ export default function Home() {
     return (
       <PatientPortal
         onLogout={handleLogout}
-        onSwitchRole={() => { }} // Not needed with real auth
+        onSwitchRole={() => { }}
       />
     );
   }
@@ -41,7 +42,7 @@ export default function Home() {
     return (
       <DoctorPortal
         onLogout={handleLogout}
-        onSwitchRole={() => { }} // Not needed with real auth
+        onSwitchRole={() => { }}
       />
     );
   }
@@ -51,7 +52,17 @@ export default function Home() {
     return (
       <AdminPortal
         onLogout={handleLogout}
-        onSwitchRole={() => { }} // Not needed with real auth
+        onSwitchRole={() => { }}
+      />
+    );
+  }
+
+  // Show lab technician portal
+  if (userRole === 'lab_technician') {
+    return (
+      <LabTechnicianPortal
+        onLogout={handleLogout}
+        onSwitchRole={() => { }}
       />
     );
   }
@@ -70,3 +81,4 @@ export default function Home() {
     </div>
   );
 }
+
