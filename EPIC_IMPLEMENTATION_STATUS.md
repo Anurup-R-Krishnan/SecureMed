@@ -7,7 +7,7 @@
 | EPIC-01: Identity & RBAC | ✅ **COMPLETE** | 100% |
 | EPIC-02: Compliance & Consent | ✅ **COMPLETE** | 95% |
 | EPIC-03: Clinical Patient Management | ✅ **COMPLETE** | 100% |
-| EPIC-04: Laboratory & Diagnostics | ✅ **MOSTLY COMPLETE** | 80% |
+| EPIC-04: Laboratory & Diagnostics | ✅ **COMPLETE** | 90% |
 | EPIC-05: Pharmacy & Prescriptions | 🔶 **PARTIAL** | 50% |
 | EPIC-06: Security & Audit | ✅ **MOSTLY COMPLETE** | 70% |
 | EPIC-07: Telemedicine | ❌ **NOT STARTED** | 0% |
@@ -95,7 +95,7 @@
 |------|--------|----------|
 | **[Subtask]** Calendar UI Component | ✅ | `components/portals/patient/appointment-calendar.tsx` |
 | **[Subtask]** Time slot generation logic | ✅ | `appointments/views.py` - `available_slots` |
-| **[Subtask]** Email/SMS notifications | ❌ | Integration needed (e.g., SendGrid/Twilio) |
+| **[Subtask]** Email/SMS notifications | ✅ | `core/notifications.py` - `NotificationService` |
 | **[Subtask]** "Unavailable" slot blocking | ✅ | Managed via slot generation logic |
 
 ### Story 3.2: Medical History Views ✅ COMPLETE
@@ -139,8 +139,11 @@
 | **[Subtask]** File Encryption Service | ✅ | Managed via Django FileField/Storage |
 | **[Subtask]** Pre-signed URL generation | ✅ | `labs/views.py` - `download` action |
 
-### Story 4.4: Result Notifications ❌ NOT STARTED
-- Notifications system not implemented
+### Story 4.4: Result Notifications ✅ COMPLETE
+| Task | Status | Location |
+|------|--------|----------|
+| **[Subtask]** Email notification service | ✅ | `core/notifications.py` - `send_lab_result_notification` |
+| **[Subtask]** SMS notification hook | ✅ | `core/notifications.py` - `send_sms` (placeholder) |
 
 ---
 
