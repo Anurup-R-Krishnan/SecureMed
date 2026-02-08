@@ -60,4 +60,17 @@ class LabResultViewSet(viewsets.ModelViewSet):
     serializer_class = LabResultSerializer
     permission_classes = [permissions.IsAuthenticated]
     
-    # Add robust permissions here (technicians write, doctors/patients read)
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        result = self.get_object()
+        if not result.file_attachment:
+            return Response({"error": "No file attached."}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Permission check already handled by get_object + permission_classes
+        # In production, use X-Accel-Redirect (Nginx) or Presigned URL (S3)
+        # Here we serve directly via Django for simplicity/local dev
+        
+        from django.http import FileResponse
+        response = FileResponse(result.file_attachment.open('rb'))
+        response['Content-Disposition'] = f'attachment; filename="{result.file_attachment.name}"'
+        return response

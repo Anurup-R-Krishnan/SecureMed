@@ -11,6 +11,14 @@ class LabResultSerializer(serializers.ModelSerializer):
         model = LabResult
         fields = '__all__'
 
+    def validate_file_attachment(self, value):
+        if value:
+            if value.size > 10 * 1024 * 1024:  # 10MB limit
+                raise serializers.ValidationError("File size too large. Max 10MB.")
+            if not value.name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+                raise serializers.ValidationError("Unsupported file type. Allowed: PDF, JPG, PNG.")
+        return value
+
 class LabOrderSerializer(serializers.ModelSerializer):
     # Nested serializers for read operations
     patient_details = serializers.SerializerMethodField()
