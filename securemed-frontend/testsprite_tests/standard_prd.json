@@ -1,0 +1,197 @@
+{
+  "meta": {
+    "project": "SecureMed",
+    "date": "2026-02-06",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "SecureMed is an all-in-one secure healthcare management platform connecting patients, doctors, pharmacists, lab technicians, and administrators. It provides appointment booking, medical record management, telemedicine, prescription handling, lab test management, and system administration with robust authentication and session management for a seamless and protected healthcare experience.",
+  "core_goals": [
+    "Enable patients to securely book appointments, access medical records, view prescriptions and lab results, and export data using FHIR standards.",
+    "Provide doctors with comprehensive tools to manage appointments, patient records, prescriptions, lab orders, and emergency data access.",
+    "Facilitate pharmacists and lab technicians to efficiently verify prescriptions, dispense medications, and manage lab test orders and uploads.",
+    "Ensure administrators have full control of user management, audit logs, and system settings for reliable platform governance.",
+    "Implement advanced security via complete authentication flow including MFA, session timeout tracking with idle detection, and role-based access control.",
+    "Support telemedicine capabilities enabling video consultations for remote patient care."
+  ],
+  "key_features": [
+    "Complete authentication system featuring login, registration, multi-factor authentication (MFA), password reset, and account lockout to secure user access.",
+    "Session management with idle activity detection and warning popup to protect sessions and data privacy.",
+    "Patient portal providing appointment booking, medical records viewing, prescriptions, lab results, and an interactive patient timeline.",
+    "Doctor portal supporting patient list management, appointment scheduling, prescription and lab order forms, and emergency break-glass access for critical data.",
+    "Admin portal featuring user management, audit log monitoring, and system configuration capabilities.",
+    "Pharmacist portal for prescription queue management and medication dispensing workflows.",
+    "Lab technician portal handling test order processing and result uploads.",
+    "Telemedicine video consultation components for remote healthcare delivery.",
+    "FHIR-compliant data export functionality allowing patients to export their health data.",
+    "A reusable UI components library built with Radix UI and Tailwind CSS to ensure consistent user experience.",
+    "Dark/light theme support for accessibility and user preference."
+  ],
+  "user_flow_summary": [
+    "Patient authenticates and navigates to the appointment booking section, searches doctors by specialty, selects a date and time, confirms the booking, and receives confirmation.",
+    "Patient logs in and accesses medical records, viewing detailed history including prescriptions and lab results, with options to download and export data via FHIR standards.",
+    "Doctor logs in, reviews the patient list and scheduled appointments, updates treatment notes, and can issue prescriptions and lab orders as needed.",
+    "Pharmacists manage the prescription queue and dispense medication accordingly after verification.",
+    "Lab technicians receive test orders, perform tests, and upload results to the system.",
+    "Admins perform user creation, modification, deletion, review audit logs for compliance, and configure system settings to maintain platform integrity.",
+    "All users benefit from session management features with timeout warnings and automatic logout on inactivity, enhancing security.",
+    "Telemedicine users participate in video consultations supported by dedicated UI components."
+  ],
+  "validation_criteria": [
+    "All user roles must be able to authenticate with MFA and handle password reset workflows successfully.",
+    "Session timeout and idle detection mechanisms must trigger warnings and session termination appropriately.",
+    "Patients must be able to book appointments, view their full medical records, prescriptions, and lab results without errors.",
+    "Doctors must have full CRUD access to patient data, appointment scheduling, and prescription/lab order forms functioning correctly.",
+    "Admins must be able to manage users, view audit logs, and update system configuration securely without data leaks.",
+    "Pharmacist and lab technician portals must correctly process prescriptions and test orders, with accurate state updates.",
+    "Telemedicine video consultations must operate with real-time audio and video connectivity and proper user controls.",
+    "FHIR export must output valid, standardized healthcare data for patient downloads.",
+    "UI consistency must be maintained via the component library under different themes (dark/light)."
+  ],
+  "code_summary": {
+    "tech_stack": [
+      "TypeScript",
+      "Next.js 16",
+      "React 19",
+      "Tailwind CSS",
+      "Radix UI",
+      "Axios",
+      "React Hook Form",
+      "Zod",
+      "Chart.js",
+      "date-fns"
+    ],
+    "features": [
+      {
+        "name": "Authentication System",
+        "description": "Complete authentication flow including login, registration, MFA, password reset, and account lockout",
+        "files": [
+          "components/auth/login-form.tsx",
+          "components/auth/register-form.tsx",
+          "components/auth/mfa-setup.tsx",
+          "components/auth/password-reset.tsx",
+          "context/auth-context.tsx"
+        ]
+      },
+      {
+        "name": "Session Management",
+        "description": "Session timeout tracking with idle activity detection and warning popup",
+        "files": [
+          "components/session-timeout.tsx"
+        ]
+      },
+      {
+        "name": "Patient Portal",
+        "description": "Patient-facing features including appointment booking, medical records, prescriptions, and lab results",
+        "files": [
+          "components/portals/patient/appointment-booking.tsx",
+          "components/portals/patient/appointment-calendar.tsx",
+          "components/portals/patient/medical-records.tsx",
+          "components/portals/patient/prescriptions.tsx",
+          "components/portals/patient/lab-results.tsx",
+          "components/portals/patient/patient-timeline.tsx"
+        ]
+      },
+      {
+        "name": "Doctor Portal",
+        "description": "Doctor-facing features including patient management, appointment scheduling, and prescribing",
+        "files": [
+          "components/portals/doctor/patient-list.tsx",
+          "components/portals/doctor/appointment-management.tsx",
+          "components/portals/doctor/prescription-form.tsx",
+          "components/portals/doctor/lab-order-form.tsx"
+        ]
+      },
+      {
+        "name": "Admin Portal",
+        "description": "Administrative features including user management, audit logs, and system configuration",
+        "files": [
+          "components/portals/admin/user-management.tsx",
+          "components/portals/admin/audit-logs.tsx",
+          "components/portals/admin/system-settings.tsx"
+        ]
+      },
+      {
+        "name": "Pharmacist Portal",
+        "description": "Pharmacy features including prescription verification and dispensing",
+        "files": [
+          "components/portals/pharmacist/prescription-queue.tsx",
+          "components/portals/pharmacist/dispense-medication.tsx"
+        ]
+      },
+      {
+        "name": "Lab Technician Portal",
+        "description": "Laboratory features including test order management and result uploads",
+        "files": [
+          "components/portals/lab/test-orders.tsx",
+          "components/portals/lab/result-upload.tsx"
+        ]
+      },
+      {
+        "name": "Appointment Service",
+        "description": "API service for managing appointments and doctor listings",
+        "files": [
+          "services/appointments.ts"
+        ]
+      },
+      {
+        "name": "API Client",
+        "description": "Axios-based API client with authentication and error handling",
+        "files": [
+          "lib/api.ts"
+        ]
+      },
+      {
+        "name": "UI Components Library",
+        "description": "Reusable UI components built with Radix UI and Tailwind CSS",
+        "files": [
+          "components/ui/button.tsx",
+          "components/ui/card.tsx",
+          "components/ui/input.tsx",
+          "components/ui/dialog.tsx",
+          "components/ui/toast.tsx",
+          "components/ui/calendar.tsx",
+          "components/ui/select.tsx",
+          "components/ui/table.tsx",
+          "components/ui/tabs.tsx",
+          "components/ui/form.tsx"
+        ]
+      },
+      {
+        "name": "Telemedicine",
+        "description": "Video consultation features for remote patient care",
+        "files": [
+          "components/telemedicine/video-consultation.tsx",
+          "components/telemedicine/consultation-room.tsx"
+        ]
+      },
+      {
+        "name": "Emergency Access (Break-Glass)",
+        "description": "Emergency access protocol for critical patient data access",
+        "files": [
+          "components/portals/doctor/break-glass.tsx"
+        ]
+      },
+      {
+        "name": "FHIR Integration",
+        "description": "FHIR-compliant data export functionality",
+        "files": [
+          "components/portals/patient/fhir-export-button.tsx"
+        ]
+      },
+      {
+        "name": "Theme System",
+        "description": "Dark/light theme support with next-themes",
+        "files": [
+          "components/theme-provider.tsx"
+        ]
+      },
+      {
+        "name": "Landing Page",
+        "description": "Public-facing landing page with feature showcase",
+        "files": [
+          "components/landing-page.tsx"
+        ]
+      }
+    ]
+  }
+}
