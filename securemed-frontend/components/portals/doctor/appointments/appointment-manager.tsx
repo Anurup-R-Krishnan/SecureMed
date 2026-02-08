@@ -9,6 +9,7 @@ interface AppointmentManagerProps {
     appointments: Appointment[];
     loading: boolean;
     onOpenReferral: (appt: Appointment) => void;
+    onAcceptAppointment: (appt: Appointment) => void;
     formatTime: (time: string) => string;
     getStatusBadge: (status: string) => React.ReactNode;
 }
@@ -17,6 +18,7 @@ export default function AppointmentManager({
     appointments,
     loading,
     onOpenReferral,
+    onAcceptAppointment,
     formatTime,
     getStatusBadge
 }: AppointmentManagerProps) {
@@ -41,6 +43,15 @@ export default function AppointmentManager({
                             </div>
                             <div className="flex gap-3 mt-4 md:mt-0">
                                 {getStatusBadge(apt.status)}
+                                {apt.status === 'scheduled' && (
+                                    <Button
+                                        size="sm"
+                                        className="font-bold rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
+                                        onClick={() => onAcceptAppointment(apt)}
+                                    >
+                                        Accept
+                                    </Button>
+                                )}
                                 <Button variant="outline" size="sm" className="font-bold rounded-xl" onClick={() => onOpenReferral(apt)}>
                                     Refer
                                 </Button>

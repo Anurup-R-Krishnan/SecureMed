@@ -33,6 +33,7 @@ import AppointmentManager from '@/components/portals/doctor/appointments/appoint
 import { appointmentService, Appointment } from '@/services/appointments';
 import api from '@/lib/api';
 import { NotificationCenter } from '@/components/ui/notification-center';
+import { toast } from 'sonner';
 
 type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'prescriptions' | 'labs' | 'ai-assistant' | 'availability' | 'settings';
 
@@ -149,6 +150,19 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
   const handleOpenEmergency = (patient: any) => {
     setSelectedPatient({ id: patient.displayId || patient.patient || patient.id, name: patient.name || 'Patient' });
     setShowEmergencyModal(true);
+  };
+
+  const handleAcceptAppointment = async (appt: Appointment) => {
+    try {
+      await appointmentService.updateAppointmentStatus(appt.id, 'confirmed');
+      // Refresh appointments
+      const appts = await appointmentService.getAppointments();
+      setAppointments(appts);
+      toast.success(`Appointment with Patient #${appt.patient} confirmed.`);
+    } catch (error) {
+      console.error('Error accepting appointment:', error);
+      toast.error('Failed to confirm appointment.');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -281,6 +295,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 totalAppointments={appointments.length}
                 loading={loading}
                 onOpenReferral={handleOpenReferral}
+                onAcceptAppointment={handleAcceptAppointment}
                 formatTime={formatTime}
                 getStatusBadge={getStatusBadge}
               />
@@ -291,6 +306,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 appointments={appointments}
                 loading={loading}
                 onOpenReferral={handleOpenReferral}
+                onAcceptAppointment={handleAcceptAppointment}
                 formatTime={formatTime}
                 getStatusBadge={getStatusBadge}
               />

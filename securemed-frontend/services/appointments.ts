@@ -53,11 +53,9 @@ export const appointmentService = {
             const results = Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
 
-            // Backend DoctorSerializer returns: id, name, specialization, hospital, 
-            // department_name, consultation_fee, experience, rating, reviews
             return results.map((doc: any) => ({
                 id: doc.id,
-                name: doc.name, // Already formatted as "Dr. First Last" by serializer
+                name: doc.name,
                 specialization: doc.specialization,
                 specialty: doc.specialization,
                 hospital: doc.hospital || 'SecureMed Hospital',
@@ -77,10 +75,7 @@ export const appointmentService = {
 
     getDoctorAvailability: async (doctorId: number | string, date: string): Promise<TimeSlot[]> => {
         try {
-            // Use the correct endpoint as per urls.py
             const response = await api.get(`/appointments/doctors/${doctorId}/availability/?date=${date}`);
-
-            // Backend returns { doctor_id, doctor_name, date, slots: [{time, available}] }
             const slots = response.data?.slots || response.data || [];
 
             return slots.map((slot: any) => {
@@ -143,13 +138,24 @@ export const appointmentService = {
             console.error('Error fetching appointments:', error);
             return [];
         }
+    },
+
+    updateAppointmentStatus: async (appointmentId: number, status: string): Promise<any> => {
+        try {
+            const response = await api.patch(`/appointments/appointments/${appointmentId}/`, { status });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            throw error;
+        }
     }
 };
 
 export const medicalRecordService = {
     getMedicalRecords: async (): Promise<any[]> => {
         try {
-            const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+            const authTokens = localStorage.getItem('auth_tokens');
+            const token = authTokens ? JSON.parse(authTokens).access : null;
             if (!token) return [];
 
             const response = await api.get('/medical_records/', {
@@ -163,7 +169,8 @@ export const medicalRecordService = {
     },
 
     uploadRecord: async (formData: FormData): Promise<any> => {
-        const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+        const authTokens = localStorage.getItem('auth_tokens');
+        const token = authTokens ? JSON.parse(authTokens).access : null;
         if (!token) throw new Error("No auth token");
 
         const response = await api.post('/medical_records/', formData, {
@@ -177,13 +184,13 @@ export const medicalRecordService = {
 
     getPrescriptions: async (): Promise<any[]> => {
         try {
-            const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+            const authTokens = localStorage.getItem('auth_tokens');
+            const token = authTokens ? JSON.parse(authTokens).access : null;
             if (!token) return [];
 
             const response = await api.get('/medical_records/prescriptions/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            // Handle pagination if present
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
         } catch (error) {

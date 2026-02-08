@@ -17,6 +17,7 @@ interface DoctorDashboardProps {
     totalAppointments: number;
     loading: boolean;
     onOpenReferral: (item: any) => void;
+    onAcceptAppointment: (appt: Appointment) => void;
     formatTime: (time: string) => string;
     getStatusBadge: (status: string) => React.ReactNode;
 }
@@ -27,6 +28,7 @@ export default function DoctorDashboard({
     totalAppointments,
     loading,
     onOpenReferral,
+    onAcceptAppointment,
     formatTime,
     getStatusBadge
 }: DoctorDashboardProps) {
@@ -82,6 +84,15 @@ export default function DoctorDashboard({
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {getStatusBadge(apt.status)}
+                                    {apt.status === 'scheduled' && (
+                                        <Button
+                                            size="sm"
+                                            className="font-bold rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
+                                            onClick={() => onAcceptAppointment(apt)}
+                                        >
+                                            Accept
+                                        </Button>
+                                    )}
                                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-2" onClick={() => onOpenReferral(apt)}>
                                         <UserPlus className="h-4 w-4 text-muted-foreground" />
                                     </Button>

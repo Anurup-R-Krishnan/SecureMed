@@ -53,7 +53,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'hospital', 'appointment_date', 'appointment_time', 'reason', 
             'status', 'status_display', 'created_at'
         ]
-        read_only_fields = ['id', 'appointment_id', 'patient', 'patient_id', 'status', 'created_at']
+        read_only_fields = ['id', 'appointment_id', 'patient', 'patient_id', 'created_at']
 
     def get_hospital(self, obj):
         if obj.doctor and obj.doctor.department:
