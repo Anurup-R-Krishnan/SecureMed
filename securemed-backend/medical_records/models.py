@@ -177,3 +177,20 @@ class MedicalRecordAccess(models.Model):
     
     def __str__(self):
         return f"{self.medical_record.record_id} accessed by {self.accessed_by}"
+
+class EmergencyAccessLog(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_access_logs')
+    accessed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    reason = models.TextField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    # In a real system, we might need an expiration time for this access
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'emergency_access_logs'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"EMERGENCY ACCESS: {self.accessed_by} -> {self.patient.patient_id}"

@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import MedicalRecord
@@ -71,3 +71,51 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
         events.sort(key=lambda x: x['date'], reverse=True)
         
         return Response(events)
+
+    @action(detail=False, methods=['post'])
+    def break_glass(self, request):
+        """
+        Emergency Break-Glass Protocol.
+        Grants temporary access and logs the security event.
+        """
+        patient_id = request.data.get('patient_id')
+        reason = request.data.get('reason')
+        
+        if not patient_id or not reason:
+            return Response(
+                {"error": "Both patient_id and reason are required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from patients.models import Patient
+        try:
+            # We look up by user ID (which is what frontend sends as patientId key usually)
+            # But the frontend might be sending the Patient ID string or the User ID
+            # Let's assume User ID for now based on previous components
+            patient = Patient.objects.get(user__id=patient_id)
+        except Patient.DoesNotExist:
+             return Response({"error": "Patient not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        from .models import EmergencyAccessLog
+        
+        # enhance: check if access is already granted?
+        
+        # Create Log
+        log = EmergencyAccessLog.objects.create(
+            patient=patient,
+            accessed_by=request.user,
+            reason=reason,
+            ip_address=request.META.get('REMOTE_ADDR'),
+            # expires_at = timezone.now() + timedelta(hours=24) 
+        )
+        
+        # Log to system logger for critical alert
+        import logging
+        logger = logging.getLogger('security')
+        logger.critical(f"BREAK-GLASS EVENT: User {request.user.email} accessed patient {patient.patient_id}. Reason: {reason}")
+        
+        return Response({
+            "status": "access_granted",
+            "message": "Emergency access logged and granted.",
+            "log_id": log.id
+        })

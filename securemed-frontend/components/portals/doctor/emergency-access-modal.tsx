@@ -5,24 +5,44 @@ import React from "react"
 import { useState } from 'react';
 import { AlertTriangle, AlertCircle } from 'lucide-react';
 
+import api from '@/lib/api';
+
 interface EmergencyAccessModalProps {
+  patientId: string;
   patientName: string;
   onClose: () => void;
   onSubmit: () => void;
 }
 
 export default function EmergencyAccessModal({
+  patientId,
   patientName,
   onClose,
   onSubmit,
 }: EmergencyAccessModalProps) {
   const [justification, setJustification] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (justification.trim() && confirmed) {
-      onSubmit();
+      setIsSubmitting(true);
+      setError('');
+      try {
+        await api.post('/medical-records/break_glass/', {
+          patient_id: patientId,
+          reason: justification
+        });
+        onSubmit();
+        onClose();
+      } catch (err: any) {
+        console.error("Failed to requests emergency access", err);
+        setError(err.response?.data?.error || "Failed to grant emergency access. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -65,6 +85,12 @@ export default function EmergencyAccessModal({
             />
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           {/* Confirmation Checkbox */}
           <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
             <input
@@ -103,10 +129,10 @@ export default function EmergencyAccessModal({
             </button>
             <button
               type="submit"
-              disabled={!justification.trim() || !confirmed}
+              disabled={!justification.trim() || !confirmed || isSubmitting}
               className="flex-1 rounded-lg bg-destructive px-4 py-3 font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Confirm Access
+              {isSubmitting ? 'Verifying...' : 'Confirm Access'}
             </button>
           </div>
         </form>

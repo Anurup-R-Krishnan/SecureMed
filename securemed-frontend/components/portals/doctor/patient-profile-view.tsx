@@ -124,6 +124,7 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
       {/* Emergency Access Modal */}
       {showEmergencyModal && (
         <EmergencyAccessModal
+          patientId={patient.id}
           patientName={patient.name}
           onClose={() => setShowEmergencyModal(false)}
           onSubmit={() => setShowEmergencyModal(false)}
