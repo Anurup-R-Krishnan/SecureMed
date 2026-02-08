@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-import ClinicalAnalytics from '@/components/portals/admin/clinical-analytics';
-import HospitalManager from '@/components/portals/admin/hospital-manager';
-import StaffManager from '@/components/portals/admin/staff-manager';
-import PatientManager from '@/components/portals/admin/patient-manager';
-import AuditLogViewer from '@/components/portals/admin/audit-log-viewer';
+import ClinicalAnalytics from '@/components/portals/admin/dashboard/clinical-analytics';
+import HospitalManager from '@/components/portals/admin/hospitals/hospital-manager';
+import StaffManager from '@/components/portals/admin/staff/staff-manager';
+import PatientManager from '@/components/portals/admin/patients/patient-manager';
+import AuditLogViewer from '@/components/portals/admin/security/audit-log-viewer';
 import { Button } from '@/components/ui/button';
 import { adminService, Hospital, StaffMember, DashboardStats } from '@/services/admin';
 import {
