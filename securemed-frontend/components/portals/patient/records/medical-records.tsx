@@ -5,34 +5,46 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, Eye, FileText, Pill, Stethoscope, FileJson } from 'lucide-react';
 import { medicalRecordService } from '@/services/appointments';
-import FHIRExportButton from '@/components/portals/patient/fhir-export-button';
+import FHIRExportButton from '@/components/portals/patient/records/fhir-export-button';
+
+import { UploadRecordDialog } from './upload-record-dialog';
 
 export default function MedicalRecords() {
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchRecords = async () => {
+    setLoading(true);
+    try {
+      const [recordsData, prescriptionsData] = await Promise.all([
+        medicalRecordService.getMedicalRecords(),
+        medicalRecordService.getPrescriptions()
+      ]);
+      setMedicalRecords(recordsData);
+      setPrescriptions(prescriptionsData);
+    } catch (error) {
+      console.error("Failed to fetch data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchRecords = async () => {
-      try {
-        const data = await medicalRecordService.getMedicalRecords();
-        setMedicalRecords(data);
-      } catch (error) {
-        console.error("Failed to fetch medical records", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchRecords();
   }, []);
 
-  const activePrescriptions = [
-    { id: 1, medicine: 'Aspirin', dosage: '100mg', frequency: 'Once daily', duration: '30 days', endDate: 'Feb 15, 2025' },
-    { id: 2, medicine: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', duration: 'Ongoing', endDate: 'N/A' },
-    { id: 3, medicine: 'Atorvastatin', dosage: '20mg', frequency: 'Once daily at night', duration: 'Ongoing', endDate: 'N/A' },
-  ];
+  const handleRecordUploaded = () => {
+    fetchRecords();
+  };
 
   return (
     <div className="space-y-6">
+      {/* Upload Action */}
+      <div className="flex justify-end">
+        <UploadRecordDialog onRecordUploaded={handleRecordUploaded} />
+      </div>
+
       {/* Active Prescriptions */}
       <Card className="p-6">
         <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
@@ -40,32 +52,38 @@ export default function MedicalRecords() {
           Active Prescriptions
         </h3>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-semibold text-foreground">Medicine</th>
-                <th className="text-left py-3 px-4 font-semibold text-foreground">Dosage</th>
-                <th className="text-left py-3 px-4 font-semibold text-foreground">Frequency</th>
-                <th className="text-left py-3 px-4 font-semibold text-foreground">End Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activePrescriptions.map((rx) => (
-                <tr key={rx.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                  <td className="py-3 px-4 font-medium text-foreground">{rx.medicine}</td>
-                  <td className="py-3 px-4 text-foreground">{rx.dosage}</td>
-                  <td className="py-3 px-4 text-muted-foreground">{rx.frequency}</td>
-                  <td className="py-3 px-4">
-                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                      {rx.endDate}
-                    </span>
-                  </td>
+        {prescriptions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">No active prescriptions.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-semibold text-foreground">Medicine</th>
+                  <th className="text-left py-3 px-4 font-semibold text-foreground">Dosage</th>
+                  <th className="text-left py-3 px-4 font-semibold text-foreground">Frequency</th>
+                  <th className="text-left py-3 px-4 font-semibold text-foreground">Duration/Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {prescriptions.map((rx) => (
+                  <tr key={rx.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                    <td className="py-3 px-4 font-medium text-foreground">{rx.medication_name}</td>
+                    <td className="py-3 px-4 text-foreground">{rx.dosage}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{rx.frequency}</td>
+                    <td className="py-3 px-4">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${rx.status === 'active' || rx.status === 'signed' ? 'bg-blue-100 text-blue-700' :
+                        rx.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                        {rx.duration} ({rx.status})
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Medical Records */}
@@ -111,14 +129,17 @@ export default function MedicalRecords() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent">
-                      <Eye className="h-4 w-4" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent">
-                      <Download className="h-4 w-4" />
-                      Download
-                    </Button>
+                    {record.file ? (
+                      <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent" onClick={() => window.open(record.file, '_blank')}>
+                        <Eye className="h-4 w-4" />
+                        View
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="flex items-center gap-1 bg-transparent" disabled>
+                        <Eye className="h-4 w-4" />
+                        No File
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -139,7 +160,7 @@ export default function MedicalRecords() {
           </div>
           <div>
             <p className="text-muted-foreground text-sm">Active Medications</p>
-            <p className="text-2xl font-bold text-foreground mt-1">{activePrescriptions.length}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{prescriptions.length}</p>
           </div>
           <div>
             <p className="text-muted-foreground text-sm">Medical Records</p>

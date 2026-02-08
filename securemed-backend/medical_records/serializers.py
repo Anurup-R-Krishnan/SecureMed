@@ -25,10 +25,11 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
         model = MedicalRecord
         fields = [
             'id', 'record_id', 'record_type', 'record_type_display', 
-            'record_date', 'doctor_name', 'diagnosis', 'file_url',
+            'record_date', 'doctor_name', 'diagnosis', 'file', 'file_url',
             'prescriptions', 'created_at'
         ]
 
     def get_file_url(self, obj):
-        # Placeholder for actual file URL if implemented
-        return "#"
+        if obj.file:
+            return obj.file.url
+        return None

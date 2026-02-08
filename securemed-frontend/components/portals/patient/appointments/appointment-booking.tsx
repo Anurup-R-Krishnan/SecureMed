@@ -45,11 +45,7 @@ export default function AppointmentBooking({
   const { user } = useAuth(); // Auth Hook
 
   // Use authenticated user details if available
-  const effectivePatientName = user?.username || user?.email || patientName; //Ideally user object has name fields, falling back
-  // Note: user object in AuthContext interface has: id, username, email, role. 
-  // It might differ in actual runtime if the backend returns first_name/last_name. 
-  // We'll stick to what we know or fallback.
-  // Actually, let's try to use a better display name if possible, or just username.
+  const effectivePatientName = user?.username || user?.email || patientName;
 
   const [currentStep, setCurrentStep] = useState<BookingStep>('doctor');
   const [isLoading, setIsLoading] = useState(false);
@@ -156,12 +152,6 @@ export default function AppointmentBooking({
     try {
       const dateStr = selectedDate.toISOString().split('T')[0];
 
-      // Prepare payload
-      // If user is logged in, we let the backend handle the patient association via token,
-      // OR we send the patient ID if the service supports/requires it.
-      // Based on previous files, using the token is standard, but some endpoints might want 'patient' explicit.
-      // We'll pass what we have.
-
       const payload: any = {
         doctor: selectedDoctor.id,
         appointment_date: dateStr,
@@ -170,7 +160,7 @@ export default function AppointmentBooking({
       };
 
       if (user?.id) {
-        payload.patient = user.id; // Explicitly send if we have it, mostly for safety
+        payload.patient = user.id;
       }
 
       const result = await appointmentService.createAppointment(payload);
@@ -526,7 +516,7 @@ export default function AppointmentBooking({
                     className={`group relative flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all duration-300 ${isSelected
                       ? 'bg-primary border-primary text-primary-foreground shadow-2xl scale-110 z-20 ring-8 ring-primary/10'
                       : isAvailable
-                        ? 'bg-card border-green-500/20 text-foreground hover:border-green-500 hover:bg-green-50 shadow-sm hover:shadow-md'
+                        ? 'bg-card border-green-500/20 text-foreground hover:border-green-50 hover:bg-green-50 shadow-sm hover:shadow-md'
                         : isBooked
                           ? 'bg-muted border-transparent text-muted-foreground opacity-40 cursor-not-allowed scale-95'
                           : isSurgery

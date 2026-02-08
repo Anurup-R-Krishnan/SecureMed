@@ -19,6 +19,27 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
             return MedicalRecord.objects.all()
         return MedicalRecord.objects.none()
 
+    def create(self, request, *args, **kwargs):
+        # Allow patients to upload their own records
+        if not hasattr(request.user, 'patient_profile') and not request.user.is_staff:
+             return Response({"error": "Only patients or staff can upload records."}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Auto-generate record ID if not provided (frontend might not send it)
+        import uuid
+        data = request.data.copy()
+        if 'record_id' not in data:
+            data['record_id'] = f"REC-{uuid.uuid4().hex[:8].upper()}"
+        
+        # If patient is uploading, force patient field to be themselves
+        if hasattr(request.user, 'patient_profile'):
+            data['patient'] = request.user.patient_profile.id
+            
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     @action(detail=False, methods=['get'])
     def timeline(self, request):
         patient_id = request.query_params.get('patient_id')

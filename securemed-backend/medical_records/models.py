@@ -26,7 +26,9 @@ class MedicalRecord(models.Model):
     diagnosis = models.TextField()
     symptoms = models.TextField(blank=True)
     treatment = models.TextField(blank=True)
+    treatment = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    file = models.FileField(upload_to='medical_records/', null=True, blank=True)
     
     is_confidential = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

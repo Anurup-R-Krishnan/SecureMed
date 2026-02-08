@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import PatientTimeline from './patient-timeline';
 import EmergencyAccessModal from './emergency-access-modal';
+import { PatientInfoCard } from '@/components/ui/patient-info-card';
 
 interface Patient {
   id: string;
@@ -44,28 +45,19 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
           </button>
         </div>
 
-        {/* Patient Info */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-4">{patient.name}</h1>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Age</p>
-              <p className="text-lg font-semibold text-foreground">{patient.age} years</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <p className="text-lg font-semibold text-foreground">{patient.status}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Last Visit</p>
-              <p className="text-lg font-semibold text-foreground">{patient.lastVisit}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Primary Condition</p>
-              <p className="text-lg font-semibold text-foreground">{patient.condition}</p>
-            </div>
-          </div>
-        </div>
+        {/* Patient Info Card */}
+        <PatientInfoCard patient={{
+          id: patient.id,
+          name: patient.name,
+          age: patient.age,
+          status: patient.status,
+          lastVisit: patient.lastVisit,
+          condition: patient.condition,
+          mrn: 'MRN-2025-001234', // Mock data preservation
+          dob: '1979-08-15',      // Mock data preservation
+          bloodType: 'O+',        // Mock data preservation
+          allergies: ['Penicillin', 'Shellfish'] // Mock data preservation
+        }} />
       </div>
 
       {/* Main Content */}
@@ -74,24 +66,17 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
           {/* Left Column - Patient Info */}
           <div className="lg:col-span-1">
             <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Vital Information</h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">MRN (Medical Record Number)</p>
-                  <p className="font-semibold text-foreground">MRN-2025-001234</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Date of Birth</p>
-                  <p className="font-semibold text-foreground">1979-08-15</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Blood Type</p>
-                  <p className="font-semibold text-foreground">O+</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Allergies</p>
-                  <p className="font-semibold text-foreground">Penicillin, Shellfish</p>
-                </div>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
+              <div className="space-y-2">
+                <button className="w-full text-left px-4 py-2 text-sm bg-accent/10 hover:bg-accent/20 rounded-md text-accent-foreground font-medium transition-colors">
+                  Add Clinical Note
+                </button>
+                <button className="w-full text-left px-4 py-2 text-sm bg-accent/10 hover:bg-accent/20 rounded-md text-accent-foreground font-medium transition-colors">
+                  Prescribe Medication
+                </button>
+                <button className="w-full text-left px-4 py-2 text-sm bg-accent/10 hover:bg-accent/20 rounded-md text-accent-foreground font-medium transition-colors">
+                  Order Lab Test
+                </button>
               </div>
             </div>
 

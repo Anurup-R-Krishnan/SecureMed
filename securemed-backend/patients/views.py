@@ -87,3 +87,28 @@ def patient_timeline(request):
     events.sort(key=lambda x: x['date'], reverse=True)
 
     return Response(events)
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def profile_details(request):
+    """
+    Get or update the current user's patient profile.
+    """
+    user = request.user
+    patient = get_patient_profile(user)
+    
+    if not patient:
+        return Response({"error": "Patient profile not found."}, status=404)
+
+    if request.method == 'GET':
+        from .serializers import PatientSerializer
+        serializer = PatientSerializer(patient)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        from .serializers import PatientSerializer
+        serializer = PatientSerializer(patient, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)

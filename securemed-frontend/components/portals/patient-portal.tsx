@@ -1,7 +1,5 @@
 'use client';
 
-import React from "react"
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,20 +10,17 @@ import {
   LogOut,
   Menu,
   X,
-  Clock,
-  MapPin,
-  DollarSign,
-  Download,
-  Plus,
   Settings,
+  User,
 } from 'lucide-react';
 import PatientDashboard from './patient/dashboard/dashboard';
 import AppointmentBooking from './patient/appointments/appointment-booking';
 import MedicalRecords from './patient/records/medical-records';
 import PatientBilling from './patient/billing/billing';
 import PrivacySettings from './patient/settings/privacy-settings';
+import ProfileEditor from './patient/settings/profile-editor';
 
-type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing' | 'settings';
+type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing' | 'profile' | 'settings';
 
 interface PatientPortalProps {
   onLogout: () => void;
@@ -41,7 +36,8 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
     { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
     { id: 'billing', label: 'Billing', icon: <BarChart3 className="h-5 w-5" /> },
-    { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
+    { id: 'profile', label: 'Profile', icon: <User className="h-5 w-5" /> },
+    { id: 'settings', label: 'Privacy & Security', icon: <Settings className="h-5 w-5" /> },
   ];
 
   return (
@@ -137,6 +133,7 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
             {activeTab === 'appointments' && <AppointmentBooking />}
             {activeTab === 'records' && <MedicalRecords />}
             {activeTab === 'billing' && <PatientBilling />}
+            {activeTab === 'profile' && <ProfileEditor />}
             {activeTab === 'settings' && <PrivacySettings />}
           </div>
         </div>

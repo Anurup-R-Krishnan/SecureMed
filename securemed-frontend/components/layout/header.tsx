@@ -5,6 +5,7 @@ import { Menu, X, Activity, User, LogOut, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import Link from 'next/link';
+import { NotificationCenter } from '@/components/ui/notification-center';
 
 interface HeaderProps {
   onLoginClick: (role?: 'patient' | 'doctor' | 'admin') => void;
@@ -45,8 +46,8 @@ export default function Header({ onLoginClick }: HeaderProps) {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-          ? 'bg-background/95 backdrop-blur-md border-b border-border shadow-sm py-2'
-          : 'bg-transparent py-4'
+        ? 'bg-background/95 backdrop-blur-md border-b border-border shadow-sm py-2'
+        : 'bg-transparent py-4'
         }`}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -81,6 +82,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
           <div className="hidden md:flex items-center gap-4">
             {isAuthenticated ? (
               <div className="flex items-center gap-4">
+                <NotificationCenter />
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
                   <User className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">{user?.username}</span>

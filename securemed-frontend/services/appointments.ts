@@ -147,13 +147,47 @@ export const appointmentService = {
 };
 
 export const medicalRecordService = {
-    getMedicalRecords: async () => {
+    getMedicalRecords: async (): Promise<any[]> => {
         try {
-            const response = await api.get('/medical-records/records/');
+            const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+            if (!token) return [];
+
+            const response = await api.get('/medical_records/', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching medical records:', error);
+            return [];
+        }
+    },
+
+    uploadRecord: async (formData: FormData): Promise<any> => {
+        const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+        if (!token) throw new Error("No auth token");
+
+        const response = await api.post('/medical_records/', formData, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    },
+
+    getPrescriptions: async (): Promise<any[]> => {
+        try {
+            const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+            if (!token) return [];
+
+            const response = await api.get('/medical_records/prescriptions/', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            // Handle pagination if present
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
         } catch (error) {
-            console.error("Error fetching medical records: ", error);
+            console.error('Error fetching prescriptions:', error);
             return [];
         }
     }
