@@ -12,3 +12,4 @@ redis>=5.0.1
 django-redis>=5.4.0
 pillow>=10.1.0
 requests>=2.31.0
+django-ratelimit>=4.1.0
