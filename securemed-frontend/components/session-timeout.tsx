@@ -140,7 +140,7 @@ export default function SessionTimeout({
                 </div>
 
                 <p className="mt-4 text-center text-xs text-muted-foreground">
-                    Click "Continue Session" or perform any action to stay logged in
+                    Click &quot;Continue Session&quot; or perform any action to stay logged in
                 </p>
             </div>
         </div>

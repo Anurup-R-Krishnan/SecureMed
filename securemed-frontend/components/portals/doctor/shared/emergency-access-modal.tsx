@@ -68,7 +68,7 @@ export default function EmergencyAccessModal({
             <p className="font-semibold text-foreground mb-2">Patient: {patientName}</p>
             <div className="rounded-lg border border-border bg-background p-3">
               <p className="text-xs text-muted-foreground">
-                You are requesting emergency access to this patient's confidential records. This
+                You are requesting emergency access to this patient&apos;s confidential records. This
                 access will be permanently logged for compliance and audit purposes.
               </p>
             </div>
@@ -83,7 +83,7 @@ export default function EmergencyAccessModal({
               id="justification"
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
-              placeholder="Explain the emergency reason for accessing this patient's records..."
+              placeholder="Explain the emergency reason for accessing this patient&apos;s records..."
               className="w-full h-24 rounded-lg border border-border bg-background px-4 py-3 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-destructive/50 resize-none"
               required
             />

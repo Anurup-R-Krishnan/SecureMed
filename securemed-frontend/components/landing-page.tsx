@@ -314,13 +314,13 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
               { name: "Dr. Emily Chen", role: "Partner Doctor", quote: "SecureMed helps me focus on patients rather than paperwork. Highly recommended.", rating: 5 }
             ].map((story, i) => (
               <div key={i} className="bg-card p-8 rounded-2xl shadow-sm border border-border relative">
-                <div className="absolute top-6 right-8 text-6xl text-primary/10 font-serif leading-none">"</div>
+                <div className="absolute top-6 right-8 text-6xl text-primary/10 font-serif leading-none">&quot;</div>
                 <div className="flex gap-1 mb-4">
                   {[...Array(story.rating)].map((_, r) => (
                     <Star key={r} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-lg text-foreground mb-6 relative z-10 italic">"{story.quote}"</p>
+                <p className="text-lg text-foreground mb-6 relative z-10 italic">&quot;{story.quote}&quot;</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground">
                     {story.name.charAt(0)}

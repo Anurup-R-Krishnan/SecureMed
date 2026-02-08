@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 from .models import Doctor, Appointment, Referral
 from .serializers import DoctorSerializer, AppointmentSerializer, ReferralSerializer
+from authentication.permissions import IsDoctor
 import uuid
 
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -85,6 +86,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Appointment.objects.none()
 
     def perform_create(self, serializer):
+        from datetime import datetime, timedelta
+        
         appointment_id = f"APT-{uuid.uuid4().hex[:8].upper()}"
         
         if not hasattr(self.request.user, 'patient_profile'):
@@ -92,12 +95,33 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 f"Patient profile not found for user '{self.request.user.email}'. "
                 "Please complete your patient registration first."
             )
+        
+        # Validate appointment date
+        appointment_date = serializer.validated_data.get('appointment_date')
+        if appointment_date:
+            today = timezone.now().date()
+            max_future_date = today + timedelta(days=180)  # 6 months
+            
+            if appointment_date < today:
+                raise serializers.ValidationError({
+                    'appointment_date': 'Cannot book appointments in the past'
+                })
+            
+            if appointment_date > max_future_date:
+                raise serializers.ValidationError({
+                    'appointment_date': 'Cannot book appointments more than 6 months in advance'
+                })
               
-        serializer.save(
+        appointment = serializer.save(
             patient=self.request.user.patient_profile,
             appointment_id=appointment_id,
             created_by=self.request.user
         )
+        
+        # Send confirmation (Email + SMS)
+        from core.notifications import NotificationService
+        NotificationService.send_appointment_confirmation(appointment)
+        NotificationService.send_appointment_sms_reminder(appointment) 
 
 
 class ReferralViewSet(viewsets.ModelViewSet):
@@ -106,18 +130,25 @@ class ReferralViewSet(viewsets.ModelViewSet):
     Handles referral workflow for cross-department patient access
     """
     serializer_class = ReferralSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsDoctor]
     
     def get_queryset(self):
+        """Optimize queryset with select_related to prevent N+1 queries"""
         user = self.request.user
+        base_queryset = Referral.objects.select_related(
+            'referring_doctor__user',
+            'specialist__user',
+            'patient__user'
+        )
+        
         if hasattr(user, 'doctor_profile'):
             doctor = user.doctor_profile
             # Show referrals made by this doctor OR received by this doctor
-            return Referral.objects.filter(
+            return base_queryset.filter(
                 Q(referring_doctor=doctor) | Q(specialist=doctor)
             )
         elif user.is_staff:
-            return Referral.objects.all()
+            return base_queryset.all()
         return Referral.objects.none()
     
     def perform_create(self, serializer):

@@ -257,7 +257,7 @@ export default function MfaSetup() {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Your account is protected with two-factor authentication. You'll be asked for a verification code when signing in.
+              Your account is protected with two-factor authentication. You&apos;ll be asked for a verification code when signing in.
             </p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
               <ShieldCheck className="h-4 w-4" />
@@ -281,7 +281,7 @@ export default function MfaSetup() {
                   <p className="text-sm font-medium text-destructive mb-2">⚠️ Security Warning</p>
                   <p className="text-xs text-muted-foreground">
                     Disabling two-factor authentication will reduce your account security.
-                    You'll need to provide your password and current OTP code to confirm.
+                    You&apos;ll need to provide your password and current OTP code to confirm.
                   </p>
                 </div>
 
@@ -358,7 +358,7 @@ export default function MfaSetup() {
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-foreground mb-2">Two-Factor Authentication</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Add an extra layer of security to your account. You'll need your password and a verification code from your phone to sign in.
+              Add an extra layer of security to your account. You&apos;ll need your password and a verification code from your phone to sign in.
             </p>
             <Button
               onClick={handleStartSetup}
@@ -438,7 +438,7 @@ export default function MfaSetup() {
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
               2
             </div>
-            <h4 className="font-medium text-foreground">Can't scan? Enter the secret key manually</h4>
+            <h4 className="font-medium text-foreground">Can&apos;t scan? Enter the secret key manually</h4>
           </div>
 
           <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
@@ -469,7 +469,7 @@ export default function MfaSetup() {
             <p className="font-medium text-blue-900 dark:text-blue-100">📱 Manual Setup Instructions:</p>
             <ol className="list-decimal list-inside space-y-1 text-blue-800 dark:text-blue-200">
               <li>Open your authenticator app</li>
-              <li>Choose "Enter a setup key" or "Manual entry"</li>
+              <li>Choose &quot;Enter a setup key&quot; or &quot;Manual entry&quot;</li>
               <li>Account name: <strong>SecureMed ({user?.username})</strong></li>
               <li>Key: <strong>Paste the secret above</strong></li>
               <li>Time based: <strong>Yes</strong></li>

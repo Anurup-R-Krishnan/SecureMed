@@ -212,7 +212,7 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
                                 <Search className="h-10 w-10 text-muted-foreground/50" />
                             </div>
                             <h3 className="text-lg font-bold text-foreground">No events found</h3>
-                            <p className="text-muted-foreground max-w-xs mt-2">Try adjusting your filters or search query to find what you're looking for.</p>
+                            <p className="text-muted-foreground max-w-xs mt-2">Try adjusting your filters or search query to find what you&apos;re looking for.</p>
                             <Button
                                 variant="link"
                                 onClick={() => { setFilterType('all'); setSearchQuery(''); }}

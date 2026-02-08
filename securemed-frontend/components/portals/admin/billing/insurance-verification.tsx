@@ -19,44 +19,15 @@ import {
 // Backend API URL
 const API_BASE_URL = 'http://localhost:8000/api';
 
-// Mock insurance providers (for UI only, verification data comes from backend)
-const insuranceProviders = [
+// Supported insurance providers
+const SUPPORTED_PROVIDERS = [
     { id: 'ins_001', name: 'National Health Insurance', code: 'NHI' },
     { id: 'ins_002', name: 'Star Health Insurance', code: 'STAR' },
     { id: 'ins_003', name: 'ICICI Lombard', code: 'ICICI' },
     { id: 'ins_004', name: 'Max Bupa Health', code: 'MAXB' },
 ];
 
-// Mock recent verifications (in production, fetch from backend)
-const mockVerifications = [
-    {
-        id: 'ver_001',
-        patientName: 'John Doe',
-        policyNumber: 'POL-2025-001234',
-        provider: 'National Health Insurance',
-        status: 'verified',
-        timestamp: '2026-02-07T10:30:00',
-        coverage: { inNetwork: true, coPayPercent: 20 },
-    },
-    {
-        id: 'ver_002',
-        patientName: 'Jane Smith',
-        policyNumber: 'POL-2025-005678',
-        provider: 'Star Health Insurance',
-        status: 'verified',
-        timestamp: '2026-02-07T09:15:00',
-        coverage: { inNetwork: true, coPayPercent: 15 },
-    },
-    {
-        id: 'ver_003',
-        patientName: 'Mike Johnson',
-        policyNumber: 'POL-2024-009999',
-        provider: 'ICICI Lombard',
-        status: 'denied',
-        timestamp: '2026-02-06T14:45:00',
-        coverage: null,
-    },
-];
+const recentVerifications: any[] = [];
 
 export default function InsuranceVerification() {
     const [selectedProvider, setSelectedProvider] = useState('');
@@ -164,7 +135,7 @@ export default function InsuranceVerification() {
                             className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="">Select Provider</option>
-                            {insuranceProviders.map((provider) => (
+                            {SUPPORTED_PROVIDERS.map((provider) => (
                                 <option key={provider.id} value={provider.id}>
                                     {provider.name}
                                 </option>
@@ -223,10 +194,10 @@ export default function InsuranceVerification() {
                 {/* Verification Result */}
                 {verificationResult && (
                     <div className={`mt-6 p-4 rounded-lg border ${verificationResult.status === 'verified'
-                            ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
-                            : verificationResult.status === 'denied'
-                                ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'
-                                : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800'
+                        ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                        : verificationResult.status === 'denied'
+                            ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'
+                            : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800'
                         }`}>
                         <div className="flex items-start gap-3">
                             {getStatusIcon(verificationResult.status)}
@@ -291,7 +262,7 @@ export default function InsuranceVerification() {
                             </tr>
                         </thead>
                         <tbody>
-                            {mockVerifications.map((verification) => (
+                            {recentVerifications.map((verification: any) => (
                                 <tr key={verification.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                                     <td className="py-3 px-4 font-medium text-foreground">{verification.patientName}</td>
                                     <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{verification.policyNumber}</td>
@@ -323,7 +294,7 @@ export default function InsuranceVerification() {
                         <p className="font-medium text-blue-900 dark:text-blue-100">Data Minimization Policy</p>
                         <p className="text-sm text-blue-700 dark:text-blue-300">
                             Only explicitly requested claim codes and verification data are shared with insurance providers via Django backend.
-                            All outbound payloads are encrypted using the provider's public key.
+                            All outbound payloads are encrypted using the provider&apos;s public key.
                             Every interaction is logged for compliance auditing.
                         </p>
                     </div>

@@ -12,7 +12,7 @@ import {
     AlertTriangle,
     CheckCircle,
 } from 'lucide-react';
-import AIDecisionSupport from './ai-decision-support';
+import AIDecisionSupport from '../shared/ai-decision-support';
 import { AIDiagnosisSuggestion } from '@/lib/types';
 
 interface PatientNotesProps {
@@ -215,7 +215,7 @@ export default function PatientNotes({ patient }: PatientNotesProps) {
                 {/* Final Diagnosis */}
                 <div className="mb-4">
                     <label className="block text-sm font-medium text-foreground mb-2">
-                        Final Diagnosis (Doctor's Decision)
+                        Final Diagnosis (Doctor&apos;s Decision)
                     </label>
                     <input
                         type="text"

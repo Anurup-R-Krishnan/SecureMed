@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
+from django.core.mail import send_mail
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -23,7 +24,9 @@ from .serializers import (
     RegenerateRecoveryCodesSerializer,
     UserSerializer,
     UserListSerializer,
-    UserRoleUpdateSerializer
+    UserRoleUpdateSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer
 )
 
 User = get_user_model()
@@ -899,19 +902,10 @@ class PasswordResetRequestView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request):
-        email = request.data.get('email', '').strip().lower()
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         
-        if not email:
-            return Response({
-                'error': 'Email is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Log the request for audit purposes
-        print(f"\n{'='*70}")
-        print(f"PASSWORD RESET REQUEST")
-        print(f"{'='*70}")
-        print(f"Timestamp: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        print(f"Email: {email}")
+        email = serializer.validated_data['email'].strip().lower()
         
         try:
             user = User.objects.get(email__iexact=email, is_active=True)
@@ -922,21 +916,75 @@ class PasswordResetRequestView(APIView):
             user.password_reset_expires = timezone.now() + timedelta(hours=1)
             user.save(update_fields=['password_reset_token', 'password_reset_expires'])
             
-            # TODO: Send email with reset link
-            # For now, log the token (in production, this would send an email)
-            print(f"Reset token generated: {reset_token}")
-            print(f"Expires: {user.password_reset_expires}")
-            print(f"Reset URL would be: /reset-password?token={reset_token}")
+            # Send password reset email
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+            subject = "Password Reset Request - SecureMed"
+            message = f"""
+Dear {user.get_full_name() or user.username},
+
+You requested a password reset for your SecureMed account.
+
+Click the link below to reset your password:
+{reset_url}
+
+This link will expire in 1 hour.
+
+If you did not request this reset, please ignore this email and your password will remain unchanged.
+
+Best regards,
+SecureMed Team
+            """
+            
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
             
         except User.DoesNotExist:
-            # Don't reveal if email exists or not
-            print(f"No user found with email: {email}")
+            pass  # Don't reveal if email exists
         
-        print(f"{'='*70}\n")
-        
-        # Always return success to prevent email enumeration
         return Response({
             'message': 'If an account exists with this email, a password reset link has been sent.'
+        }, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    Confirm password reset with token.
+    POST /api/auth/password-reset/confirm/
+    
+    Request body:
+    {
+        "token": "reset_token_here",
+        "password": "new_password",
+        "password_confirm": "new_password"
+    }
+    
+    Response:
+    {
+        "message": "Password has been reset successfully."
+    }
+    """
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = serializer.validated_data['user']
+        new_password = serializer.validated_data['password']
+        
+        # Set new password
+        user.set_password(new_password)
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        user.save(update_fields=['password', 'password_reset_token', 'password_reset_expires'])
+        
+        return Response({
+            'message': 'Password has been reset successfully.'
         }, status=status.HTTP_200_OK)
 
 

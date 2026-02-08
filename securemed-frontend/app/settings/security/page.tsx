@@ -418,7 +418,7 @@ export default function SecuritySettingsPage() {
                         {mfaState === 'ACTIVE' && !isDeactivating && (
                             <div className="space-y-4">
                                 <p className="text-sm text-muted-foreground">
-                                    Your account is protected with two-factor authentication. You'll be asked for a verification code when signing in.
+                                    Your account is protected with two-factor authentication. You&apos;ll be asked for a verification code when signing in.
                                 </p>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <ShieldCheck className="h-4 w-4" />
@@ -444,7 +444,7 @@ export default function SecuritySettingsPage() {
                                     <p className="text-sm font-medium text-destructive mb-2">⚠️ Security Warning</p>
                                     <p className="text-xs text-muted-foreground">
                                         Disabling two-factor authentication will reduce your account security.
-                                        You'll need to provide your password and current OTP code to confirm.
+                                        You&apos;ll need to provide your password and current OTP code to confirm.
                                     </p>
                                 </div>
 
@@ -528,7 +528,7 @@ export default function SecuritySettingsPage() {
                                     <div className="space-y-1">
                                         <p className="text-sm font-medium text-amber-500">Important: Save these codes now!</p>
                                         <p className="text-xs text-muted-foreground">
-                                            Each code can only be used once. You won't be able to see them again after leaving this page.
+                                            Each code can only be used once. You won&apos;t be able to see them again after leaving this page.
                                             Use these codes to log in if you lose access to your authenticator app.
                                         </p>
                                     </div>
@@ -570,7 +570,7 @@ export default function SecuritySettingsPage() {
                                 onClick={() => setShowRecoveryCodes(false)}
                                 className="w-full"
                             >
-                                I've Saved My Codes
+                                I&apos;ve Saved My Codes
                             </Button>
                         </CardContent>
                     </Card>
@@ -592,7 +592,7 @@ export default function SecuritySettingsPage() {
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-muted-foreground mb-4">
-                                If you've lost your recovery codes or used them all, you can generate a new set.
+                                If you&apos;ve lost your recovery codes or used them all, you can generate a new set.
                                 This will invalidate all previous recovery codes.
                             </p>
                             <Button

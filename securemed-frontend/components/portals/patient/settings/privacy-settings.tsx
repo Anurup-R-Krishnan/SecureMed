@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Lock, AlertTriangle, Trash2, Calendar, Clock, FileText, Download } from 'lucide-react';
 import axios from 'axios';
@@ -66,11 +66,9 @@ export default function PrivacySettings() {
   const [accessType, setAccessType] = useState<'permanent' | 'temporary'>('permanent');
   const [selectedDuration, setSelectedDuration] = useState<string>('24h');
 
-  useEffect(() => {
-    fetchConsents();
-  }, []);
 
-  const getAuthHeaders = () => {
+
+  const getAuthHeaders = useCallback(() => {
     if (tokens?.access) {
       return {
         'Authorization': `Bearer ${tokens.access}`,
@@ -78,9 +76,9 @@ export default function PrivacySettings() {
       };
     }
     return {};
-  };
+  }, [tokens]);
 
-  const fetchConsents = async () => {
+  const fetchConsents = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await axios.get<Consent[]>(API_BASE_URL, {
@@ -115,7 +113,11 @@ export default function PrivacySettings() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    fetchConsents();
+  }, [fetchConsents]);
 
   const calculateExpiryDate = (duration: string): string => {
     const option = DURATION_OPTIONS.find((opt) => opt.value === duration);

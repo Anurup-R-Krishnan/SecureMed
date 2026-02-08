@@ -63,7 +63,6 @@ export default function PatientManager({
                         <Filter className="h-4 w-4" />
                     </Button>
                     <Button variant="destructive" size="sm" className="font-bold shrink-0" onClick={() => onEmergencyAccess({} as any)}>
-                        {/* Note: onEmergencyAccess might expect a patient, but the global button passes empty/dummy to trigger modal with empty selection */}
                         <ShieldAlert className="h-4 w-4 md:mr-2" />
                         <span className="hidden md:inline">Emergency Access</span>
                     </Button>
@@ -135,7 +134,7 @@ export default function PatientManager({
             ) : (
                 <div className="text-center py-12">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <p className="text-muted-foreground">No patients found matching "{searchQuery}"</p>
+                    <p className="text-muted-foreground">No patients found matching &quot;{searchQuery}&quot;</p>
                 </div>
             )}
         </div>

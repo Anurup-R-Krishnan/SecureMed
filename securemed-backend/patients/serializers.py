@@ -19,6 +19,7 @@ class PatientSerializer(serializers.ModelSerializer):
             'date_of_birth', 'gender', 'blood_group',
             'phone', 'emergency_contact', 'address', 'city', 'state', 'postal_code', 'country',
             'allergies', 'chronic_conditions', 'current_medications',
+            'insurance_provider', 'insurance_number',
             'emergency_contacts'
         ]
         read_only_fields = ['patient_id', 'date_of_birth', 'gender', 'blood_group', 'emergency_contacts']

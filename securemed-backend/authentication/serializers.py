@@ -3,6 +3,7 @@ import requests
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -382,3 +383,39 @@ class UserRoleUpdateSerializer(serializers.ModelSerializer):
                     instance.groups.add(new_group)
         
         return instance
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Serializer for requesting password reset."""
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Serializer for confirming password reset with token."""
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=12)
+    password_confirm = serializers.CharField(write_only=True)
+    
+    def validate_password(self, value):
+        """Validate password strength."""
+        if len(value) < 12:
+            raise serializers.ValidationError("Password must be at least 12 characters long.")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
+            raise serializers.ValidationError("Password must contain at least one special character.")
+        return value
+    
+    def validate(self, data):
+        """Validate passwords match and token is valid."""
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
+        
+        token = data.get('token')
+        try:
+            user = User.objects.get(password_reset_token=token, is_active=True)
+            if not user.password_reset_expires or user.password_reset_expires < timezone.now():
+                raise serializers.ValidationError({"token": "Reset token has expired."})
+            data['user'] = user
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"token": "Invalid reset token."})
+        
+        return data

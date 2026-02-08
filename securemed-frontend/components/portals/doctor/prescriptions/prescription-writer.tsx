@@ -90,7 +90,7 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                     <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Prescription Created</h2>
                     <p className="text-slate-600 mb-6">
-                        The prescription has been saved as a draft. You can sign it later in the Patient's record.
+                        The prescription has been saved as a draft. You can sign it later in the Patient&apos;s record.
                     </p>
                     <div className="flex justify-center gap-4">
                         <Button variant="outline" onClick={() => setSubmitted(false)}>

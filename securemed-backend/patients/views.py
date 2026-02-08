@@ -33,8 +33,12 @@ def patient_timeline(request):
 
     events = []
 
-    # 1. Fetch Appointments
-    appointments = patient.appointments.all()
+    # 1. Fetch Appointments with optimized query
+    appointments = patient.appointments.select_related(
+        'doctor__user',
+        'doctor__department'
+    ).all()
+    
     for appt in appointments:
         events.append({
             'id': f"appt_{appt.id}",
@@ -47,8 +51,8 @@ def patient_timeline(request):
             'status': 'completed' if appt.status == 'completed' else 'upcoming' if appt.status == 'scheduled' else appt.status
         })
 
-    # 2. Fetch Medical Records (Diagnoses, Prescriptions, etc.)
-    records = patient.medical_records.select_related('doctor').all()
+    # 2. Fetch Medical Records (Diagnoses, Prescriptions, etc.) with optimized query
+    records = patient.medical_records.select_related('doctor__user').all()
     for record in records:
         category_map = {
             'consultation': 'diagnosis',
@@ -95,9 +99,11 @@ def profile_details(request):
     Get or update the current user's patient profile.
     """
     user = request.user
+    print(f"DEBUG: profile_details called for user: {user.username} (ID: {user.id})")
     patient = get_patient_profile(user)
     
     if not patient:
+        print(f"DEBUG: Profile not found for {user.username}")
         return Response({"error": "Patient profile not found."}, status=404)
 
     if request.method == 'GET':

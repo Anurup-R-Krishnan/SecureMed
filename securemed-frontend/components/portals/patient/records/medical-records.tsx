@@ -9,7 +9,11 @@ import FHIRExportButton from '@/components/portals/patient/records/fhir-export-b
 
 import { UploadRecordDialog } from './upload-record-dialog';
 
-export default function MedicalRecords() {
+interface MedicalRecordsProps {
+  patientId?: string;
+}
+
+export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +182,7 @@ export default function MedicalRecords() {
         <p className="text-muted-foreground mb-4">
           Download your complete medical records in FHIR R4 format for portability or sharing with other healthcare providers.
         </p>
-        <FHIRExportButton />
+        <FHIRExportButton patientId={patientId} />
       </Card>
     </div>
   );

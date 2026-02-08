@@ -71,10 +71,13 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
 
         initLocalStream();
 
+        // Capture ref value for cleanup
+        const videoElement = localVideoRef.current;
+
         // Cleanup
         return () => {
-            if (localVideoRef.current?.srcObject) {
-                const stream = localVideoRef.current.srcObject as MediaStream;
+            if (videoElement?.srcObject) {
+                const stream = videoElement.srcObject as MediaStream;
                 stream.getTracks().forEach(track => track.stop());
             }
         };

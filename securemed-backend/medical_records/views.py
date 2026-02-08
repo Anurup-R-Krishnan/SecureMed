@@ -1,22 +1,29 @@
 from django.shortcuts import render
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from .models import MedicalRecord
 from .serializers import MedicalRecordSerializer
+from authentication.permissions import IsPatient
 
 class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MedicalRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        """Optimize queryset with select_related to prevent N+1 queries"""
         user = self.request.user
+        base_queryset = MedicalRecord.objects.select_related(
+            'doctor__user',
+            'patient__user'
+        ).prefetch_related('prescriptions')
+        
         if hasattr(user, 'patient_profile'):
-            return MedicalRecord.objects.filter(patient=user.patient_profile)
+            return base_queryset.filter(patient=user.patient_profile)
         elif hasattr(user, 'doctor_profile'):
-            return MedicalRecord.objects.filter(doctor=user.doctor_profile)
+            return base_queryset.filter(doctor=user.doctor_profile)
         elif user.is_staff:
-            return MedicalRecord.objects.all()
+            return base_queryset.all()
         return MedicalRecord.objects.none()
 
     def create(self, request, *args, **kwargs):
@@ -210,3 +217,96 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             })
         except ValueError as e:
              return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VitalSignViewSet(viewsets.ModelViewSet):
+    from .models import VitalSign
+    from .serializers import VitalSignSerializer
+    
+    queryset = VitalSign.objects.all()
+    serializer_class = VitalSignSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'patient_profile'):
+            return self.queryset.filter(patient=user.patient_profile)
+        elif hasattr(user, 'doctor_profile'):
+             # Doctors can see vitals of their patients (simplified logic for now)
+             return self.queryset
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        if hasattr(self.request.user, 'patient_profile'):
+             serializer.save(patient=self.request.user.patient_profile)
+        else:
+             # Handle staff creating vitals
+             pass
+
+
+@action(detail=False, methods=['get'])
+@api_view(['GET'])
+@permission_classes([IsPatient])
+def patient_dashboard_stats(request):
+    """
+    Aggregate data for the patient dashboard.
+    """
+    user = request.user
+    if not hasattr(user, 'patient_profile'):
+        return Response({"error": "Patient profile not found"}, status=404)
+    
+    patient = user.patient_profile
+    
+    from .models import VitalSign, Prescription
+    from .serializers import VitalSignSerializer
+
+    # 1. Vitals History (Last 7 entries for Sparklines)
+    vitals_history_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')[:7]
+    vitals_history = VitalSignSerializer(vitals_history_qs, many=True).data
+    # Reverse to chronological order for charts
+    vitals_history.reverse()
+    
+    latest_vitals = vitals_history_qs.first() if vitals_history_qs else None
+    vitals_data = VitalSignSerializer(latest_vitals).data if latest_vitals else None
+        
+    # 2. Health Score Calculation (Simplified Clinical Logic)
+    health_score = 100
+    if latest_vitals:
+        # Blood Pressure Deduction
+        # Normal: <120/<80
+        if latest_vitals.systolic_bp > 120:
+             deduction = (latest_vitals.systolic_bp - 120) * 0.5
+             health_score -= deduction
+        if latest_vitals.diastolic_bp > 80:
+             deduction = (latest_vitals.diastolic_bp - 80) * 0.5
+             health_score -= deduction
+             
+        # Heart Rate Deduction
+        # Normal: 60-100
+        if latest_vitals.heart_rate < 60:
+             health_score -= (60 - latest_vitals.heart_rate)
+        elif latest_vitals.heart_rate > 100:
+             health_score -= (latest_vitals.heart_rate - 100) * 0.5
+             
+        # BMI Deduction (Weight / Height^2) - Height is missing in VitalSign, using weight > 100kg as arbitrary proxy for now
+        if latest_vitals.weight > 100:
+             health_score -= 5
+             
+        # Cap score 0-100
+        health_score = max(0, min(100, int(health_score)))
+    else:
+        health_score = 0 # No data
+    
+    # 3. Active Prescriptions
+    active_prescriptions_count = Prescription.objects.filter(
+        medical_record__patient=patient, 
+        status__in=['signed', 'dispensed']
+    ).count()
+
+    return Response({
+        "health_score": health_score,
+        "vitals": vitals_data,
+        "vitals_history": vitals_history,
+        "active_prescriptions": active_prescriptions_count,
+        "patient_name": f"{user.first_name} {user.last_name}"
+    })

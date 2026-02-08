@@ -1,0 +1,6 @@
+// to create superuser
+python manage.py createsuperuser
+
+// Admin Login Credentials
+// Username (Email): admin@securemed.com
+// Password: admin

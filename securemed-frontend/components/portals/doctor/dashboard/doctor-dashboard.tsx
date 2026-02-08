@@ -38,7 +38,7 @@ export default function DoctorDashboard({
             {/* Quick Stats */}
             <div className="grid md:grid-cols-4 gap-6">
                 <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow">
-                    <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Today's Appointments</p>
+                    <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Today&apos;s Appointments</p>
                     <p className="text-4xl font-black text-foreground mt-2">{todayAppts.length}</p>
                 </div>
                 <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow">
@@ -59,7 +59,7 @@ export default function DoctorDashboard({
 
             {/* Today's Appointments */}
             <div className="bg-card p-8 rounded-[32px] border border-border shadow-sm">
-                <h3 className="text-xl font-black text-foreground mb-6">Today's Schedule</h3>
+                <h3 className="text-xl font-black text-foreground mb-6">Today&apos;s Schedule</h3>
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />

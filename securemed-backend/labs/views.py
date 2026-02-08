@@ -164,9 +164,19 @@ class LabWorklistViewSet(viewsets.ViewSet):
         if not pending_tests.exists():
             order.status = 'completed'
             order.save()
+            
+            # Send standard completion notification
+            from core.notifications import NotificationService
+            NotificationService.send_lab_result_notification(result)
         elif order.status == 'pending':
             order.status = 'processing'
             order.save()
+        
+        # If this specific result is critical, ensure alert is sent immediately
+        # regardless of order completion status
+        if flag == 'Critical':
+            from core.notifications import NotificationService
+            NotificationService.send_critical_lab_alert(result)
         
         return Response({
             'success': True,
@@ -187,9 +197,9 @@ class LabWorklistViewSet(viewsets.ViewSet):
         result.notes = f"{result.notes}\n[CRITICAL VALUE FLAGGED at {timezone.now()}]"
         result.save()
         
-        # TODO: Send immediate notification to ordering physician
-        # from core.notifications import NotificationService
-        # NotificationService.send_critical_value_alert(result)
+        # Story 4.3: Immediate Alert for Critical Values
+        from core.notifications import NotificationService
+        NotificationService.send_critical_lab_alert(result)
         
         return Response({
             'success': True,

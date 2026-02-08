@@ -207,7 +207,7 @@ export default function LoginModal({
             <div className="p-6 border-b border-border">
               <p className="text-sm font-medium text-muted-foreground mb-3">Login as:</p>
               <div className="flex gap-2">
-                {(['patient', 'doctor', 'admin'] as const).map((r) => (
+                {(['patient'] as const).map((r) => (
                   <button
                     key={r}
                     onClick={() => onChangeRole(r)}
@@ -396,7 +396,7 @@ export default function LoginModal({
         {/* Footer */}
         {step === 'STEP_CREDENTIALS' && (
           <div className="px-8 py-4 bg-muted/30 text-center text-sm text-muted-foreground">
-            Don't have an account? <Link href="/register" className="text-primary font-medium hover:underline" onClick={handleClose}>Sign up</Link>
+            Don&apos;t have an account? <Link href="/register" className="text-primary font-medium hover:underline" onClick={handleClose}>Sign up</Link>
           </div>
         )}
       </div>

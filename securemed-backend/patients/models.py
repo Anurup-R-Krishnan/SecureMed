@@ -81,3 +81,29 @@ class EmergencyContact(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.relationship}) - {self.patient.patient_id}"
+
+
+class WellnessTip(models.Model):
+    """Model for rotating wellness tips shown on patient dashboard."""
+    CATEGORY_CHOICES = [
+        ('hydration', 'Hydration'),
+        ('nutrition', 'Nutrition'),
+        ('exercise', 'Exercise'),
+        ('sleep', 'Sleep'),
+        ('mental', 'Mental Health'),
+        ('general', 'General'),
+    ]
+    
+    title = models.CharField(max_length=100)
+    description = models.TextField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='general')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'wellness_tips'
+        ordering = ['category', '-created_at']
+    
+    def __str__(self):
+        return f"{self.title} ({self.category})"
+

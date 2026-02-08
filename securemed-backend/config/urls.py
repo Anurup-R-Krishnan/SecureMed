@@ -17,36 +17,42 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from authentication import views as auth_views
+api_v1_patterns = [
+    path('auth/', include('authentication.urls')),
+    path('consents/', include('consents.urls')),
+    
+    # RBAC Test Endpoints
+    path('doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
+    path('patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),
+    path('admin/test-dashboard/', auth_views.admin_dashboard_test, name='admin_test'),
+
+    # Appointments & Medical Records
+    path('appointments/', include('appointments.urls')),
+    path('medical-records/', include('medical_records.urls')),
+    
+    # Telemedicine
+    path('telemedicine/', include('telemedicine.urls')),
+    
+    # Analytics (Epic 8)
+    path('admin/', include('analytics.urls')),
+    
+    # Epic 8: Doctor AI Decision Support
+    path('doctor/', include('analytics.doctor_urls')),
+    
+    # Epic 8: Patient FHIR Export
+    path('patient/', include('analytics.patient_urls')),
+    
+    # Epic 4: Labs
+    path('labs/', include('labs.urls')),
+    
+    # Patients (Timeline, Profile)
+    path('patients/', include('patients.urls')),
+    path('billing/', include('billing.urls')),
+]
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('authentication.urls')),
-    path('api/consents/', include('consents.urls')),
-    
-    # RBAC Test Endpoints
-    path('api/doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
-    path('api/patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),
-    path('api/admin/test-dashboard/', auth_views.admin_dashboard_test, name='admin_test'),
-
-    # Appointments & Medical Records
-    path('api/appointments/', include('appointments.urls')),
-    path('api/medical-records/', include('medical_records.urls')),
-    
-    # Telemedicine
-    path('api/telemedicine/', include('telemedicine.urls')),
-    
-    # Analytics (Epic 8)
-    path('api/admin/', include('analytics.urls')),
-    
-    # Epic 8: Doctor AI Decision Support
-    path('api/doctor/', include('analytics.doctor_urls')),
-    
-    # Epic 8: Patient FHIR Export
-    path('api/patient/', include('analytics.patient_urls')),
-    
-    # Epic 4: Labs
-    path('api/labs/', include('labs.urls')),
-    
-    # Patients (Timeline, Profile)
-    path('api/patients/', include('patients.urls')),
+    path('api/v1/', include(api_v1_patterns)),
+    # Fallback for non-versioned api/ to v1 for backward compatibility (optional but safer)
+    path('api/', include(api_v1_patterns)), 
 ]

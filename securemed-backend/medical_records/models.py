@@ -196,3 +196,22 @@ class EmergencyAccessLog(models.Model):
 
     def __str__(self):
         return f"EMERGENCY ACCESS: {self.accessed_by} -> {self.patient.patient_id}"
+
+
+class VitalSign(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='vitals')
+    heart_rate = models.IntegerField(help_text="Beats per minute (bpm)")
+    systolic_bp = models.IntegerField(help_text="Systolic Blood Pressure (mmHg)")
+    diastolic_bp = models.IntegerField(help_text="Diastolic Blood Pressure (mmHg)")
+    weight = models.FloatField(help_text="Weight in kg")
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'vital_signs'
+        ordering = ['-recorded_at']
+        indexes = [
+            models.Index(fields=['patient', 'recorded_at']),
+        ]
+    
+    def __str__(self):
+        return f"Vitals for {self.patient.patient_id} at {self.recorded_at}"

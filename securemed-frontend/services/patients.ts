@@ -27,15 +27,16 @@ export const patientService = {
 
     getInsuranceInfo: async () => {
         try {
-            // TODO: Replace with actual backend API call when endpoint is available
-            // For now, return placeholder data
+            const response = await api.get('/patients/profile/');
+            const data = response.data;
             return {
-                provider: 'Insurance data not available',
-                policyNumber: 'N/A',
-                groupNumber: 'N/A',
-                expiryDate: 'N/A'
+                provider: data.insurance_provider || 'Not provided',
+                policyNumber: data.insurance_number || 'N/A',
+                groupNumber: 'N/A', // Field not on Patient model
+                expiryDate: 'N/A'   // Field not on Patient model
             };
         } catch (error) {
+            console.error('Error fetching insurance info:', error);
             return null;
         }
     }

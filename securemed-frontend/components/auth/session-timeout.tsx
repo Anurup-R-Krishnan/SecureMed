@@ -160,7 +160,7 @@ export default function SessionTimeout() {
                         You will be logged out in <strong>{remainingSeconds} seconds</strong> due to inactivity.
                         <br />
                         <br />
-                        Click "Stay Logged In" to continue your session, or "Logout Now" to logout immediately.
+                        Click &quot;Stay Logged In&quot; to continue your session, or &quot;Logout Now&quot; to logout immediately.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

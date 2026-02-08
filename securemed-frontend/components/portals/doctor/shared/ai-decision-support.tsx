@@ -208,7 +208,7 @@ export default function AIDecisionSupport({
                                     onClick={() => handleAddSymptom(symptomInput)}
                                     className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors"
                                 >
-                                    Add "{symptomInput}"
+                                    Add &quot;{symptomInput}&quot;
                                 </button>
                             )}
                         </div>
@@ -252,10 +252,10 @@ export default function AIDecisionSupport({
                             <div
                                 key={suggestion.id}
                                 className={`p-4 border rounded-lg transition-all ${suggestion.status === 'accepted'
-                                        ? 'border-green-300 bg-green-50 dark:bg-green-950/20'
-                                        : suggestion.status === 'rejected'
-                                            ? 'border-red-300 bg-red-50 dark:bg-red-950/20 opacity-60'
-                                            : 'border-border hover:border-primary/50'
+                                    ? 'border-green-300 bg-green-50 dark:bg-green-950/20'
+                                    : suggestion.status === 'rejected'
+                                        ? 'border-red-300 bg-red-50 dark:bg-red-950/20 opacity-60'
+                                        : 'border-border hover:border-primary/50'
                                     }`}
                             >
                                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

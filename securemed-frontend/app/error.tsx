@@ -29,7 +29,7 @@ export default function Error({
                 <div className="space-y-2">
                     <h1 className="text-3xl font-black tracking-tight text-foreground">Something went wrong</h1>
                     <p className="text-muted-foreground font-medium">
-                        We encountered an unexpected error. Don't worry, your data is safe, but we need to restart the view.
+                        We encountered an unexpected error. Don&apos;t worry, your data is safe, but we need to restart the view.
                     </p>
                     {process.env.NODE_ENV === 'development' && (
                         <div className="mt-4 p-4 bg-muted rounded-lg text-left overflow-auto max-h-40">

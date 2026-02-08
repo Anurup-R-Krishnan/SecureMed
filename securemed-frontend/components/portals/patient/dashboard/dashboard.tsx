@@ -1,174 +1,163 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, Heart, TrendingUp, AlertCircle, Plus, Download, Activity } from 'lucide-react';
-import { appointmentService, Appointment } from '@/services/appointments';
-import { patientService } from '@/services/patients';
+import { Calendar, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { appointmentService, Appointment as BaseAppointment } from '@/services/appointments';
+import HealthScoreCard from './health-score-card';
 
-export default function PatientDashboard() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+// Extend Appointment type locally if needed or just cast
+interface Appointment extends Omit<BaseAppointment, 'doctor_name'> {
+    specialty?: string;
+    doctor_name?: string;
+}
+import VitalsRow from './vitals-row';
+import QuickActions from './quick-actions';
+import { getDashboardStats } from '@/lib/api';
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const appts = await appointmentService.getAppointments();
-        // Filter to upcoming only
-        const now = new Date();
-        const upcoming = appts.filter((apt: Appointment) => {
-          const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
-          return aptDate >= now && (apt.status === 'scheduled' || apt.status === 'confirmed');
-        });
-        setAppointments(upcoming.slice(0, 5)); // Show max 5
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
+interface PatientDashboardProps {
+    onNavigate: (tab: any) => void;
+}
+
+export default function PatientDashboard({ onNavigate }: PatientDashboardProps) {
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [dashboardStats, setDashboardStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                // Fetch Dashboard Stats (Health Score, Vitals)
+                try {
+                    const statsRes = await getDashboardStats();
+                    setDashboardStats(statsRes.data);
+                } catch (e) {
+                    console.error("Failed to fetch dashboard stats", e);
+                }
+
+                // Fetch Appointments
+                const appts = await appointmentService.getAppointments();
+                const now = new Date();
+                const upcoming = appts.filter((apt: Appointment) => {
+                    const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+                    return aptDate >= now && (apt.status === 'scheduled' || apt.status === 'confirmed');
+                });
+                setAppointments(upcoming.slice(0, 3)); // Show max 3 for cleaner UI
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
-    fetchData();
-  }, []);
+    const formatTime = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(':');
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const hour12 = h % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (loading) {
+        return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading dashboard...</div>;
+    }
 
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+    // Default vitals if API fails or no data
+    const vitals = dashboardStats?.vitals || {
+        heartRate: 0,
+        systolicBp: 0,
+        diastolicBp: 0,
+        weight: 0
+    };
 
-  const formatTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':');
-    const h = parseInt(hours);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const hour12 = h % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
 
-  return (
-    <div className="space-y-6">
-      {/* Quick Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-          <div className="flex items-start justify-between mb-4">
-            <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <Calendar className="h-5 w-5 text-blue-600" />
+            {/* Header Section */}
+            <div className="mb-2">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                    Welcome back, {dashboardStats?.patient_name?.split(' ')[0] || 'Patient'}
+                </h1>
+                <p className="text-muted-foreground text-sm">Here&apos;s your health overview for today.</p>
             </div>
-          </div>
-          <p className="text-muted-foreground text-sm mb-1">Upcoming Appointments</p>
-          <p className="text-3xl font-black text-foreground">{appointments.length}</p>
-        </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-          <div className="flex items-start justify-between mb-4">
-            <div className="h-10 w-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <Activity className="h-5 w-5 text-green-600" />
-            </div>
-          </div>
-          <p className="text-muted-foreground text-sm mb-1">Health Score</p>
-          <p className="text-3xl font-black text-foreground">Good</p>
-        </Card>
-
-        <Card className="p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
-          <div className="flex items-start justify-between mb-4">
-            <div className="h-10 w-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
-            </div>
-          </div>
-          <p className="text-muted-foreground text-sm mb-1">Last Checkup</p>
-          <p className="text-3xl font-black text-foreground">Recent</p>
-        </Card>
-
-        <Card className="p-6 bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
-          <div className="flex items-start justify-between mb-4">
-            <div className="h-10 w-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-              <Heart className="h-5 w-5 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-muted-foreground text-sm mb-1">Active Prescriptions</p>
-          <p className="text-3xl font-black text-foreground">0</p>
-        </Card>
-      </div>
-
-      {/* Upcoming Appointments */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-foreground">Upcoming Appointments</h3>
-          <Button size="sm" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Book Appointment
-          </Button>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />
-          </div>
-        ) : appointments.length > 0 ? (
-          <div className="space-y-4">
-            {appointments.map((apt) => (
-              <div
-                key={apt.id}
-                className="flex flex-col md:flex-row md:items-center md:justify-between p-4 border border-border rounded-xl hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex-1 mb-4 md:mb-0">
-                  <h4 className="font-semibold text-foreground text-lg">{apt.doctor_name}</h4>
-                  <p className="text-primary font-medium text-sm mb-2">{apt.doctor_specialty}</p>
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(apt.appointment_date)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      {formatTime(apt.appointment_time)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {apt.hospital || 'SecureMed Hospital'}
-                    </div>
-                  </div>
+            {/* Main Stats Grid */}
+            <div className="grid lg:grid-cols-3 gap-6">
+                {/* Left Column: Health Score */}
+                <div className="lg:col-span-1 h-64">
+                    <HealthScoreCard score={dashboardStats?.health_score || 0} />
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    Reschedule
-                  </Button>
-                  <Button size="sm" className="bg-primary">
-                    Details
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground font-medium">No upcoming appointments</p>
-            <p className="text-sm text-muted-foreground mt-1">Book an appointment to get started</p>
-          </div>
-        )}
-      </Card>
 
-      {/* Health Tips */}
-      <Card className="p-6 border-l-4 border-l-primary bg-primary/5">
-        <div className="flex gap-4">
-          <Heart className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-foreground mb-2">Health Tip</h3>
-            <p className="text-muted-foreground text-sm">
-              Regular check-ups help prevent health issues early. Schedule your annual health
-              screening to ensure your well-being.
-            </p>
-          </div>
+                {/* Right Column: Vitals & Quick Actions */}
+                <div className="lg:col-span-2 space-y-6">
+                    <VitalsRow
+                        vitals={{
+                            heartRate: vitals.heart_rate || 0,
+                            systolicBp: vitals.systolic_bp || 0,
+                            diastolicBp: vitals.diastolic_bp || 0,
+                            weight: vitals.weight || 0
+                        }}
+                        history={dashboardStats?.vitals_history || []}
+                    />
+
+                    <QuickActions onNavigate={onNavigate} />
+                </div>
+            </div>
+
+            {/* Appointments Section */}
+            <div className="grid gap-6">
+                {/* Upcoming Appointments */}
+                <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-semibold text-lg">Upcoming Appointments</h3>
+                        <Button variant="link" className="text-primary text-sm h-auto p-0" onClick={() => onNavigate('appointments')}>
+                            View all
+                        </Button>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {appointments.length === 0 ? (
+                            <div className="col-span-full text-center py-8 text-muted-foreground bg-white/5 rounded-lg border border-dashed border-white/10">
+                                No upcoming appointments.
+                                <div className="mt-2">
+                                    <Button variant="outline" size="sm" onClick={() => onNavigate('appointments')}>Book Now</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            appointments.map((apt) => (
+                                <div key={apt.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold shrink-0">
+                                            {apt.doctor_name ? apt.doctor_name.charAt(4) : 'D'}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-foreground truncate">{apt.doctor_name || 'Doctor'}</p>
+                                            <p className="text-sm text-muted-foreground truncate">{apt.specialty || 'General Practice'}</p>
+                                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(apt.appointment_date)}</span>
+                                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatTime(apt.appointment_time)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 shrink-0">
+                                        Join
+                                    </Button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </Card>
+            </div>
         </div>
-      </Card>
-    </div>
-  );
+    );
 }

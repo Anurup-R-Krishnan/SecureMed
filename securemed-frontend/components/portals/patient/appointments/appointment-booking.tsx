@@ -129,7 +129,7 @@ export default function AppointmentBooking({
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, specialtyFilter]);
+  }, [searchQuery, specialtyFilter, doctors.length, isLoading]);
 
 
   // Dynamic specialties extraction
@@ -364,7 +364,7 @@ export default function AppointmentBooking({
 
             <div className="flex-1 space-y-8 w-full">
               <div>
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">You've Selected</h3>
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">You&apos;ve Selected</h3>
                 {selectedDate ? (
                   <div className="p-8 rounded-[32px] bg-gradient-to-br from-primary to-primary-foreground text-white shadow-2xl relative overflow-hidden group">
                     <Calendar className="absolute -right-8 -bottom-8 h-40 w-40 opacity-10 rotate-12 transition-transform group-hover:rotate-0 duration-700" />

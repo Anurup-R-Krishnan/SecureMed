@@ -15,7 +15,11 @@ interface ExportState {
     resourceCount?: number;
 }
 
-export default function FHIRExportButton() {
+interface FHIRExportButtonProps {
+    patientId?: string;
+}
+
+export default function FHIRExportButton({ patientId }: FHIRExportButtonProps) {
     const [exportState, setExportState] = useState<ExportState>({ status: 'idle' });
 
     const handleExport = async () => {
@@ -23,7 +27,11 @@ export default function FHIRExportButton() {
 
         try {
             // Call Django backend for FHIR export
-            const response = await fetch(`${API_BASE_URL}/patient/export/fhir/?patient_id=P12345`, {
+            const requestUrl = patientId
+                ? `${API_BASE_URL}/patient/export/fhir/?patient_id=${patientId}`
+                : `${API_BASE_URL}/patient/export/fhir/`; // Backend should handle default to current user if no ID
+
+            const response = await fetch(requestUrl, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

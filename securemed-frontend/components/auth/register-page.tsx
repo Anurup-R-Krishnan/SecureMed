@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Mail, Lock, User, Code, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -52,21 +52,9 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
   const selectedRole = watch('role');
 
-  // Verify invitation token on component mount
-  useEffect(() => {
-    const token = searchParams.get('token');
 
-    if (!token) {
-      setTokenError('No invitation token provided. Registration requires a valid invitation.');
-      setIsVerifyingToken(false);
-      return;
-    }
 
-    setInvitationToken(token);
-    verifyInvitationToken(token);
-  }, [searchParams]);
-
-  const verifyInvitationToken = async (token: string) => {
+  const verifyInvitationToken = useCallback(async (token: string) => {
     try {
       const response = await fetch('http://localhost:8000/api/auth/invite/verify/', {
         method: 'POST',
@@ -92,7 +80,21 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
     } finally {
       setIsVerifyingToken(false);
     }
-  };
+  }, [setValue]);
+
+  // Verify invitation token on component mount
+  useEffect(() => {
+    const token = searchParams.get('token');
+
+    if (!token) {
+      setTokenError('No invitation token provided. Registration requires a valid invitation.');
+      setIsVerifyingToken(false);
+      return;
+    }
+
+    setInvitationToken(token);
+    verifyInvitationToken(token);
+  }, [searchParams, verifyInvitationToken]);
 
   const handleCaptchaChange = (token: string | null) => {
     setCaptchaToken(token);
@@ -257,7 +259,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
               Create Account
             </h2>
             <p className="text-muted-foreground mb-6">
-              You've been invited to join SecureMed
+              You&apos;ve been invited to join SecureMed
             </p>
 
             {/* Invitation Info */}
@@ -366,18 +368,6 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                       <span className="font-medium">Patient</span>
                     </div>
                   </label>
-                  <label className="flex-1 relative">
-                    <input
-                      type="radio"
-                      value="provider"
-                      {...register('role')}
-                      className="peer sr-only"
-                      disabled={isLoading}
-                    />
-                    <div className="cursor-pointer rounded-lg border-2 border-border bg-background px-4 py-3 text-center transition-all peer-checked:border-primary peer-checked:bg-primary/10 hover:border-primary/50">
-                      <span className="font-medium">Doctor</span>
-                    </div>
-                  </label>
                 </div>
                 {errors.role && <p className="text-xs text-destructive mt-1">{errors.role.message}</p>}
               </div>
@@ -418,7 +408,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
               {process.env.NODE_ENV === 'development' && (
                 <p className="text-xs text-muted-foreground text-center">
-                  Using Google's test reCAPTCHA key (always passes in dev mode)
+                  Using Google&apos;s test reCAPTCHA key (always passes in dev mode)
                 </p>
               )}
 
