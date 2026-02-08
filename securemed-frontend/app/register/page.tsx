@@ -1,5 +1,7 @@
 'use client';
 
+import { Suspense } from 'react';
+
 import { useRouter } from 'next/navigation';
 import RegisterPage from '@/components/auth/register-page';
 
@@ -17,9 +19,11 @@ export default function RegisterRoute() {
   };
 
   return (
-    <RegisterPage 
-      onSuccess={handleSuccess} 
-      onBackToLogin={handleBackToLogin} 
-    />
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <RegisterPage
+        onSuccess={handleSuccess}
+        onBackToLogin={handleBackToLogin}
+      />
+    </Suspense>
   );
 }
