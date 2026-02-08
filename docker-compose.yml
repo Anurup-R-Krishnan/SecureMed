@@ -1,0 +1,97 @@
+# SecureMed Docker Compose
+# Full stack deployment: Backend, Frontend, PostgreSQL
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: securemed-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: securemed
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-securemed_db_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d securemed"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Backend API
+  backend:
+    build:
+      context: ./securemed-backend
+      dockerfile: Dockerfile
+    container_name: securemed-backend
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:-your-production-secret-key}
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=securemed
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-securemed_db_password}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-your-encryption-key-here}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - backend_static:/app/static
+      - backend_media:/app/media
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn --bind 0.0.0.0:8000 --workers 3 config.wsgi:application"
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./securemed-frontend
+      dockerfile: Dockerfile
+    container_name: securemed-frontend
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  # Nginx Reverse Proxy (Production)
+  nginx:
+    image: nginx:alpine
+    container_name: securemed-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - backend_static:/var/www/static:ro
+    depends_on:
+      - backend
+      - frontend
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+  backend_static:
+  backend_media:
+
+networks:
+  default:
+    name: securemed-network

@@ -1,0 +1,147 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "Next.js 16",
+        "React 19",
+        "Tailwind CSS",
+        "Radix UI",
+        "Axios",
+        "React Hook Form",
+        "Zod",
+        "Chart.js",
+        "date-fns"
+    ],
+    "features": [
+        {
+            "name": "Authentication System",
+            "description": "Complete authentication flow including login, registration, MFA, password reset, and account lockout",
+            "files": [
+                "components/auth/login-form.tsx",
+                "components/auth/register-form.tsx",
+                "components/auth/mfa-setup.tsx",
+                "components/auth/password-reset.tsx",
+                "context/auth-context.tsx"
+            ]
+        },
+        {
+            "name": "Session Management",
+            "description": "Session timeout tracking with idle activity detection and warning popup",
+            "files": [
+                "components/session-timeout.tsx"
+            ]
+        },
+        {
+            "name": "Patient Portal",
+            "description": "Patient-facing features including appointment booking, medical records, prescriptions, and lab results",
+            "files": [
+                "components/portals/patient/appointment-booking.tsx",
+                "components/portals/patient/appointment-calendar.tsx",
+                "components/portals/patient/medical-records.tsx",
+                "components/portals/patient/prescriptions.tsx",
+                "components/portals/patient/lab-results.tsx",
+                "components/portals/patient/patient-timeline.tsx"
+            ]
+        },
+        {
+            "name": "Doctor Portal",
+            "description": "Doctor-facing features including patient management, appointment scheduling, and prescribing",
+            "files": [
+                "components/portals/doctor/patient-list.tsx",
+                "components/portals/doctor/appointment-management.tsx",
+                "components/portals/doctor/prescription-form.tsx",
+                "components/portals/doctor/lab-order-form.tsx"
+            ]
+        },
+        {
+            "name": "Admin Portal",
+            "description": "Administrative features including user management, audit logs, and system configuration",
+            "files": [
+                "components/portals/admin/user-management.tsx",
+                "components/portals/admin/audit-logs.tsx",
+                "components/portals/admin/system-settings.tsx"
+            ]
+        },
+        {
+            "name": "Pharmacist Portal",
+            "description": "Pharmacy features including prescription verification and dispensing",
+            "files": [
+                "components/portals/pharmacist/prescription-queue.tsx",
+                "components/portals/pharmacist/dispense-medication.tsx"
+            ]
+        },
+        {
+            "name": "Lab Technician Portal",
+            "description": "Laboratory features including test order management and result uploads",
+            "files": [
+                "components/portals/lab/test-orders.tsx",
+                "components/portals/lab/result-upload.tsx"
+            ]
+        },
+        {
+            "name": "Appointment Service",
+            "description": "API service for managing appointments and doctor listings",
+            "files": [
+                "services/appointments.ts"
+            ]
+        },
+        {
+            "name": "API Client",
+            "description": "Axios-based API client with authentication and error handling",
+            "files": [
+                "lib/api.ts"
+            ]
+        },
+        {
+            "name": "UI Components Library",
+            "description": "Reusable UI components built with Radix UI and Tailwind CSS",
+            "files": [
+                "components/ui/button.tsx",
+                "components/ui/card.tsx",
+                "components/ui/input.tsx",
+                "components/ui/dialog.tsx",
+                "components/ui/toast.tsx",
+                "components/ui/calendar.tsx",
+                "components/ui/select.tsx",
+                "components/ui/table.tsx",
+                "components/ui/tabs.tsx",
+                "components/ui/form.tsx"
+            ]
+        },
+        {
+            "name": "Telemedicine",
+            "description": "Video consultation features for remote patient care",
+            "files": [
+                "components/telemedicine/video-consultation.tsx",
+                "components/telemedicine/consultation-room.tsx"
+            ]
+        },
+        {
+            "name": "Emergency Access (Break-Glass)",
+            "description": "Emergency access protocol for critical patient data access",
+            "files": [
+                "components/portals/doctor/break-glass.tsx"
+            ]
+        },
+        {
+            "name": "FHIR Integration",
+            "description": "FHIR-compliant data export functionality",
+            "files": [
+                "components/portals/patient/fhir-export-button.tsx"
+            ]
+        },
+        {
+            "name": "Theme System",
+            "description": "Dark/light theme support with next-themes",
+            "files": [
+                "components/theme-provider.tsx"
+            ]
+        },
+        {
+            "name": "Landing Page",
+            "description": "Public-facing landing page with feature showcase",
+            "files": [
+                "components/landing-page.tsx"
+            ]
+        }
+    ]
+}

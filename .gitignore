@@ -6,6 +6,7 @@
 # --------------------------------------
 # Node modules (any package location)
 **/node_modules/
+node_modules/
 
 # Dependency manager artifacts
 package-lock.json
@@ -17,14 +18,18 @@ yarn.lock
 **/.next/cache/
 **/.next/static/
 **/out/
+.next/
+out/
 
 # Vercel / deployment outputs
 .vercel/
 .vercel_build_output/
+.vercel
 
 # General build outputs
 /dist/
 /build/
+build/
 
 # Logs
 npm-debug.log*
@@ -32,6 +37,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+*.tmp
 
 # TypeScript
 *.tsbuildinfo
@@ -40,10 +46,17 @@ yarn-error.log*
 # Environment (sensitive) — allow `.env.example`
 .env*
 !.env.example
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Coverage reports
 coverage/
 .nyc_output/
+.coverage
+htmlcov/
 
 # Caches
 /.cache/
@@ -55,6 +68,7 @@ coverage/
 # --------------------------------------
 __pycache__/
 **/*.py[cod]
+*.py[cod]
 *$py.class
 *.so
 .Python
@@ -62,16 +76,36 @@ env/
 venv/
 ENV/
 .venv/
+.venv
 
 # Django DB
 **/db.sqlite3
 **/db.sqlite3-journal
+db.sqlite3
+db.sqlite3-journal
+
+# Django media and static
+media/
+staticfiles/
 
 # Python packaging / builds
 build/
 dist/
 *.egg-info/
 pip-wheel-metadata/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+.installed.cfg
+*.egg
+MANIFEST
 
 # Testing
 .pytest_cache/
@@ -97,3 +131,12 @@ Thumbs.db
 *.seed
 *.tgz
 next-env.d.ts
+/.pnp
+.pnp.js
+
+# Specific to this project structure
+frontend/.next/
+frontend/node_modules/
+backend/venv/
+backend/.env
+backend/db.sqlite3

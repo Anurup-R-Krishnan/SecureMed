@@ -1,8 +1,6 @@
 'use client';
 
-import React from "react"
-
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Calendar,
@@ -13,68 +11,196 @@ import {
   Menu,
   X,
   Clock,
-  CheckCircle,
-  AlertCircle,
   Settings,
+  Brain,
+  ShieldAlert,
+  CheckCircle,
+  Activity,
+  Pill,
+  FlaskConical
 } from 'lucide-react';
 import MfaSetup from '@/components/auth/mfa-setup';
+import AIDecisionSupport from '@/components/portals/doctor/shared/ai-decision-support';
+import PatientTimeline from '@/components/portals/doctor/patients/patient-timeline';
+import PrescriptionWriter from '@/components/portals/doctor/prescriptions/prescription-writer';
+import LabOrderForm from '@/components/portals/doctor/labs/lab-order-form';
+import AvailabilityManager from '@/components/portals/doctor/dashboard/availability-manager';
+import EmergencyAccessModal from '@/components/portals/doctor/shared/emergency-access-modal';
+import ReferralModal from '@/components/portals/doctor/shared/referral-modal';
+import PatientManager, { DoctorPatient } from '@/components/portals/doctor/patients/patient-manager';
+import DoctorDashboard from '@/components/portals/doctor/dashboard/doctor-dashboard';
+import AppointmentManager from '@/components/portals/doctor/appointments/appointment-manager';
+import { appointmentService, Appointment } from '@/services/appointments';
+import api from '@/lib/api';
+import { NotificationCenter } from '@/components/ui/notification-center';
+import { toast } from 'sonner';
 
-type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'settings';
+type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'prescriptions' | 'labs' | 'ai-assistant' | 'availability' | 'settings';
 
 interface DoctorPortalProps {
   onLogout: () => void;
   onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
 }
 
-const todayAppointments = [
-  {
-    id: 1,
-    patient: 'John Doe',
-    time: '10:00 AM',
-    status: 'Completed',
-    type: 'Follow-up',
-  },
-  {
-    id: 2,
-    patient: 'Jane Smith',
-    time: '11:30 AM',
-    status: 'In Progress',
-    type: 'Consultation',
-  },
-  {
-    id: 3,
-    patient: 'Mike Johnson',
-    time: '02:00 PM',
-    status: 'Scheduled',
-    type: 'Check-up',
-  },
-];
-
-const patientsList = [
-  { id: 1, name: 'John Doe', lastVisit: 'Jan 15, 2025', condition: 'Hypertension', status: 'Stable' },
-  { id: 2, name: 'Jane Smith', lastVisit: 'Jan 10, 2025', condition: 'Diabetes', status: 'Controlled' },
-  { id: 3, name: 'Mike Johnson', lastVisit: 'Jan 8, 2025', condition: 'Arrhythmia', status: 'Monitoring' },
-  { id: 4, name: 'Sarah Lee', lastVisit: 'Dec 28, 2024', condition: 'High Cholesterol', status: 'Improved' },
-];
+interface RawPatient {
+  id: number;
+  patient_id?: string;
+  user?: {
+    first_name: string;
+    last_name: string;
+  };
+  last_visit?: string;
+  chronic_conditions?: string[];
+}
 
 export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalProps) {
   const [activeTab, setActiveTab] = useState<DoctorTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // API Data States
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<DoctorPatient[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modal States
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<{ id: string, name: string } | null>(null);
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch doctor's appointments
+        const appts = await appointmentService.getAppointments();
+        setAppointments(appts);
+
+        // Fetch patients - using a dedicated endpoint if available
+        try {
+          const patientsRes = await api.get('/patients/');
+          const patientData: RawPatient[] = Array.isArray(patientsRes.data) ? patientsRes.data :
+            (patientsRes.data.results || []);
+          setPatients(patientData.map((p) => ({
+            id: p.id,
+            displayId: p.patient_id || `P-${p.id}`,
+            name: p.user?.first_name ? `${p.user.first_name} ${p.user.last_name}` : 'Unknown Patient',
+            lastVisit: p.last_visit || 'N/A',
+            condition: p.chronic_conditions?.[0] || 'General',
+            status: 'Active'
+          })));
+        } catch {
+          // If patients endpoint fails, derive from appointments
+          const uniquePatients = new Map<number, DoctorPatient>();
+          appts.forEach((apt) => {
+            if (!uniquePatients.has(apt.patient)) {
+              uniquePatients.set(apt.patient, {
+                id: apt.patient,
+                displayId: `P-${apt.patient}`,
+                name: apt.doctor_name ? `Patient of ${apt.doctor_name}` : `Patient #${apt.patient}`, // Fallback naming if no patient details
+                lastVisit: apt.appointment_date,
+                condition: 'N/A',
+                status: 'Active'
+              });
+            }
+          });
+          setPatients(Array.from(uniquePatients.values()));
+        }
+      } catch (error) {
+        console.error('Error fetching doctor data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Get today's appointments
+  const todayAppts = appointments.filter(apt => {
+    const today = new Date().toISOString().split('T')[0];
+    return apt.appointment_date === today;
+  });
+
+  const formatTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':');
+    const h = parseInt(hours);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
   const tabs: { id: DoctorTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="h-5 w-5" /> },
     { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-5 w-5" /> },
     { id: 'patients', label: 'My Patients', icon: <Users className="h-5 w-5" /> },
+    { id: 'prescriptions', label: 'Prescriptions', icon: <Pill className="h-5 w-5" /> },
+    { id: 'labs', label: 'Lab Orders', icon: <FlaskConical className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: <Brain className="h-5 w-5" /> },
+    { id: 'availability', label: 'Availability', icon: <Clock className="h-5 w-5" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
+  const handleOpenReferral = (patient: any) => {
+    setSelectedPatient({ id: patient.displayId || patient.patient || patient.id, name: patient.name || 'Patient' });
+    setShowReferralModal(true);
+  };
+
+  const handleOpenEmergency = (patient: any) => {
+    setSelectedPatient({ id: patient.displayId || patient.patient || patient.id, name: patient.name || 'Patient' });
+    setShowEmergencyModal(true);
+  };
+
+  const handleAcceptAppointment = async (appt: Appointment) => {
+    try {
+      await appointmentService.updateAppointmentStatus(appt.id, 'confirmed');
+      // Refresh appointments
+      const appts = await appointmentService.getAppointments();
+      setAppointments(appts);
+      toast.success(`Appointment with Patient #${appt.patient} confirmed.`);
+    } catch (error) {
+      console.error('Error accepting appointment:', error);
+      toast.error('Failed to confirm appointment.');
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-black uppercase tracking-wider">
+            <CheckCircle className="h-3 w-3" /> Completed
+          </span>
+        );
+      case 'in_progress':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-xs font-black uppercase tracking-wider">
+            <Activity className="h-3 w-3 animate-pulse" /> In Progress
+          </span>
+        );
+      case 'scheduled':
+      case 'confirmed':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs font-black uppercase tracking-wider">
+            <Calendar className="h-3 w-3" /> Scheduled
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/10 text-slate-600 text-xs font-black uppercase tracking-wider">
+            {status}
+          </span>
+        );
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Mobile Menu Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-4 left-4 z-40 md:hidden p-2 bg-card border border-border rounded-lg"
+        className="fixed top-4 left-4 z-40 md:hidden p-2 bg-card border border-border rounded-lg shadow-sm"
       >
         {sidebarOpen ? (
           <X className="h-6 w-6 text-foreground" />
@@ -85,24 +211,23 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-2xl font-bold text-sidebar-primary">Fortis</h1>
-          <p className="text-sm text-sidebar-foreground/70 mt-1">Doctor Console</p>
+          <h1 className="text-2xl font-black text-primary tracking-tight">SecureMed</h1>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Doctor Console</p>
         </div>
 
         {/* Doctor Info */}
-        <div className="px-6 py-4 border-b border-sidebar-border">
-          <p className="text-sm text-sidebar-foreground/70">Dr. Amit Patel</p>
-          <p className="font-semibold text-sidebar-primary">Cardiology</p>
-          <p className="text-xs text-sidebar-foreground/60">Fortis Hospital Delhi</p>
+        <div className="px-6 py-6 border-b border-sidebar-border bg-sidebar-accent/5">
+          <p className="text-lg font-bold text-foreground">Doctor</p>
+          <p className="text-sm font-medium text-primary">General Medicine</p>
+          <p className="text-xs text-muted-foreground mt-1">SecureMed Hospital</p>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -110,29 +235,28 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 setActiveTab(tab.id);
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeTab === tab.id
+                ? 'bg-primary/10 text-primary shadow-sm'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
             >
               {tab.icon}
-              {tab.label}
+              <span className="font-semibold">{tab.label}</span>
             </button>
           ))}
         </nav>
 
         {/* Footer Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border space-y-2">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border space-y-2 bg-sidebar">
           <button
             onClick={() => onSwitchRole('patient')}
-            className="w-full px-4 py-2 rounded-lg border border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent/10 text-sm font-medium transition-colors"
+            className="w-full px-4 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted text-sm font-bold transition-colors"
           >
-            Patient View
+            Switch to Patient View
           </button>
           <button
             onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive hover:text-destructive-foreground font-bold transition-all"
           >
             <LogOut className="h-4 w-4" />
             Logout
@@ -141,140 +265,95 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
       </aside>
 
       {/* Main Content */}
-      <main className="md:ml-64 min-h-screen">
+      <main className="md:ml-64 min-h-screen transition-all duration-300">
         {/* Top Bar */}
-        <div className="bg-card border-b border-border p-6">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl font-bold text-foreground">
-              {tabs.find((t) => t.id === activeTab)?.label}
-            </h2>
-            <p className="text-muted-foreground mt-1">Manage your practice and patients</p>
+        <div className="bg-background/80 backdrop-blur-md border-b border-border p-6 sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-black text-foreground tracking-tight">
+                {tabs.find((t) => t.id === activeTab)?.label}
+              </h2>
+              <p className="text-sm font-medium text-muted-foreground">Manage your practice and patients</p>
+            </div>
+            <div className="flex gap-4 items-center">
+              <NotificationCenter />
+              <Button variant="outline" size="sm" className="hidden sm:flex border-destructive/30 hover:bg-destructive/10 text-destructive font-bold" onClick={() => setShowEmergencyModal(true)}>
+                <ShieldAlert className="h-4 w-4 mr-2" />
+                Break Glass
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Tab Content */}
         <div className="p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto space-y-6">
             {activeTab === 'dashboard' && (
-              <div className="space-y-6">
-                {/* Quick Stats */}
-                <div className="grid md:grid-cols-4 gap-4">
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <p className="text-muted-foreground text-sm">Today's Appointments</p>
-                    <p className="text-3xl font-bold text-foreground mt-2">3</p>
-                  </div>
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <p className="text-muted-foreground text-sm">Total Patients</p>
-                    <p className="text-3xl font-bold text-primary mt-2">{patientsList.length}</p>
-                  </div>
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <p className="text-muted-foreground text-sm">Pending Reviews</p>
-                    <p className="text-3xl font-bold text-accent mt-2">5</p>
-                  </div>
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <p className="text-muted-foreground text-sm">Patient Satisfaction</p>
-                    <p className="text-3xl font-bold text-primary mt-2">4.8/5</p>
-                  </div>
-                </div>
-
-                {/* Today's Appointments */}
-                <div className="bg-card p-6 rounded-lg border border-border">
-                  <h3 className="text-xl font-bold text-foreground mb-6">Today's Appointments</h3>
-                  <div className="space-y-3">
-                    {todayAppointments.map((apt) => (
-                      <div
-                        key={apt.id}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg"
-                      >
-                        <div>
-                          <p className="font-semibold text-foreground">{apt.patient}</p>
-                          <p className="text-sm text-muted-foreground">{apt.time} • {apt.type}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {apt.status === 'Completed' && (
-                            <CheckCircle className="h-5 w-5 text-green-600" />
-                          )}
-                          {apt.status === 'In Progress' && (
-                            <AlertCircle className="h-5 w-5 text-yellow-600" />
-                          )}
-                          <span className="text-sm font-medium">{apt.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <DoctorDashboard
+                todayAppts={todayAppts}
+                totalPatients={patients.length}
+                totalAppointments={appointments.length}
+                loading={loading}
+                onOpenReferral={handleOpenReferral}
+                onAcceptAppointment={handleAcceptAppointment}
+                formatTime={formatTime}
+                getStatusBadge={getStatusBadge}
+              />
             )}
 
             {activeTab === 'appointments' && (
-              <div className="bg-card p-6 rounded-lg border border-border">
-                <h3 className="text-xl font-bold text-foreground mb-6">My Appointments</h3>
-                <div className="space-y-3">
-                  {todayAppointments.map((apt) => (
-                    <div
-                      key={apt.id}
-                      className="flex flex-col md:flex-row md:items-center md:justify-between p-4 border border-border rounded-lg"
-                    >
-                      <div>
-                        <p className="font-semibold text-foreground">{apt.patient}</p>
-                        <p className="text-sm text-muted-foreground">{apt.time} • {apt.type}</p>
-                      </div>
-                      <div className="flex gap-2 mt-4 md:mt-0">
-                        <Button variant="outline" size="sm">View Patient</Button>
-                        <Button size="sm">Update Status</Button>
-                      </div>
-                    </div>
-                  ))}
+              <AppointmentManager
+                appointments={appointments}
+                loading={loading}
+                onOpenReferral={handleOpenReferral}
+                onAcceptAppointment={handleAcceptAppointment}
+                formatTime={formatTime}
+                getStatusBadge={getStatusBadge}
+              />
+            )}
+
+            {activeTab === 'patients' && (
+              <PatientManager
+                patients={patients}
+                loading={loading}
+                onEmergencyAccess={handleOpenEmergency}
+                onRefer={handleOpenReferral}
+                onViewPatient={(p) => console.log('View patient', p)}
+              />
+            )}
+
+            {activeTab === 'prescriptions' && (
+              <PrescriptionWriter
+                patients={patients}
+                onSuccess={() => console.log("Prescription created")}
+              />
+            )}
+
+            {activeTab === 'records' && (
+              <div className="space-y-6">
+                <div className="bg-card p-8 rounded-[32px] border border-border shadow-sm">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-black text-foreground">Recent Patient Activity</h3>
+                    <p className="text-muted-foreground">Live feed of patient updates, labs, and history.</p>
+                  </div>
+                  <PatientTimeline className="shadow-none border-none bg-transparent" />
                 </div>
               </div>
             )}
 
-            {activeTab === 'patients' && (
-              <div className="bg-card p-6 rounded-lg border border-border overflow-x-auto">
-                <h3 className="text-xl font-bold text-foreground mb-6">My Patients</h3>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Patient Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Condition</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Last Visit</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Status</th>
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {patientsList.map((patient) => (
-                      <tr key={patient.id} className="border-b border-border hover:bg-muted/50">
-                        <td className="py-3 px-4 font-medium text-foreground">{patient.name}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{patient.condition}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{patient.lastVisit}</td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
-                            {patient.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Button variant="ghost" size="sm">View</Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {activeTab === 'ai-assistant' && (
+              <AIDecisionSupport />
             )}
 
-            {activeTab === 'records' && (
-              <div className="bg-card p-6 rounded-lg border border-border">
-                <h3 className="text-xl font-bold text-foreground mb-6">Medical Records</h3>
-                <p className="text-muted-foreground">View and manage patient medical records here.</p>
-              </div>
+            {activeTab === 'availability' && (
+              <AvailabilityManager />
             )}
 
             {activeTab === 'settings' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-2xl font-bold text-foreground mb-2">Security Settings</h3>
-                  <p className="text-muted-foreground">Manage your account security and two-factor authentication</p>
+                  <h3 className="text-2xl font-black text-foreground mb-2">Security Settings</h3>
+                  <p className="text-muted-foreground font-medium">Manage your account security and two-factor authentication</p>
                 </div>
                 <MfaSetup />
               </div>
@@ -282,6 +361,36 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
           </div>
         </div>
       </main>
+
+      {/* Modals */}
+      {selectedPatient && (
+        <>
+          <EmergencyAccessModal
+            patientId={selectedPatient.id}
+            patientName={selectedPatient.name}
+            onClose={() => { setShowEmergencyModal(false); setSelectedPatient(null); }}
+            onSubmit={() => { }}
+            isOpen={showEmergencyModal && !!selectedPatient}
+          />
+          <ReferralModal
+            isOpen={showReferralModal}
+            onClose={() => { setShowReferralModal(false); setSelectedPatient(null); }}
+            patientId={selectedPatient.id}
+            patientName={selectedPatient.name}
+          />
+        </>
+      )}
+
+      {/* Global Emergency Modal if no patient selected */}
+      {!selectedPatient && showEmergencyModal && (
+        <EmergencyAccessModal
+          isOpen={true}
+          patientId=""
+          patientName="Enter Patient ID"
+          onClose={() => setShowEmergencyModal(false)}
+          onSubmit={() => { }}
+        />
+      )}
     </div>
   );
 }

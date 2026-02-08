@@ -14,6 +14,7 @@ class User(AbstractUser):
     
     ROLE_CHOICES = [
         ('patient', 'Patient'),
+        ('doctor', 'Doctor'),
         ('provider', 'Healthcare Provider'),
         ('admin', 'Administrator'),
     ]
@@ -74,6 +75,19 @@ class User(AbstractUser):
         null=True,
         blank=True,
         help_text="When the user accepted the latest policy"
+    )
+    
+    # Password Reset
+    password_reset_token = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text="Token for password reset (expires after 1 hour)"
+    )
+    password_reset_expires = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the password reset token expires"
     )
     
     # Authentication configuration

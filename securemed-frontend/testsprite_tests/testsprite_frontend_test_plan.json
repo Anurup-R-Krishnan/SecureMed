@@ -1,0 +1,552 @@
+[
+  {
+    "id": "TC001",
+    "title": "User registration with valid data",
+    "description": "Verify that a new user can register successfully with valid required information.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid user information including username, email, and password."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that the user is registered successfully and redirected to the MFA setup page."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Login with correct credentials and MFA",
+    "description": "Verify a user can login with correct username and password and complete MFA verification.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid username and password."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "action",
+        "description": "Complete the MFA verification as prompted."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is successfully logged in to their respective portal."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Login attempt with invalid password",
+    "description": "Verify the system prevents login when an incorrect password is entered.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Go to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid username and an incorrect password."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that login is denied and an error message about invalid credentials is displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Password reset workflow",
+    "description": "Verify that users can initiate and complete the password reset process successfully.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the password reset page."
+      },
+      {
+        "type": "action",
+        "description": "Input a registered email address and submit the request."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the system sends a password reset email."
+      },
+      {
+        "type": "action",
+        "description": "Follow the email link and enter a new password."
+      },
+      {
+        "type": "action",
+        "description": "Submit the new password to reset."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the password is reset and user can login with new credentials."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Account lockout after multiple failed login attempts",
+    "description": "Verify that an account is locked after a threshold of unsuccessful login attempts to prevent brute force attacks.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to login with a valid username and incorrect password repeatedly over the lockout threshold."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the account is locked, preventing further login attempts and displaying an account locked message."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Session timeout triggers warning popup",
+    "description": "Verify that the session timeout mechanism detects idle activity, triggers a warning popup before logout.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and remain idle until the idle detection period elapses."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a warning popup appears alerting the user of imminent session timeout."
+      },
+      {
+        "type": "action",
+        "description": "Respond to the warning popup to continue session."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the session continues without logout."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Session expires after no response to idle warning",
+    "description": "Verify that the user is automatically logged out after inactivity with no response to the session timeout warning popup.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login successfully and stay idle until the session timeout warning popup appears."
+      },
+      {
+        "type": "action",
+        "description": "Do not respond to the warning popup."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the session automatically terminates and user is redirected to the login page."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Patient appointment booking process",
+    "description": "Verify a patient can successfully book an appointment including selecting specialty, doctor, date, and time.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Patient logs in and navigates to the appointment booking section."
+      },
+      {
+        "type": "action",
+        "description": "Searches and selects doctor by specialty."
+      },
+      {
+        "type": "action",
+        "description": "Chooses available appointment date and time."
+      },
+      {
+        "type": "action",
+        "description": "Confirms the booking."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify confirmation of appointment booking is displayed with correct details."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Handle appointment booking with unavailable timeslot",
+    "description": "Verify the system handles attempts to book an already occupied or invalid appointment slot gracefully.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Patient attempts to book an appointment at a time slot already booked by another patient."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a clear error message is displayed indicating the slot is unavailable and user is prompted to select another slot."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Patient views detailed medical records including prescriptions and lab results",
+    "description": "Verify that a patient can access their full medical records with detailed history including prescriptions and lab results without errors.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Patient logs in and navigates to the medical records section."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify detailed medical history is displayed including prescriptions and lab results."
+      },
+      {
+        "type": "action",
+        "description": "Navigate through interactive patient timeline to validate historical data presentation."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that all data loads correctly without errors."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Validate FHIR-compliant data export",
+    "description": "Verify the patient can export their medical data using the FHIR standard and that the output is valid and complete.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Patient logs in and accesses the FHIR export feature."
+      },
+      {
+        "type": "action",
+        "description": "Initiate export of health data."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that valid FHIR-compliant data file is generated and downloadable."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Doctor manages patient list and appointment scheduling",
+    "description": "Verify doctors can view their patient list, schedule, modify, and cancel appointments with correct updates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Doctor logs in and navigates to patient list."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all assigned patients are listed correctly."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to appointment management, schedule a new appointment for a patient."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new appointment is saved and reflected in the schedule."
+      },
+      {
+        "type": "action",
+        "description": "Modify an existing appointment and cancel another."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify respective updates and cancellations are correctly processed."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Doctor issues prescriptions and lab orders",
+    "description": "Verify doctors can create, update, and delete prescriptions and lab orders accurately for patients.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Doctor logs in and accesses prescription form for a patient."
+      },
+      {
+        "type": "action",
+        "description": "Create a new prescription with valid details and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the prescription is saved and visible in patient records."
+      },
+      {
+        "type": "action",
+        "description": "Access lab order form, create a lab order, and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lab order is correctly recorded and tracked."
+      },
+      {
+        "type": "action",
+        "description": "Update and delete existing prescriptions and lab orders."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates and deletions are accurately reflected."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Break-glass emergency data access by doctor",
+    "description": "Verify that doctors can access critical patient data using emergency break-glass access under approved scenarios.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Doctor attempts to access protected patient data under emergency break-glass protocol."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that access is granted with proper audit logging and warnings display."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Admin user management functions",
+    "description": "Verify administrators can create, modify, and delete user accounts with correct role assignments.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin logs in and navigates to user management portal."
+      },
+      {
+        "type": "action",
+        "description": "Creates a new user with specific role and submits."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is created and visible in the user list."
+      },
+      {
+        "type": "action",
+        "description": "Modify existing user’s data and role, then save."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates are saved and reflected accurately."
+      },
+      {
+        "type": "action",
+        "description": "Delete a user account."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is removed and cannot access the system."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Admin audit log monitoring",
+    "description": "Verify that admin can view and search audit logs for compliance and that logs are accurate and complete.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin logs in and navigates to audit log section."
+      },
+      {
+        "type": "action",
+        "description": "Filter logs by date, user, and event type."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtered logs display correctly with accurate event details."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Admin updates system configuration securely",
+    "description": "Verify that administrators can change system settings and the changes persist without data leaks.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin accesses system settings page."
+      },
+      {
+        "type": "action",
+        "description": "Modify various configuration options and save changes."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes are saved correctly and do not expose sensitive data."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Pharmacist manages prescription queue",
+    "description": "Verify that pharmacists can view, verify, and update the prescription queue correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Pharmacist logs in and views prescription queue."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify prescriptions awaiting verification are visible and accurate."
+      },
+      {
+        "type": "action",
+        "description": "Verify a prescription and mark it ready for dispensing."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify prescription status updates and is removed from queue after dispensing."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Pharmacist performs medication dispensing",
+    "description": "Verify pharmacists can dispense medications correctly after prescription verification with accurate state updates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Pharmacist selects a verified prescription to dispense medication."
+      },
+      {
+        "type": "action",
+        "description": "Completes dispensing process confirming medication details."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify medication dispensing is recorded and prescription status updates to completed."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Lab technician processes test orders and uploads results",
+    "description": "Verify lab technicians can receive test orders, mark tests as completed, and upload results with correct data linkage.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Lab technician logs in and views pending test orders."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all assigned test orders are displayed correctly."
+      },
+      {
+        "type": "action",
+        "description": "Perform test and upload test results via the result upload form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify test order status updates to completed and results are linked to patient records."
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Role-based access control enforcement",
+    "description": "Verify that users cannot access features and data outside their assigned roles.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as each user role: patient, doctor, pharmacist, lab technician, admin."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access restricted features or data outside user role permissions."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied with appropriate error or navigation protection for unauthorized features."
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "UI component library consistency under dark and light themes",
+    "description": "Verify all reusable UI components render correctly and consistently in both dark and light theme modes.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Switch application between dark and light themes."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all UI components such as buttons, inputs, dialogs, cards, tables display properly with correct styles and no visual regressions."
+      },
+      {
+        "type": "action",
+        "description": "Interact with components to ensure functional behavior is unaffected by theme changes."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm functional and visual consistency across themes."
+      }
+    ]
+  }
+]

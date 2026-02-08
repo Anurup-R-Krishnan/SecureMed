@@ -4,18 +4,30 @@ export interface Doctor {
     id: number;
     name: string;
     specialization: string;
+    specialty: string;
     hospital: string;
     department_name: string;
     consultation_fee: number;
     experience: string;
     rating: number;
     reviews: number;
-    // available: string[]; // To be implemented in backend completely
+    description?: string;
+    available?: boolean;
+}
+
+export interface TimeSlot {
+    startTime: string;
+    endTime: string;
+    isAvailable: boolean;
+    isBooked: boolean;
+    slotType: 'AVAILABLE' | 'UNAVAILABLE' | 'SURGERY' | 'BREAK';
 }
 
 export interface Appointment {
     id: number;
     appointment_id: string;
+    patient: number;
+    doctor: number;
     doctor_name: string;
     doctor_specialty: string;
     hospital: string;
@@ -23,38 +35,167 @@ export interface Appointment {
     appointment_time: string;
     reason: string;
     status: string;
-    status_display: string;
+    status_display?: string;
+    notes?: string;
+    created_at: string;
 }
 
 export const appointmentService = {
-    getDoctors: async (specialty?: string, search?: string) => {
+    getDoctors: async (specialty?: string, search?: string): Promise<Doctor[]> => {
         const params = new URLSearchParams();
         if (specialty) params.append('specialty', specialty);
         if (search) params.append('search', search);
 
-        const response = await api.get<Doctor[]>(`/appointments/doctors/?${params.toString()}`);
-        return response.data;
+        try {
+            const response = await api.get<any>(`/appointments/doctors/?${params.toString()}`);
+
+            // Handle paginated (results) or plain array response
+            const results = Array.isArray(response.data) ? response.data :
+                (response.data.results ? response.data.results : []);
+
+            return results.map((doc: any) => ({
+                id: doc.id,
+                name: doc.name,
+                specialization: doc.specialization,
+                specialty: doc.specialization,
+                hospital: doc.hospital || 'SecureMed Hospital',
+                department_name: doc.department_name || '',
+                consultation_fee: doc.consultation_fee || 0,
+                experience: doc.experience || '5+ years',
+                rating: doc.rating || 4.5,
+                reviews: doc.reviews || 0,
+                description: `Specialist in ${doc.specialization}`,
+                available: true
+            }));
+        } catch (error) {
+            console.error('Error fetching doctors:', error);
+            throw error;
+        }
     },
 
-    getAppointments: async () => {
-        const response = await api.get<Appointment[]>('/appointments/appointments/');
-        return response.data;
+    getDoctorAvailability: async (doctorId: number | string, date: string): Promise<TimeSlot[]> => {
+        try {
+            const response = await api.get(`/appointments/doctors/${doctorId}/availability/?date=${date}`);
+            const slots = response.data?.slots || response.data || [];
+
+            return slots.map((slot: any) => {
+                const time = slot.time || '09:00';
+                const [hours, minutes] = time.split(':').map(Number);
+                const endHours = minutes >= 30 ? hours + 1 : hours;
+                const endMinutes = minutes >= 30 ? '00' : '30';
+
+                return {
+                    startTime: `${time}:00`,
+                    endTime: `${String(endHours).padStart(2, '0')}:${endMinutes}:00`,
+                    isAvailable: slot.available,
+                    isBooked: !slot.available,
+                    slotType: slot.available ? 'AVAILABLE' : 'UNAVAILABLE'
+                };
+            });
+        } catch (error) {
+            console.error('Error fetching availability:', error);
+            return [];
+        }
     },
 
     createAppointment: async (data: {
         doctor: number;
-        appointment_date: string; // YYYY-MM-DD
-        appointment_time: string; // HH:MM
+        appointment_date: string;
+        appointment_time: string;
         reason: string;
     }) => {
         const response = await api.post('/appointments/appointments/', data);
-        return response.data;
+        return {
+            success: true,
+            confirmationNumber: response.data.appointment_id,
+            ...response.data
+        };
     },
+
+    getAppointments: async (): Promise<Appointment[]> => {
+        try {
+            const response = await api.get('/appointments/appointments/');
+            const results = Array.isArray(response.data) ? response.data :
+                (response.data.results ? response.data.results : []);
+
+            return results.map((appt: any) => ({
+                id: appt.id,
+                appointment_id: appt.appointment_id,
+                patient: appt.patient,
+                doctor: appt.doctor,
+                doctor_name: appt.doctor_name || 'Unknown Doctor',
+                doctor_specialty: appt.doctor_specialty || 'General',
+                hospital: appt.hospital || 'SecureMed Hospital',
+                appointment_date: appt.appointment_date,
+                appointment_time: appt.appointment_time,
+                reason: appt.reason,
+                status: appt.status,
+                status_display: appt.status_display,
+                notes: appt.notes,
+                created_at: appt.created_at
+            }));
+        } catch (error) {
+            console.error('Error fetching appointments:', error);
+            return [];
+        }
+    },
+
+    updateAppointmentStatus: async (appointmentId: number, status: string): Promise<any> => {
+        try {
+            const response = await api.patch(`/appointments/appointments/${appointmentId}/`, { status });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            throw error;
+        }
+    }
 };
 
 export const medicalRecordService = {
-    getMedicalRecords: async () => {
-        const response = await api.get('/medical-records/records/');
+    getMedicalRecords: async (): Promise<any[]> => {
+        try {
+            const authTokens = localStorage.getItem('auth_tokens');
+            const token = authTokens ? JSON.parse(authTokens).access : null;
+            if (!token) return [];
+
+            const response = await api.get('/medical_records/', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching medical records:', error);
+            return [];
+        }
+    },
+
+    uploadRecord: async (formData: FormData): Promise<any> => {
+        const authTokens = localStorage.getItem('auth_tokens');
+        const token = authTokens ? JSON.parse(authTokens).access : null;
+        if (!token) throw new Error("No auth token");
+
+        const response = await api.post('/medical_records/', formData, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'multipart/form-data'
+            }
+        });
         return response.data;
+    },
+
+    getPrescriptions: async (): Promise<any[]> => {
+        try {
+            const authTokens = localStorage.getItem('auth_tokens');
+            const token = authTokens ? JSON.parse(authTokens).access : null;
+            if (!token) return [];
+
+            const response = await api.get('/medical_records/prescriptions/', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return Array.isArray(response.data) ? response.data :
+                (response.data.results ? response.data.results : []);
+        } catch (error) {
+            console.error('Error fetching prescriptions:', error);
+            return [];
+        }
     }
-}
+};

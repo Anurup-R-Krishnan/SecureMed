@@ -30,6 +30,9 @@ urlpatterns = [
     # Logout
     path('logout/', views.LogoutView.as_view(), name='auth_logout'),
     
+    # Password Reset
+    path('password-reset/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
+    
     # Account Deletion (Right to be Forgotten - Story 2.3)
     path('request-deletion/', views.RequestAccountDeletionView.as_view(), name='request-deletion'),
     path('deletion-certificate/', views.DownloadDeletionCertificateView.as_view(), name='deletion-certificate'),

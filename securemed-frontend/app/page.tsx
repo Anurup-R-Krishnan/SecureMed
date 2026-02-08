@@ -8,6 +8,8 @@ import LoginModal from '@/components/auth/login-modal';
 import PatientPortal from '@/components/portals/patient-portal';
 import DoctorPortal from '@/components/portals/doctor-portal';
 import AdminPortal from '@/components/portals/admin-portal';
+import LabTechnicianPortal from '@/components/portals/lab-technician-portal';
+import RoleGuard from '@/components/auth/role-guard';
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -29,30 +31,48 @@ export default function Home() {
   // Show patient portal
   if (userRole === 'patient') {
     return (
-      <PatientPortal 
-        onLogout={handleLogout} 
-        onSwitchRole={() => {}} // Not needed with real auth
-      />
+      <RoleGuard allowedRoles={['patient']}>
+        <PatientPortal
+          onLogout={handleLogout}
+          onSwitchRole={() => { }}
+        />
+      </RoleGuard>
     );
   }
 
   // Show doctor/provider portal
-  if (userRole === 'provider') {
+  if (userRole === 'doctor' || userRole === 'provider') {
     return (
-      <DoctorPortal 
-        onLogout={handleLogout} 
-        onSwitchRole={() => {}} // Not needed with real auth
-      />
+      <RoleGuard allowedRoles={['doctor', 'provider']}>
+        <DoctorPortal
+          onLogout={handleLogout}
+          onSwitchRole={() => { }}
+        />
+      </RoleGuard>
     );
   }
 
   // Show admin portal
   if (userRole === 'admin') {
     return (
-      <AdminPortal 
-        onLogout={handleLogout} 
-        onSwitchRole={() => {}} // Not needed with real auth
-      />
+      <RoleGuard allowedRoles={['admin']}>
+        <AdminPortal
+          onLogout={handleLogout}
+          onSwitchRole={() => { }}
+        />
+      </RoleGuard>
+    );
+  }
+
+  // Show lab technician portal
+  if (userRole === 'lab_technician') {
+    return (
+      <RoleGuard allowedRoles={['lab_technician']}>
+        <LabTechnicianPortal
+          onLogout={handleLogout}
+          onSwitchRole={() => { }}
+        />
+      </RoleGuard>
     );
   }
 
@@ -70,3 +90,4 @@ export default function Home() {
     </div>
   );
 }
+

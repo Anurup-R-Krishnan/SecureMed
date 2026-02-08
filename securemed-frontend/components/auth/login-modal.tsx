@@ -281,9 +281,13 @@ export default function LoginModal({
                   <input type="checkbox" className="rounded" disabled={isLoading} />
                   <span className="text-muted-foreground">Remember me</span>
                 </label>
-                <a href="#" className="text-primary hover:underline font-medium">
+                <Link
+                  href="/forgot-password"
+                  className="text-primary hover:underline font-medium"
+                  onClick={handleClose}
+                >
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {/* Login Button */}
@@ -295,13 +299,6 @@ export default function LoginModal({
               >
                 {isLoading ? 'Signing in...' : `Sign In as ${roleLabels[role]}`}
               </Button>
-
-              {/* Demo Info */}
-              <div className="rounded-lg bg-muted/50 p-4 text-xs text-muted-foreground">
-                <p className="font-medium mb-2">Demo Credentials:</p>
-                <p>Username: demo_user</p>
-                <p>Password: SecurePass123!@#</p>
-              </div>
             </form>
           </>
         ) : (

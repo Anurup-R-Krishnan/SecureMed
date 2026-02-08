@@ -1,7 +1,18 @@
 {
-  "status": "init",
-  "scope": "codebase",
+  "status": "commited",
   "type": "frontend",
-  "localEndpoint": "http://localhost:3000/",
-  "serverPort": 62672
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "Suriakiran",
+  "loginPassword": "Mclaren@1",
+  "executionArgs": {
+    "projectName": "securemed-frontend",
+    "projectPath": "c:/Users/LENOVO/Downloads/SecureMed-main/SecureMed/securemed-frontend",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-gjHCD6ppmhP2CaG4qdevl3SXRyc4esolyGSmXMic_uOYcF0pWV1kVOKbIkCgURJrRoVvSLzpCzQBEKMTpfXLqTudodbFfTBtNhIsPclQiCg-jfrI3LuJAKA-kvSNPg9KMlg"
+    }
+  },
+  "serverPort": 50548
 }

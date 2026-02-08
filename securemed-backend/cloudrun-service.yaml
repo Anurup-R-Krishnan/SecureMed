@@ -1,0 +1,79 @@
+# Cloud Run service configuration for SecureMed Backend
+# Deploy with: gcloud run services replace cloudbuild.yaml
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: securemed-backend
+  labels:
+    cloud.googleapis.com/location: us-central1
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/cloudsql-instances: ${PROJECT_ID}:us-central1:securemed-db
+        run.googleapis.com/cpu-throttling: "true"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: ${SERVICE_ACCOUNT}
+      containers:
+        - image: gcr.io/${PROJECT_ID}/securemed-backend:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: DEBUG
+              value: "False"
+            - name: ALLOWED_HOSTS
+              value: "*.run.app,localhost"
+            - name: DB_ENGINE
+              value: "django.db.backends.postgresql"
+            - name: DB_NAME
+              value: "securemed"
+            - name: DB_USER
+              value: "securemed_user"
+            - name: DB_HOST
+              value: "/cloudsql/${PROJECT_ID}:us-central1:securemed-db"
+            - name: DB_PORT
+              value: "5432"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "https://securemed-frontend-*.run.app"
+            # Secrets from Secret Manager
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret-key
+                  key: latest
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-password
+                  key: latest
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: encryption-key
+                  key: latest
+          startupProbe:
+            httpGet:
+              path: /admin/
+              port: 8000
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 5
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /admin/
+              port: 8000
+            periodSeconds: 30
+            timeoutSeconds: 5
