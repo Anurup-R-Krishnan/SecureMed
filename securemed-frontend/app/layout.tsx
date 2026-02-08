@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/context/auth-context'
 import { Toaster } from '@/components/ui/toaster'
-import SessionTimeout from '@/components/auth/session-timeout'
+import SessionTimeout from '@/components/session-timeout'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
