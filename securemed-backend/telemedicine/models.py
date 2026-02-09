@@ -171,3 +171,52 @@ class RoomParticipant(models.Model):
         """Record participant leaving the call."""
         self.left_at = timezone.now()
         self.save()
+
+
+class Conversation(models.Model):
+    """
+    Represents a secure text conversation between a doctor and a patient.
+    """
+    participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='conversations',
+        help_text='Users participating in this conversation'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"Conversation {self.id}"
+
+
+class Message(models.Model):
+    """
+    A single message within a conversation.
+    """
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name='messages'
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_messages'
+    )
+    content = models.TextField()
+    attachment = models.FileField(upload_to='message_attachments/', blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['conversation', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"Message {self.id} from {self.sender.username}"

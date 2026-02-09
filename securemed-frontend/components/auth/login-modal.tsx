@@ -208,7 +208,7 @@ export default function LoginModal({
             <div className="p-6 border-b border-border">
               <p className="text-sm font-medium text-muted-foreground mb-3">Login as:</p>
               <div className="flex gap-2">
-                {(['patient'] as const).map((r) => (
+                {(['patient', 'doctor', 'admin'] as const).map((r) => (
                   <button
                     key={r}
                     onClick={() => onChangeRole(r)}

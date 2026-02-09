@@ -101,9 +101,14 @@ export default function DoctorDashboard({
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-12">
-                        <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                        <p className="text-muted-foreground font-medium">No appointments scheduled for today</p>
+                    <div className="text-center py-16 bg-muted/10 rounded-2xl border border-dashed border-border/50">
+                        <div className="h-16 w-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Calendar className="h-8 w-8 text-muted-foreground/50" />
+                        </div>
+                        <h4 className="text-lg font-bold text-foreground mb-1">No appointments today</h4>
+                        <p className="text-muted-foreground font-medium text-sm max-w-xs mx-auto">
+                            Your schedule is clear. Enjoy your free time or check upcoming appointments.
+                        </p>
                     </div>
                 )}
             </div>

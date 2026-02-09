@@ -53,10 +53,10 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
           status: patient.status,
           lastVisit: patient.lastVisit,
           condition: patient.condition,
-          mrn: 'MRN-2025-001234', // Mock data preservation
-          dob: '1979-08-15',      // Mock data preservation
-          bloodType: 'O+',        // Mock data preservation
-          allergies: ['Penicillin', 'Shellfish'] // Mock data preservation
+          mrn: patient.mrn || '',
+          dob: patient.dob || '',
+          bloodType: patient.bloodType || '',
+          allergies: patient.allergies || []
         }} />
       </div>
 

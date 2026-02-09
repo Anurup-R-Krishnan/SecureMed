@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { Beaker, FileText, Pill, Activity } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TimelineEvent {
   id: string;
@@ -24,9 +25,10 @@ const typeIcons = {
 
 interface PatientTimelineProps {
   patientId: string;
+  className?: string;
 }
 
-export default function PatientTimeline({ patientId }: PatientTimelineProps) {
+export default function PatientTimeline({ patientId, className }: PatientTimelineProps) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +56,7 @@ export default function PatientTimeline({ patientId }: PatientTimelineProps) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <div className={cn("rounded-lg border border-border bg-card p-6", className)}>
       <h2 className="text-lg font-semibold text-foreground mb-6">Patient Timeline</h2>
 
       <div className="relative space-y-6">
@@ -63,7 +65,17 @@ export default function PatientTimeline({ patientId }: PatientTimelineProps) {
 
         {/* Timeline Events */}
         {events.length === 0 ? (
-          <p className="pl-16 text-slate-500 py-4">No events found.</p>
+          <div className="pl-12 py-8">
+            <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-2xl border border-dashed border-border/50 text-center">
+              <div className="h-12 w-12 bg-muted/20 rounded-full flex items-center justify-center mb-3">
+                <Activity className="h-6 w-6 text-muted-foreground/50" />
+              </div>
+              <h4 className="text-sm font-bold text-foreground">No timeline events</h4>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
+                No medical history or recent activities recorded for this patient.
+              </p>
+            </div>
+          </div>
         ) : (
           events.map((event, idx) => {
             const { icon: Icon, color } = typeIcons[event.type] || typeIcons.visit;

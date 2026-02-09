@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { appointmentService, DoctorAvailabilitySlot } from '@/services/appointments';
+import { useAuth } from '@/context/auth-context';
 
 interface TimeSlotConfig {
     id: string;
@@ -27,12 +28,9 @@ interface TimeSlotConfig {
 
 export default function AvailabilityManager() {
     const { toast } = useToast();
+    const { isAuthenticated } = useAuth();
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-    const [slots, setSlots] = useState<TimeSlotConfig[]>([
-        { id: '1', startTime: '09:00', endTime: '10:00', type: 'available' },
-        { id: '2', startTime: '10:00', endTime: '11:00', type: 'available' },
-        { id: '3', startTime: '13:00', endTime: '14:00', type: 'break' },
-    ]);
+    const [slots, setSlots] = useState<TimeSlotConfig[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     const formatDate = (date: Date) => {
@@ -44,7 +42,7 @@ export default function AvailabilityManager() {
 
     useEffect(() => {
         const loadSchedule = async () => {
-            if (!selectedDate) return;
+            if (!selectedDate || !isAuthenticated) return;
             setIsLoading(true);
             try {
                 const dateStr = formatDate(selectedDate);
@@ -72,37 +70,45 @@ export default function AvailabilityManager() {
         };
 
         loadSchedule();
-    }, [selectedDate, toast]);
+    }, [selectedDate, isAuthenticated, toast]);
 
     const handleSave = async () => {
         if (!selectedDate) {
             toast({
-                title: 'Select a Date',
-                description: 'Please select a date before saving availability.',
-                variant: 'destructive'
+                title: "Error",
+                description: "Please select a date first",
+                variant: "destructive"
             });
             return;
+        }
+
+        if (slots.length === 0) {
+            toast({
+                title: "Warning",
+                description: "You are saving an empty schedule (day off).",
+            });
         }
 
         setIsLoading(true);
         try {
             const dateStr = formatDate(selectedDate);
-            const payload: DoctorAvailabilitySlot[] = slots.map((slot) => ({
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-                type: slot.type
+            const doctorSlots: DoctorAvailabilitySlot[] = slots.map(s => ({
+                startTime: s.startTime,
+                endTime: s.endTime,
+                type: s.type
             }));
 
-            await appointmentService.saveDoctorSchedule(dateStr, payload);
+            await appointmentService.saveDoctorSchedule(dateStr, doctorSlots);
+
             toast({
-                title: 'Schedule Updated',
-                description: `Availability for ${selectedDate.toLocaleDateString()} has been saved.`,
+                title: "Success",
+                description: `Schedule saved for ${dateStr}`,
             });
         } catch (error) {
             console.error('Failed to save schedule', error);
             toast({
-                title: 'Save Failed',
-                description: 'Unable to save availability. Please try again.',
+                title: "Save Failed",
+                description: "Could not save your availability changes.",
                 variant: 'destructive'
             });
         } finally {
@@ -111,13 +117,12 @@ export default function AvailabilityManager() {
     };
 
     const addSlot = () => {
-        const newSlot: TimeSlotConfig = {
+        setSlots([...slots, {
             id: Math.random().toString(),
-            startTime: '12:00',
-            endTime: '13:00',
+            startTime: '09:00',
+            endTime: '10:00',
             type: 'available'
-        };
-        setSlots([...slots, newSlot]);
+        }]);
     };
 
     const removeSlot = (id: string) => {
@@ -125,131 +130,114 @@ export default function AvailabilityManager() {
     };
 
     const updateSlot = (id: string, field: keyof TimeSlotConfig, value: string) => {
-        setSlots(slots.map(s => s.id === id ? { ...s, [field]: value } : s));
+        setSlots(slots.map(s =>
+            s.id === id ? { ...s, [field]: value } : s
+        ));
     };
 
     return (
-        <div className="grid lg:grid-cols-3 gap-8">
-            <Card className="lg:col-span-1 p-6 border-none shadow-xl bg-card">
-                <div className="mb-6">
-                    <h2 className="text-xl font-black text-foreground mb-2">Select Date</h2>
-                    <p className="text-sm text-muted-foreground">Manage your schedule for specific days.</p>
-                </div>
-                <div className="p-4 border border-border/50 rounded-[24px] bg-background/50">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="p-6 lg:col-span-1">
+                <div className="mb-4">
+                    <h3 className="font-semibold mb-2 flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4" />
+                        Select Date
+                    </h3>
                     <Calendar
                         mode="single"
                         selected={selectedDate}
                         onSelect={setSelectedDate}
-                        className="rounded-md"
+                        className="rounded-md border bg-card"
                     />
                 </div>
 
-                <div className="mt-6 p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                    <h3 className="text-xs font-black text-primary uppercase tracking-widest mb-3">Quick Actions</h3>
-                    <div className="space-y-2">
-                        <Button variant="outline" className="w-full justify-start text-xs font-bold h-10" onClick={() => setSlots([])}>
-                            <Trash2 className="h-3 w-3 mr-2" />
-                            Clear All Slots
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start text-xs font-bold h-10" onClick={() => {
-                            setSlots([
-                                { id: '1', startTime: '09:00', endTime: '17:00', type: 'available' }
-                            ]);
-                        }}>
-                            <RefreshCw className="h-3 w-3 mr-2" />
-                            Reset to Default (9-5)
-                        </Button>
+                <div className="space-y-4">
+                    <Button
+                        onClick={handleSave}
+                        className="w-full gap-2"
+                        disabled={isLoading || !selectedDate}
+                    >
+                        {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Save Schedule
+                    </Button>
+
+                    <div className="bg-muted/30 p-4 rounded-lg text-sm text-muted-foreground space-y-2">
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <span>Set recurring hours in Settings</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-500" />
+                            <span>Changes apply immediately</span>
+                        </div>
                     </div>
                 </div>
             </Card>
 
-            <Card className="lg:col-span-2 p-8 border-none shadow-xl bg-card">
-                <div className="flex items-center justify-between mb-8">
+            <Card className="p-6 lg:col-span-2">
+                <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h2 className="text-2xl font-black text-foreground flex items-center gap-2">
-                            <Clock className="h-6 w-6 text-primary" />
-                            Availability Manager
-                        </h2>
+                        <h3 className="font-semibold flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Daily Schedule
+                        </h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Configure slots for <span className="font-bold text-foreground">{selectedDate?.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                            {selectedDate ? selectedDate.toDateString() : 'Select a date'}
                         </p>
                     </div>
-                    <Button onClick={handleSave} disabled={isLoading} className="font-bold shadow-lg shadow-primary/20">
-                        {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                        Save Changes
+                    <Button variant="outline" size="sm" onClick={addSlot} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Slot
                     </Button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {slots.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-border rounded-[32px] bg-muted/20">
-                            <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                                <CalendarIcon className="h-8 w-8 text-muted-foreground/50" />
-                            </div>
-                            <p className="font-bold text-muted-foreground">No slots configured for this day</p>
-                            <Button variant="link" onClick={addSlot} className="text-primary font-bold mt-2">
-                                + Add First Slot
-                            </Button>
+                        <div className="text-center py-12 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
+                            <Clock className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                            <p>No availability slots configured for this date.</p>
+                            <Button variant="link" onClick={addSlot}>Add your first slot</Button>
                         </div>
                     ) : (
                         slots.map((slot, index) => (
-                            <div key={slot.id} className="group flex flex-col md:flex-row items-center gap-4 p-4 rounded-2xl bg-background border border-border/50 shadow-sm hover:shadow-md hover:border-primary/20 transition-all animate-in slide-in-from-bottom-2 duration-300">
-                                <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center font-bold text-muted-foreground text-xs">
-                                    {index + 1}
+                            <div key={slot.id} className="flex items-center gap-3 bg-muted/20 p-3 rounded-lg border">
+                                <div className="flex items-center gap-2 flex-1">
+                                    <input
+                                        type="time"
+                                        value={slot.startTime}
+                                        onChange={(e) => updateSlot(slot.id, 'startTime', e.target.value)}
+                                        className="bg-background border rounded px-2 py-1 text-sm w-28"
+                                    />
+                                    <span className="text-muted-foreground">to</span>
+                                    <input
+                                        type="time"
+                                        value={slot.endTime}
+                                        onChange={(e) => updateSlot(slot.id, 'endTime', e.target.value)}
+                                        className="bg-background border rounded px-2 py-1 text-sm w-28"
+                                    />
                                 </div>
 
-                                <div className="flex items-center gap-2 flex-1 w-full md:w-auto">
-                                    <div className="relative flex-1">
-                                        <label className="absolute -top-2 left-2 px-1 bg-background text-[10px] font-bold text-muted-foreground">Start</label>
-                                        <input
-                                            type="time"
-                                            value={slot.startTime}
-                                            onChange={(e) => updateSlot(slot.id, 'startTime', e.target.value)}
-                                            className="w-full px-3 py-2 rounded-xl border border-border bg-muted/20 text-sm font-medium focus:border-primary focus:ring-0 outline-none"
-                                        />
-                                    </div>
-                                    <span className="text-muted-foreground">-</span>
-                                    <div className="relative flex-1">
-                                        <label className="absolute -top-2 left-2 px-1 bg-background text-[10px] font-bold text-muted-foreground">End</label>
-                                        <input
-                                            type="time"
-                                            value={slot.endTime}
-                                            onChange={(e) => updateSlot(slot.id, 'endTime', e.target.value)}
-                                            className="w-full px-3 py-2 rounded-xl border border-border bg-muted/20 text-sm font-medium focus:border-primary focus:ring-0 outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="w-full md:w-48">
-                                    <select
-                                        value={slot.type}
-                                        onChange={(e) => updateSlot(slot.id, 'type', e.target.value as any)}
-                                        className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm font-medium focus:border-primary focus:ring-0 outline-none cursor-pointer"
-                                    >
-                                        <option value="available">✓ Available</option>
-                                        <option value="surgery">⚡ Surgery</option>
-                                        <option value="break">☕ Break</option>
-                                    </select>
-                                </div>
+                                <select
+                                    value={slot.type}
+                                    onChange={(e) => updateSlot(slot.id, 'type', e.target.value as any)}
+                                    className="bg-background border rounded px-3 py-1 text-sm min-w-[120px]"
+                                >
+                                    <option value="available">Available</option>
+                                    <option value="surgery">Surgery</option>
+                                    <option value="break">Break</option>
+                                </select>
 
                                 <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => removeSlot(slot.id)}
-                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         ))
                     )}
-                </div>
-
-                <div className="mt-6">
-                    <Button variant="outline" onClick={addSlot} className="w-full border-dashed border-2 h-14 rounded-2xl text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 font-bold transition-all">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Time Slot
-                    </Button>
                 </div>
             </Card>
         </div>

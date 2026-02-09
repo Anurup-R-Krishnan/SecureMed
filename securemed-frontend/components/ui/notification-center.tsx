@@ -21,36 +21,8 @@ export type Notification = {
     type: 'info' | 'success' | 'warning' | 'error'
 }
 
-// Mock data for demonstration
-const INITIAL_NOTIFICATIONS: Notification[] = [
-    {
-        id: '1',
-        title: 'Appointment Confirmed',
-        message: 'Your appointment with Dr. Sarah is confirmed for tomorrow at 10:00 AM.',
-        timestamp: '2 hours ago',
-        read: false,
-        type: 'success'
-    },
-    {
-        id: '2',
-        title: 'New Lab Result',
-        message: 'Blood test results are now available in your records.',
-        timestamp: '5 hours ago',
-        read: false,
-        type: 'info'
-    },
-    {
-        id: '3',
-        title: 'System Maintenance',
-        message: 'Scheduled maintenance on Saturday 12 AM - 4 AM.',
-        timestamp: '1 day ago',
-        read: true,
-        type: 'warning'
-    }
-]
-
 export function NotificationCenter() {
-    const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS)
+    const [notifications, setNotifications] = useState<Notification[]>([])
     const [isOpen, setIsOpen] = useState(false)
 
     const unreadCount = notifications.filter(n => !n.read).length

@@ -64,3 +64,23 @@ export function getAuthHeader(): string | null {
     const token = getAccessToken();
     return token ? `Bearer ${token}` : null;
 }
+
+export interface AuthUser {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+    [key: string]: any;
+}
+
+export function getCurrentUser(): AuthUser | null {
+    try {
+        const storedUser = localStorage.getItem('auth_user');
+        if (storedUser) {
+            return JSON.parse(storedUser) as AuthUser;
+        }
+    } catch (e) {
+        console.error('Failed to parse auth user:', e);
+    }
+    return null;
+}

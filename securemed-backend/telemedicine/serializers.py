@@ -46,3 +46,44 @@ class VideoRoomSerializer(serializers.ModelSerializer):
     
     def get_patient_name(self, obj):
         return f"{obj.patient.first_name} {obj.patient.last_name}" if obj.patient else None
+
+
+from .models import Conversation, Message
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Message
+        fields = ['id', 'conversation', 'sender', 'sender_name', 'content', 'attachment', 'is_read', 'created_at']
+        read_only_fields = ['id', 'conversation', 'sender', 'created_at']
+        
+    def get_sender_name(self, obj):
+        return obj.sender.get_full_name() or obj.sender.username
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    participants = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Conversation
+        fields = ['id', 'participants', 'created_at', 'updated_at', 'is_active', 'last_message']
+        read_only_fields = ['id', 'participants', 'created_at', 'updated_at', 'is_active', 'last_message']
+    
+    def get_participants(self, obj):
+        return [
+            {
+                'id': user.id,
+                'username': user.username,
+                'name': user.get_full_name() or user.username,
+                'role': user.role
+            }
+            for user in obj.participants.all()
+        ]
+
+    def get_last_message(self, obj):
+        last_msg = obj.messages.last()
+        if last_msg:
+            return MessageSerializer(last_msg).data
+        return None

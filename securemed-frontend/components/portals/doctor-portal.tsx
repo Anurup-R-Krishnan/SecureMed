@@ -17,7 +17,8 @@ import {
   CheckCircle,
   Activity,
   Pill,
-  FlaskConical
+  FlaskConical,
+  MessageSquare
 } from 'lucide-react';
 import MfaSetup from '@/components/auth/mfa-setup';
 import AIDecisionSupport from '@/components/portals/doctor/shared/ai-decision-support';
@@ -34,8 +35,9 @@ import { appointmentService, Appointment } from '@/services/appointments';
 import api from '@/lib/api';
 import { NotificationCenter } from '@/components/ui/notification-center';
 import { toast } from 'sonner';
+import { MessagingInterface } from '@/components/telemedicine/MessagingInterface';
 
-type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'prescriptions' | 'labs' | 'ai-assistant' | 'availability' | 'settings';
+type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'prescriptions' | 'labs' | 'messaging' | 'ai-assistant' | 'availability' | 'settings';
 
 interface DoctorPortalProps {
   onLogout: () => void;
@@ -137,6 +139,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     { id: 'prescriptions', label: 'Prescriptions', icon: <Pill className="h-5 w-5" /> },
     { id: 'labs', label: 'Lab Orders', icon: <FlaskConical className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
+    { id: 'messaging', label: 'Messages', icon: <MessageSquare className="h-5 w-5" /> },
     { id: 'ai-assistant', label: 'AI Assistant', icon: <Brain className="h-5 w-5" /> },
     { id: 'availability', label: 'Availability', icon: <Clock className="h-5 w-5" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
@@ -339,6 +342,12 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                   <PatientTimeline className="shadow-none border-none bg-transparent" />
                 </div>
               </div>
+            )}
+
+
+
+            {activeTab === 'messaging' && (
+              <MessagingInterface />
             )}
 
             {activeTab === 'ai-assistant' && (

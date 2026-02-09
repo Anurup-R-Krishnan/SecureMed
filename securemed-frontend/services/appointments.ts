@@ -189,7 +189,7 @@ export const medicalRecordService = {
             const token = getAccessToken();
             if (!token) return [];
 
-            const response = await api.get('/medical_records/', {
+            const response = await api.get('/medical-records/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return response.data;
@@ -203,7 +203,7 @@ export const medicalRecordService = {
         const token = getAccessToken();
         if (!token) throw new Error("No auth token");
 
-        const response = await api.post('/medical_records/', formData, {
+        const response = await api.post('/medical-records/', formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'multipart/form-data'
@@ -217,7 +217,7 @@ export const medicalRecordService = {
             const token = getAccessToken();
             if (!token) return [];
 
-            const response = await api.get('/medical_records/prescriptions/', {
+            const response = await api.get('/medical-records/prescriptions/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return Array.isArray(response.data) ? response.data :

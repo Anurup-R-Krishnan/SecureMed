@@ -233,3 +233,71 @@ class VideoRoomViewSet(viewsets.ModelViewSet):
 
 # Import models for Q object
 from django.db import models
+
+
+from .models import Conversation, Message
+from .serializers import ConversationSerializer, MessageSerializer
+
+
+class ConversationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing secure text conversations.
+    """
+    serializer_class = ConversationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Conversation.objects.filter(participants=self.request.user)
+    
+    def perform_create(self, serializer):
+        # Conversations are typically started by finding a doctor/patient pairing
+        # This basic create doesn't handle participants logic fully; 
+        # usually done via a specific action or signal.
+        # For MVP, we presume participants are added after creation or passed in context.
+        # But ModelViewSet create doesn't handle M2M well in perform_create easily without custom logic.
+        # Let's override create to handle 'participant_id' in data.
+        pass
+
+    def create(self, request, *args, **kwargs):
+        participant_id = request.data.get('participant_id')
+        if not participant_id:
+            return Response({'error': 'participant_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if conversation already exists between these two
+        # (Assuming 1-on-1 for now)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            other_user = User.objects.get(id=participant_id)
+        except User.DoesNotExist:
+             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Basic check for existing conversation
+        existing = Conversation.objects.filter(participants=request.user).filter(participants=other_user).first()
+        if existing:
+             return Response(ConversationSerializer(existing).data)
+
+        conversation = Conversation.objects.create()
+        conversation.participants.add(request.user, other_user)
+        return Response(ConversationSerializer(conversation).data, status=status.HTTP_201_CREATED)
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing messages within a conversation.
+    """
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = Message.objects.filter(conversation__participants=self.request.user)
+        conversation_id = self.request.query_params.get('conversation')
+        if conversation_id:
+            queryset = queryset.filter(conversation_id=conversation_id)
+        return queryset
+    
+    def perform_create(self, serializer):
+        conversation_id = self.request.data.get('conversation')
+        conversation = get_object_or_404(Conversation, id=conversation_id, participants=self.request.user)
+        serializer.save(sender=self.request.user, conversation=conversation)
+

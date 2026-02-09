@@ -15,6 +15,7 @@ import {
     Loader2,
     ChevronLeft,
     ChevronRight,
+    MessageSquare,
 } from 'lucide-react';
 import api from '@/lib/api';
 import PatientDashboard from './patient/dashboard/dashboard';
@@ -24,8 +25,9 @@ import PatientBilling from './patient/billing/billing';
 import PrivacySettings from './patient/settings/privacy-settings';
 import ProfileEditor from './patient/settings/profile-editor';
 import { NotificationCenter } from '@/components/ui/notification-center';
+import { MessagingInterface } from '@/components/telemedicine/MessagingInterface';
 
-type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing' | 'profile' | 'settings';
+type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing' | 'messaging' | 'profile' | 'settings';
 
 interface PatientPortalProps {
     onLogout: () => void;
@@ -58,6 +60,7 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
         { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-5 w-5" /> },
         { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
         { id: 'billing', label: 'Billing', icon: <BarChart3 className="h-5 w-5" /> },
+        { id: 'messaging', label: 'Messages', icon: <MessageSquare className="h-5 w-5" /> },
         { id: 'profile', label: 'Profile', icon: <User className="h-5 w-5" /> },
         { id: 'settings', label: 'Privacy & Security', icon: <Settings className="h-5 w-5" /> },
     ];
@@ -188,6 +191,7 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
                         {activeTab === 'appointments' && <AppointmentBooking />}
                         {activeTab === 'records' && <MedicalRecords patientId={patient?.patient_id} />}
                         {activeTab === 'billing' && <PatientBilling patient={patient} />}
+                        {activeTab === 'messaging' && <MessagingInterface />}
                         {activeTab === 'profile' && <ProfileEditor />}
                         {activeTab === 'settings' && <PrivacySettings />}
                     </div>

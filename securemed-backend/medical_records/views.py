@@ -28,19 +28,29 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
         return MedicalRecord.objects.none()
 
     def create(self, request, *args, **kwargs):
-        # Allow patients to upload their own records
-        if not hasattr(request.user, 'patient_profile') and not request.user.is_staff:
-             return Response({"error": "Only patients or staff can upload records."}, status=status.HTTP_403_FORBIDDEN)
+        # Only doctors and nurses can create official medical records
+        if not hasattr(request.user, 'doctor_profile') and not hasattr(request.user, 'nurse_profile'):
+            return Response(
+                {"error": "Only authorized medical staff can create medical records."},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
-        # Auto-generate record ID if not provided (frontend might not send it)
+        # Auto-generate record ID if not provided
         import uuid
         data = request.data.copy()
         if 'record_id' not in data:
             data['record_id'] = f"REC-{uuid.uuid4().hex[:8].upper()}"
         
-        # If patient is uploading, force patient field to be themselves
-        if hasattr(request.user, 'patient_profile'):
-            data['patient'] = request.user.patient_profile.id
+        # Set the doctor creating the record
+        if hasattr(request.user, 'doctor_profile'):
+            data['doctor'] = request.user.doctor_profile.id
+        elif hasattr(request.user, 'nurse_profile'):
+            # Nurses can create records but need to specify the doctor
+            if 'doctor' not in data:
+                return Response(
+                    {"error": "Nurses must specify the attending doctor."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -238,14 +248,17 @@ class VitalSignViewSet(viewsets.ModelViewSet):
         return self.queryset.none()
 
     def perform_create(self, serializer):
+        # Only doctors and nurses can record official vital signs
         user = self.request.user
-        if hasattr(user, 'patient_profile'):
-            serializer.save(patient=user.patient_profile)
-            return
-
+        
+        if not hasattr(user, 'nurse_profile') and not hasattr(user, 'doctor_profile'):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only clinical staff can record vital signs.")
+        
+        # Require patient to be specified
         patient = serializer.validated_data.get('patient')
         if not patient:
-            raise ValidationError({"patient": "Patient is required when staff create vitals."})
+            raise ValidationError({"patient": "Patient is required when recording vitals."})
 
         serializer.save()
 
