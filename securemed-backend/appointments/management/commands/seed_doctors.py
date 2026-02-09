@@ -55,6 +55,8 @@ class Command(BaseCommand):
                     'experience_years': doc_data['years'],
                     'consultation_fee': 150.00,
                     'phone': f'+1-555-{100+i:03d}-{1000+i:04d}',
+                    'rating': round(random.uniform(4.2, 4.9), 2),
+                    'reviews': random.randint(50, 200),
                     'is_active': True,
                     'is_available': True,
                 }

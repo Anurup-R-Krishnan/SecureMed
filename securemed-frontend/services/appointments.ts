@@ -66,18 +66,18 @@ export const appointmentService = {
 
             return results.map((doc: any) => ({
                 id: doc.id,
-                user_id: doc.user_id || doc.id,
+                user_id: doc.user_id,
                 name: doc.name,
                 specialization: doc.specialization,
                 specialty: doc.specialization,
-                hospital: doc.hospital || 'SecureMed Hospital',
-                department_name: doc.department_name || '',
-                consultation_fee: doc.consultation_fee || 0,
-                experience: doc.experience || '5+ years',
-                rating: doc.rating || 4.5,
-                reviews: doc.reviews || 0,
-                description: `Specialist in ${doc.specialization}`,
-                available: true
+                hospital: doc.hospital,
+                department_name: doc.department_name,
+                consultation_fee: doc.consultation_fee,
+                experience: doc.experience,
+                rating: doc.rating,
+                reviews: doc.reviews,
+                description: doc.description || `Specialist in ${doc.specialization}`,
+                available: doc.available
             }));
         } catch (error) {
             console.error('Error fetching doctors:', error);

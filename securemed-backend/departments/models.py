@@ -50,6 +50,10 @@ class Doctor(models.Model):
     consultation_fee = models.DecimalField(max_digits=10, decimal_places=2)
     phone = models.CharField(max_length=17)
     
+    # Patient feedback metrics
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00, help_text="Average rating from patient reviews")
+    reviews = models.IntegerField(default=0, help_text="Total number of patient reviews")
+    
     is_available = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

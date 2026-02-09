@@ -35,9 +35,6 @@ class DoctorSerializer(serializers.ModelSerializer):
     def get_experience(self, obj):
         return f"{obj.experience_years} years"
 
-    rating = serializers.FloatField(default=4.8, read_only=True)
-    reviews = serializers.IntegerField(default=120, read_only=True)
-
 
 class AppointmentSerializer(serializers.ModelSerializer):
     doctor_name = serializers.CharField(source='doctor.user.get_full_name', read_only=True)

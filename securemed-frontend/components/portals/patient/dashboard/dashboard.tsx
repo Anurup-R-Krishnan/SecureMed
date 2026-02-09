@@ -74,13 +74,13 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
         return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading dashboard...</div>;
     }
 
-    // Default vitals if API fails or no data - show realistic baseline values
-    const vitals = dashboardStats?.vitals || {
-        heartRate: 72,
-        systolicBp: 120,
-        diastolicBp: 80,
-        weight: 70
-    };
+    // Get vitals from backend - no fallback defaults
+    const vitals = dashboardStats?.vitals ? {
+        heartRate: dashboardStats.vitals.heart_rate,
+        systolicBp: dashboardStats.vitals.systolic_bp,
+        diastolicBp: dashboardStats.vitals.diastolic_bp,
+        weight: dashboardStats.vitals.weight
+    } : null;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -97,20 +97,19 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
             <div className="grid lg:grid-cols-3 gap-6">
                 {/* Left Column: Health Score */}
                 <div className="lg:col-span-1 h-64">
-                    <HealthScoreCard score={dashboardStats?.health_score || 85} />
+                    <HealthScoreCard score={dashboardStats?.health_score ?? 0} />
                 </div>
 
                 {/* Right Column: Vitals & Quick Actions */}
                 <div className="lg:col-span-2 space-y-6">
-                    <VitalsRow
-                        vitals={{
-                            heartRate: vitals.heart_rate || 0,
-                            systolicBp: vitals.systolic_bp || 0,
-                            diastolicBp: vitals.diastolic_bp || 0,
-                            weight: vitals.weight || 0
-                        }}
-                        history={dashboardStats?.vitals_history || []}
-                    />
+                    {vitals ? (
+                        <VitalsRow
+                            vitals={vitals}
+                            history={dashboardStats?.vitals_history || []}
+                        />
+                    ) : (
+                        <div className="text-center p-8 text-muted-foreground">Loading vitals...</div>
+                    )}
 
                     <QuickActions onNavigate={onNavigate} />
                 </div>

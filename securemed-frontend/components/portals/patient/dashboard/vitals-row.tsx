@@ -32,23 +32,15 @@ interface VitalsRowProps {
 
 export default function VitalsRow({ vitals, history = [] }: VitalsRowProps) {
 
-    // Helper to extract trend data from history
-    // History is expected to be consistent with keys: heart_rate, systolic_bp, weight, recorded_at
-    const getTrendData = (key: string, baseValue: number) => {
-        if (!history || history.length === 0) {
-            // Generate realistic trend data around baseline
-            return Array.from({ length: 7 }, (_, i) => {
-                const variance = Math.sin(i * 0.5) * (baseValue * 0.05);
-                return Math.round(baseValue + variance);
-            });
-        }
+    // Helper to extract trend data from history - use actual database data only
+    const getTrendData = (key: string) => {
+        if (!history || history.length === 0) return [];
         return history.map(item => item[key]);
     };
 
-    const hrTrend = getTrendData('heart_rate', vitals.heartRate || 72);
-    const sysTrend = getTrendData('systolic_bp', vitals.systolicBp || 120);
-    // const diaTrend = getTrendData('diastolic_bp'); // Could overlay if needed
-    const weightTrend = getTrendData('weight', vitals.weight || 70);
+    const hrTrend = getTrendData('heart_rate');
+    const sysTrend = getTrendData('systolic_bp');
+    const weightTrend = getTrendData('weight');
 
     // If no history, we just show a flat line or empty chart? 
     // For now let's handle "null" by chart.js or just pass 0s if empty
@@ -83,7 +75,7 @@ export default function VitalsRow({ vitals, history = [] }: VitalsRowProps) {
     });
 
     const createChartData = (data: number[], color: string) => ({
-        labels: hasHistory ? history.map(h => new Date(h.recorded_at).toLocaleDateString()) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: history.map(h => new Date(h.recorded_at).toLocaleDateString()),
         datasets: [
             {
                 data: data,
@@ -110,7 +102,11 @@ export default function VitalsRow({ vitals, history = [] }: VitalsRowProps) {
                     </div>
                 </div>
                 <div className="h-12 w-full mt-2">
-                    <Line options={createChartOptions('#f43f5e', hrTrend)} data={createChartData(hrTrend, '#f43f5e')} />
+                    {hasHistory ? (
+                        <Line options={createChartOptions('#f43f5e', hrTrend)} data={createChartData(hrTrend, '#f43f5e')} />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground">Tracking...</div>
+                    )}
                 </div>
             </Card>
 
@@ -131,7 +127,11 @@ export default function VitalsRow({ vitals, history = [] }: VitalsRowProps) {
                     </div>
                 </div>
                 <div className="h-12 w-full mt-2">
-                    <Line options={createChartOptions('#3b82f6', sysTrend)} data={createChartData(sysTrend, '#3b82f6')} />
+                    {hasHistory ? (
+                        <Line options={createChartOptions('#3b82f6', sysTrend)} data={createChartData(sysTrend, '#3b82f6')} />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground">Tracking...</div>
+                    )}
                 </div>
             </Card>
 
@@ -150,7 +150,11 @@ export default function VitalsRow({ vitals, history = [] }: VitalsRowProps) {
                     </div>
                 </div>
                 <div className="h-12 w-full mt-2">
-                    <Line options={createChartOptions('#10b981', weightTrend)} data={createChartData(weightTrend, '#10b981')} />
+                    {hasHistory ? (
+                        <Line options={createChartOptions('#10b981', weightTrend)} data={createChartData(weightTrend, '#10b981')} />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground">Tracking...</div>
+                    )}
                 </div>
             </Card>
         </div>
