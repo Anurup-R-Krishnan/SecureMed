@@ -33,7 +33,8 @@ from .serializers import (
     UserListSerializer,
     UserRoleUpdateSerializer,
     PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
+    AdminUserCreateSerializer
 )
 
 User = get_user_model()
@@ -1322,6 +1323,34 @@ class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
                 }
             })
         
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='create')
+    def create_user(self, request):
+        """
+        Create a new user (Admin only).
+        POST /api/auth/users/create/
+        """
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Forbidden: Admin access required'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = AdminUserCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                'message': 'User created successfully',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'role': user.role,
+                    'is_active': user.is_active
+                }
+            }, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['post'])

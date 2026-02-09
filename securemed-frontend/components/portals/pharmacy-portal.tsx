@@ -4,8 +4,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { LogOut, CheckCircle, ShieldCheck, Search } from 'lucide-react';
+import { LogOut, CheckCircle, ShieldCheck, Search, QrCode, CameraOff } from 'lucide-react';
 import { pharmacyService, PharmacyOrder } from '@/services/pharmacy';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface PharmacyPortalProps {
   onLogout: () => void;
@@ -19,6 +27,10 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
   const [verifyNotes, setVerifyNotes] = useState<Record<number, string>>({});
   const [pickupCode, setPickupCode] = useState<Record<number, string>>({});
   const [workingId, setWorkingId] = useState<number | null>(null);
+  const [scanOrderId, setScanOrderId] = useState<number | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -64,6 +76,67 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
       setWorkingId(null);
     }
   };
+
+  const closeScanner = () => {
+    setScanOrderId(null);
+    setScanError(null);
+    setScanning(false);
+    if (videoStream) {
+      videoStream.getTracks().forEach((t) => t.stop());
+      setVideoStream(null);
+    }
+  };
+
+  const startScan = async (orderId: number) => {
+    setScanOrderId(orderId);
+    setScanError(null);
+
+    if (!('BarcodeDetector' in window)) {
+      setScanError('QR scanning not supported in this browser.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setVideoStream(stream);
+      setScanning(true);
+    } catch (error) {
+      setScanError('Unable to access camera.');
+    }
+  };
+
+  useEffect(() => {
+    if (!scanning || !videoStream || scanOrderId === null) return;
+
+    let raf = 0;
+    const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+    const videoEl = document.getElementById('qr-video') as HTMLVideoElement | null;
+
+    if (videoEl) {
+      videoEl.srcObject = videoStream;
+      videoEl.play().catch(() => setScanError('Failed to start camera.'));
+    }
+
+    const tick = async () => {
+      if (!videoEl) return;
+      try {
+        const codes = await detector.detect(videoEl);
+        if (codes.length > 0) {
+          const raw = codes[0].rawValue || '';
+          const code = raw.replace('SECUREMED:RX:', '').trim();
+          setPickupCode((prev) => ({ ...prev, [scanOrderId]: code }));
+          closeScanner();
+          return;
+        }
+      } catch (e) {
+        setScanError('QR scan failed. Try again.');
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(raf);
+  }, [scanning, videoStream, scanOrderId]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -146,11 +219,17 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
                         Fulfill
                       </Button>
                     </div>
-                    <Input
-                      placeholder="Scan/enter pickup code"
-                      value={pickupCode[order.id] || ''}
-                      onChange={(e) => setPickupCode({ ...pickupCode, [order.id]: e.target.value })}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Scan/enter pickup code"
+                        value={pickupCode[order.id] || ''}
+                        onChange={(e) => setPickupCode({ ...pickupCode, [order.id]: e.target.value })}
+                      />
+                      <Button variant="outline" onClick={() => startScan(order.id)}>
+                        <QrCode className="h-4 w-4 mr-2" />
+                        Scan
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -158,6 +237,28 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
           </div>
         )}
       </main>
+
+      <Dialog open={scanOrderId !== null} onOpenChange={closeScanner}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Scan Pickup QR Code</DialogTitle>
+            <DialogDescription>Point the camera at the QR code on the patient’s pickup slip.</DialogDescription>
+          </DialogHeader>
+          <div className="aspect-video w-full rounded-lg border border-border bg-black/90 flex items-center justify-center">
+            {scanError ? (
+              <div className="text-center text-sm text-destructive flex flex-col items-center gap-2">
+                <CameraOff className="h-6 w-6" />
+                {scanError}
+              </div>
+            ) : (
+              <video id="qr-video" className="h-full w-full object-cover rounded-lg" />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeScanner}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

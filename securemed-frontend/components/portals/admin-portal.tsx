@@ -39,11 +39,13 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
   const [patients, setPatients] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const [hospitalsData, staffData, statsData, patientsData] = await Promise.all([
           adminService.getHospitals(),
@@ -57,6 +59,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
         setStats(statsData);
       } catch (error) {
         console.error('Error fetching admin data:', error);
+        setLoadError('Failed to load admin data from backend.');
       } finally {
         setIsLoading(false);
       }
@@ -161,6 +164,11 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
         {/* Tab Content */}
         <div className="p-6">
           <div className="max-w-7xl mx-auto">
+            {loadError && (
+              <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {loadError}
+              </div>
+            )}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 {/* Key Metrics */}
@@ -170,7 +178,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                       <div>
                         <p className="text-muted-foreground text-sm">Total Patients</p>
                         <p className="text-3xl font-bold text-foreground mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalPatients?.toLocaleString() || '0')}
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalPatients?.toLocaleString() || '—')}
                         </p>
                       </div>
                       <Users className="h-8 w-8 text-primary opacity-20" />
@@ -181,7 +189,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                       <div>
                         <p className="text-muted-foreground text-sm">Hospital Occupancy</p>
                         <p className="text-3xl font-bold text-primary mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.hospitalOccupancy || '0%')}
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.hospitalOccupancy || '—')}
                         </p>
                       </div>
                       <Activity className="h-8 w-8 text-primary opacity-20" />
@@ -192,7 +200,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                       <div>
                         <p className="text-muted-foreground text-sm">Total Revenue</p>
                         <p className="text-3xl font-bold text-primary mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalRevenue || '₹0')}
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalRevenue || '—')}
                         </p>
                       </div>
                       <DollarSign className="h-8 w-8 text-primary opacity-20" />
@@ -243,7 +251,14 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
             )}
 
             {activeTab === 'staff' && (
-              <StaffManager staff={staff} />
+              <StaffManager
+                staff={staff}
+                onCreateUser={async (payload) => {
+                  await adminService.createUser(payload);
+                  const staffData = await adminService.getStaff();
+                  setStaff(staffData);
+                }}
+              />
             )}
 
             {activeTab === 'patients' && (
