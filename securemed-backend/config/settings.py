@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-    'core',  # Core app for management commands
+    'core',
     'authentication',
     'consents',
     'patients',
@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'telemedicine',
     'analytics',
     'labs',
+    'pharmacy',
 ]
 
 MIDDLEWARE = [
