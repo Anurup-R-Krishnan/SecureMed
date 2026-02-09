@@ -3,7 +3,13 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.mail import send_mail
-from django_ratelimit.decorators import ratelimit
+try:
+    from django_ratelimit.decorators import ratelimit
+except ImportError:
+    def ratelimit(key, rate, method=None, block=False):
+        def decorator(fn):
+            return fn
+        return decorator
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated

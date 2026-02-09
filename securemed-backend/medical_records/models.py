@@ -15,6 +15,13 @@ class MedicalRecord(models.Model):
         ('discharge', 'Discharge Summary'),
     ]
     
+    SOURCE_CHOICES = [
+        ('provider', 'Healthcare Provider'),
+        ('patient', 'Patient Reported'),
+        ('device', 'Medical Device'),
+        ('external', 'External System'),
+    ]
+    
     record_id = models.CharField(max_length=20, unique=True, db_index=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_records')
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, related_name='medical_records')
@@ -28,6 +35,16 @@ class MedicalRecord(models.Model):
     treatment = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     file = models.FileField(upload_to='medical_records/', null=True, blank=True)
+    
+    # Data Authority Fields
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='provider', db_index=True)
+    is_attested = models.BooleanField(default=False, help_text="Whether this record has been clinically attested")
+    attested_by = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True, related_name='attested_records')
+    attested_at = models.DateTimeField(null=True, blank=True)
+    
+    # Amendment Workflow
+    parent_record = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='amendments', help_text="Original record if this is an amendment")
+    amendment_reason = models.TextField(blank=True)
     
     is_confidential = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -165,7 +182,19 @@ class MedicalRecordAccess(models.Model):
     medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='access_logs')
     accessed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     access_timestamp = models.DateTimeField(auto_now_add=True)
-    access_reason = models.CharField(max_length=200)
+    
+    ACTION_CHOICES = [
+        ('viewed', 'Viewed'),
+        ('created', 'Created'),
+        ('updated', 'Updated'),
+        ('deleted', 'Deleted'),
+        ('printed', 'Printed'),
+        ('exported', 'Exported'),
+        ('attested', 'Attested'),
+        ('amended', 'Amended'),
+    ]
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='viewed')
+    access_reason = models.CharField(max_length=200, blank=True) # Reason is optional for routine views
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     
     class Meta:
@@ -203,6 +232,17 @@ class VitalSign(models.Model):
     systolic_bp = models.IntegerField(help_text="Systolic Blood Pressure (mmHg)")
     diastolic_bp = models.IntegerField(help_text="Diastolic Blood Pressure (mmHg)")
     weight = models.FloatField(help_text="Weight in kg")
+    
+    # Data Authority
+    SOURCE_CHOICES = [
+        ('clinical', 'Clinical Measurement'),
+        ('patient', 'Patient Reported'),
+        ('device', 'Remote Monitoring Device'),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='clinical')
+    is_verified = models.BooleanField(default=True) # Clinical are verified by default
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_vitals')
+    
     recorded_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

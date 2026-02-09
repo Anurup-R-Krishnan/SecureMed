@@ -33,7 +33,7 @@ export default function EmergencyAccessModal({
       setIsSubmitting(true);
       setError('');
       try {
-        await api.post('/medical-records/break_glass/', {
+        await api.post('/medical-records/records/break_glass/', {
           patient_id: patientId,
           reason: justification
         });

@@ -45,7 +45,9 @@ class LabOrderViewSet(viewsets.ModelViewSet):
                  raise serializers.ValidationError({"patient_id": "Invalid patient ID"})
                   
         elif self.request.user.role == 'patient':
-             serializer.save(patient=self.request.user)
+             # RESTRICT: Patients cannot create lab orders directly
+             from rest_framework.exceptions import PermissionDenied
+             raise PermissionDenied("Patients cannot create lab orders directly. Please consult a doctor.")
         else:
              serializer.save(doctor=self.request.user)
 
@@ -76,6 +78,11 @@ class LabWorklistViewSet(viewsets.ViewSet):
     
     def list(self, request):
         """Get blinded worklist for technicians"""
+        
+        # RESTRICT: Only staff/technicians can view worklist
+        if not request.user.is_staff and not hasattr(request.user, 'nurse_profile') and not hasattr(request.user, 'doctor_profile'):
+             return Response({"error": "Unauthorized. Only clinical staff can view the lab worklist."}, status=status.HTTP_403_FORBIDDEN)
+
         # Filter by pending/processing orders
         orders = LabOrder.objects.filter(
             status__in=['pending', 'processing']

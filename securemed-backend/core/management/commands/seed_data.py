@@ -83,6 +83,7 @@ class Command(BaseCommand):
             ('Pediatrics', 'Child healthcare', 'PEDIA'),
             ('Orthopedics', 'Bone and joint care', 'ORTHO'),
             ('Dermatology', 'Skin care', 'DERMA'),
+            ('General Practice', 'Primary care and checkups', 'GP'),
         ]
         
         for dept_name, desc, code in departments_data:
@@ -105,6 +106,7 @@ class Command(BaseCommand):
             {'username': 'doctor4', 'email': 'doctor4@hospital.com', 'first_name': 'Lisa', 'last_name': 'Brown', 'specialization': 'Orthopedics', 'license': 'MCI-45678'},
             {'username': 'doctor5', 'email': 'doctor5@hospital.com', 'first_name': 'James', 'last_name': 'Davis', 'specialization': 'Dermatology', 'license': 'MCI-56789'},
             {'username': 'doctor6', 'email': 'doctor6@hospital.com', 'first_name': 'Emma', 'last_name': 'Wilson', 'specialization': 'Cardiology', 'license': 'MCI-67890'},
+            {'username': 'doctor_gp', 'email': 'gp@hospital.com', 'first_name': 'Robert', 'last_name': 'General', 'specialization': 'General Practice', 'license': 'MCI-GP001'},
         ]
         
         for data in doctors_data:

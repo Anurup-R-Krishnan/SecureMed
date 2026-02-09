@@ -3,8 +3,8 @@ from .models import MedicalRecord, Prescription, VitalSign
 from appointments.serializers import DoctorSerializer
 
 class PrescriptionSerializer(serializers.ModelSerializer):
-    patient_id = serializers.IntegerField(write_only=True)
-    doctor_name = serializers.CharField(source='medical_record.doctor.user.get_full_name', read_only=True)
+    patient_id = serializers.IntegerField(write_only=True, required=False) # Optional for updates
+    doctor_name = serializers.SerializerMethodField()
     # medical_record = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
@@ -14,9 +14,16 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             'status', 'is_signed', 'signed_at', 'signed_by', 'signature_hash', 'doctor_name'
         ]
         read_only_fields = ['status', 'is_signed', 'signed_at', 'signed_by', 'signature_hash', 'medical_record']
+    
+    def get_doctor_name(self, obj):
+        if obj.medical_record and obj.medical_record.doctor and obj.medical_record.doctor.user:
+            return obj.medical_record.doctor.user.get_full_name()
+        if obj.signed_by:
+             return obj.signed_by.get_full_name()
+        return "Unknown Provider"
 
 class MedicalRecordSerializer(serializers.ModelSerializer):
-    doctor_name = serializers.CharField(source='doctor.user.get_full_name', read_only=True)
+    doctor_name = serializers.SerializerMethodField()
     record_type_display = serializers.CharField(source='get_record_type_display', read_only=True)
     prescriptions = PrescriptionSerializer(many=True, read_only=True)
     file_url = serializers.SerializerMethodField()
@@ -26,8 +33,15 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'record_id', 'record_type', 'record_type_display', 
             'record_date', 'doctor_name', 'diagnosis', 'file', 'file_url',
-            'prescriptions', 'created_at'
+            'prescriptions', 'created_at', 'source', 'is_attested', 'notes'
         ]
+
+    def get_doctor_name(self, obj):
+        if obj.doctor and obj.doctor.user:
+            return obj.doctor.user.get_full_name()
+        if obj.source == 'patient':
+            return "Patient (Self-Reported)"
+        return "Unknown Provider"
 
     def get_file_url(self, obj):
         if obj.file:

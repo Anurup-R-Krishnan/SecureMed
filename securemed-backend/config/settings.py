@@ -135,6 +135,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
@@ -198,7 +202,7 @@ SIMPLE_JWT = {
 SECURE_SSL = os.environ.get('DJANGO_SECURE_SSL', 'False') == 'True'
 
 # MFA Feature Flag (disabled by default)
-MFA_ENABLED = os.environ.get('MFA_ENABLED', 'False') == 'True'
+MFA_ENABLED = os.environ.get('MFA_ENABLED', 'True') == 'True'
 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False

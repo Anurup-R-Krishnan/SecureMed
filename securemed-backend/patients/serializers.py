@@ -22,4 +22,7 @@ class PatientSerializer(serializers.ModelSerializer):
             'insurance_provider', 'insurance_number',
             'emergency_contacts'
         ]
-        read_only_fields = ['patient_id', 'date_of_birth', 'gender', 'blood_group', 'emergency_contacts']
+        read_only_fields = [
+            'patient_id', 'date_of_birth', 'gender', 'blood_group', 'emergency_contacts',
+            'allergies', 'chronic_conditions', 'current_medications' # Clinical data must be clinician-managed
+        ]

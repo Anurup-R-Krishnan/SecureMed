@@ -176,9 +176,31 @@ export default function AppointmentBooking({
         throw new Error(result.detail || 'Booking failed');
       }
     } catch (error: any) {
+      console.error("Booking Error:", error);
+      let errorMessage = error.message || 'Please try another slot.';
+
+      // Parse backend validation errors
+      if (error.response?.data) {
+        const data = error.response.data;
+        if (typeof data === 'object') {
+          // Extract first error message from values
+          const messages = Object.values(data).flat();
+          if (messages.length > 0) {
+            errorMessage = messages[0];
+          }
+        } else if (typeof data === 'string') {
+          errorMessage = data;
+        }
+
+        // UX Improvement: Suggest GP if referral is invalid
+        if (errorMessage.toLowerCase().includes('referral')) {
+          errorMessage += " Try booking with a General Practitioner (Dr. Robert General) for an initial consultation.";
+        }
+      }
+
       toast({
         title: 'Booking Failed',
-        description: error.message || 'Please try another slot.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

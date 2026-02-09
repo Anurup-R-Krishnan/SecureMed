@@ -36,6 +36,7 @@ import api from '@/lib/api';
 import { NotificationCenter } from '@/components/ui/notification-center';
 import { toast } from 'sonner';
 import { MessagingInterface } from '@/components/telemedicine/MessagingInterface';
+import { useAuth } from '@/context/auth-context';
 
 type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'prescriptions' | 'labs' | 'messaging' | 'ai-assistant' | 'availability' | 'settings';
 
@@ -58,6 +59,7 @@ interface RawPatient {
 export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalProps) {
   const [activeTab, setActiveTab] = useState<DoctorTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { isAuthenticated } = useAuth();
 
   // API Data States
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -71,6 +73,8 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
 
   // Fetch data from API
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -116,7 +120,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     };
 
     fetchData();
-  }, []);
+  }, [isAuthenticated]);
 
   // Get today's appointments
   const todayAppts = appointments.filter(apt => {
@@ -251,12 +255,8 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
 
         {/* Footer Actions */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border space-y-2 bg-sidebar">
-          <button
-            onClick={() => onSwitchRole('patient')}
-            className="w-full px-4 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted text-sm font-bold transition-colors"
-          >
-            Switch to Patient View
-          </button>
+          {/* Switch to Patient View - REMOVED for Hospital Constraints */}
+          {/* Doctors and Patients are distinct identities */}
           <button
             onClick={onLogout}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive hover:text-destructive-foreground font-bold transition-all"
@@ -339,7 +339,17 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                     <h3 className="text-xl font-black text-foreground">Recent Patient Activity</h3>
                     <p className="text-muted-foreground">Live feed of patient updates, labs, and history.</p>
                   </div>
-                  <PatientTimeline className="shadow-none border-none bg-transparent" />
+                  {selectedPatient ? (
+                    <PatientTimeline
+                      patientId={selectedPatient.id}
+                      className="shadow-none border-none bg-transparent"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                      <Users className="h-12 w-12 mb-4 opacity-20" />
+                      <p>Select a patient from the Patients tab to view their timeline</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

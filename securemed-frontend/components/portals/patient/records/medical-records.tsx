@@ -44,10 +44,8 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Upload Action */}
-      <div className="flex justify-end">
-        <UploadRecordDialog onRecordUploaded={handleRecordUploaded} />
-      </div>
+      {/* Upload Action - REMOVED for Hospital Constraints */}
+      {/* Patients cannot upload their own medical records */}
 
       {/* Active Prescriptions */}
       <Card className="p-6">

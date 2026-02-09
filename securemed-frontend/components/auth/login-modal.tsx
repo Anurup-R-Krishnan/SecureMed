@@ -11,18 +11,14 @@ import { API_ORIGIN } from '@/lib/urls';
 
 interface LoginModalProps {
   isOpen: boolean;
-  role: 'patient' | 'doctor' | 'admin';
   onClose: () => void;
-  onChangeRole: (role: 'patient' | 'doctor' | 'admin') => void;
 }
 
 type LoginStep = 'STEP_CREDENTIALS' | 'STEP_MFA';
 
 export default function LoginModal({
   isOpen,
-  role,
   onClose,
-  onChangeRole,
 }: LoginModalProps) {
   const [step, setStep] = useState<LoginStep>('STEP_CREDENTIALS');
   const [username, setUsername] = useState('');
@@ -46,15 +42,6 @@ export default function LoginModal({
       description: 'You have been successfully logged in.',
     });
     handleClose();
-
-    // 🚦 TRAFFIC CONTROLLER (REDIRECTS)
-    if (role === 'doctor') {
-      router.push('/doctor');
-    } else if (role === 'patient') {
-      router.push('/portal');
-    } else if (role === 'admin') {
-      window.location.href = `${API_ORIGIN}/admin`;
-    }
   };
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
@@ -167,11 +154,7 @@ export default function LoginModal({
     onClose();
   };
 
-  const roleLabels = {
-    patient: 'Patient',
-    doctor: 'Doctor',
-    admin: 'Administrator',
-  };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -204,25 +187,7 @@ export default function LoginModal({
 
         {step === 'STEP_CREDENTIALS' ? (
           <>
-            {/* Role Selection */}
-            <div className="p-6 border-b border-border">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Login as:</p>
-              <div className="flex gap-2">
-                {(['patient', 'doctor', 'admin'] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => onChangeRole(r)}
-                    disabled={isLoading}
-                    className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-colors ${role === r
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-border'
-                      }`}
-                  >
-                    {roleLabels[r]}
-                  </button>
-                ))}
-              </div>
-            </div>
+
 
             {/* Credentials Form */}
             <form onSubmit={handleCredentialsSubmit} className="p-8 space-y-5">
@@ -298,7 +263,7 @@ export default function LoginModal({
                 size="lg"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : `Sign In as ${roleLabels[role]}`}
+                {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
           </>
@@ -401,6 +366,6 @@ export default function LoginModal({
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }

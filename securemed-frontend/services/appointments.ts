@@ -122,7 +122,10 @@ export const appointmentService = {
 
     getAppointments: async (): Promise<Appointment[]> => {
         try {
-            const response = await api.get('/appointments/appointments/');
+            const token = getAccessToken();
+            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+            const response = await api.get('/appointments/appointments/', config);
             const results = Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
 
@@ -144,7 +147,7 @@ export const appointmentService = {
             }));
         } catch (error) {
             console.error('Error fetching appointments:', error);
-            return [];
+            throw error;
         }
     },
 
@@ -160,7 +163,10 @@ export const appointmentService = {
 
     getDoctorSchedule: async (date: string): Promise<DoctorAvailabilitySlot[]> => {
         try {
-            const response = await api.get(`/appointments/doctor/availability/?date=${date}`);
+            const token = getAccessToken();
+            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+            const response = await api.get(`/appointments/doctor/availability/?date=${date}`, config);
             const slots = response.data?.slots || [];
             return slots.map((slot: any) => ({
                 id: slot.id,
@@ -175,10 +181,13 @@ export const appointmentService = {
     },
 
     saveDoctorSchedule: async (date: string, slots: DoctorAvailabilitySlot[]) => {
+        const token = getAccessToken();
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
         const response = await api.post('/appointments/doctor/availability/', {
             date,
             slots
-        });
+        }, config);
         return response.data;
     }
 };
@@ -189,10 +198,11 @@ export const medicalRecordService = {
             const token = getAccessToken();
             if (!token) return [];
 
-            const response = await api.get('/medical-records/', {
+            const response = await api.get('/medical-records/records/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            return response.data;
+            return Array.isArray(response.data) ? response.data :
+                (response.data.results ? response.data.results : []);
         } catch (error) {
             console.error('Error fetching medical records:', error);
             return [];
