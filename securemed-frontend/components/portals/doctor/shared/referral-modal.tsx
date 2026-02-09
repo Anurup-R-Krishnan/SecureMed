@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -19,9 +19,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { UserPlus, Send, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import api from '@/lib/api';
+import { referralService } from '@/services/referrals';
+import { appointmentService, Doctor } from '@/services/appointments';
 
 interface ReferralModalProps {
     isOpen: boolean;
@@ -35,35 +36,61 @@ export default function ReferralModal({ isOpen, onClose, patientId, patientName 
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
-    const [department, setDepartment] = useState('');
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
+    const [loadingDoctors, setLoadingDoctors] = useState(false);
+    const [selectedDoctor, setSelectedDoctor] = useState('');
     const [priority, setPriority] = useState('routine');
     const [notes, setNotes] = useState('');
 
+    useEffect(() => {
+        if (isOpen) {
+            fetchDoctors();
+        }
+    }, [isOpen]);
+
+    const fetchDoctors = async () => {
+        setLoadingDoctors(true);
+        try {
+            const allDoctors = await appointmentService.getDoctors();
+            setDoctors(allDoctors);
+        } catch (error) {
+            console.error('Failed to fetch doctors:', error);
+        } finally {
+            setLoadingDoctors(false);
+        }
+    };
+
+    const selectedDoctorObj = doctors.find(d => String(d.id) === selectedDoctor);
+
     const handleSubmit = async () => {
-        if (!department) return;
+        if (!selectedDoctor) return;
 
         setIsLoading(true);
         try {
-            // Simulate API call
-            // await api.post('/referrals/', { ... });
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await referralService.createReferral({
+                patient: parseInt(patientId),
+                specialist: parseInt(selectedDoctor),
+                priority: priority as 'routine' | 'urgent' | 'emergency',
+                reason: notes || `Referral to ${selectedDoctorObj?.name || 'specialist'}`,
+                clinical_notes: notes,
+            });
 
             setIsSuccess(true);
             toast({
                 title: 'Referral Sent',
-                description: `Patient ${patientName} has been referred to ${department}.`,
+                description: `Patient ${patientName} has been referred to ${selectedDoctorObj?.name || 'specialist'}.`,
             });
 
             setTimeout(() => {
                 setIsSuccess(false);
-                setDepartment('');
+                setSelectedDoctor('');
                 setNotes('');
                 onClose();
             }, 2000);
-        } catch (error) {
+        } catch (error: any) {
             toast({
                 title: 'Error',
-                description: 'Failed to send referral. Please try again.',
+                description: error.response?.data?.detail || 'Failed to send referral. Please try again.',
                 variant: 'destructive',
             });
         } finally {
@@ -84,27 +111,40 @@ export default function ReferralModal({ isOpen, onClose, patientId, patientName 
                                 Refer Patient
                             </DialogTitle>
                             <DialogDescription className="text-base">
-                                Create a new specialist referral for <span className="font-bold text-foreground">{patientName}</span>.
+                                Refer <span className="font-bold text-foreground">{patientName}</span> to another doctor or department.
                             </DialogDescription>
                         </DialogHeader>
 
                         <div className="grid gap-6 py-4">
+                            {/* Target Doctor Selection */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Target Department</Label>
-                                <Select value={department} onValueChange={setDepartment}>
-                                    <SelectTrigger className="h-12 rounded-xl border-border bg-muted/20">
-                                        <SelectValue placeholder="Select Specialty" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Cardiology">Cardiology</SelectItem>
-                                        <SelectItem value="Neurology">Neurology</SelectItem>
-                                        <SelectItem value="Orthopedics">Orthopedics</SelectItem>
-                                        <SelectItem value="Dermatology">Dermatology</SelectItem>
-                                        <SelectItem value="Oncology">Oncology</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Refer To Doctor</Label>
+                                {loadingDoctors ? (
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm py-3">
+                                        <Loader2 className="h-4 w-4 animate-spin" /> Loading doctors...
+                                    </div>
+                                ) : (
+                                    <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                                        <SelectTrigger className="h-12 rounded-xl border-border bg-muted/20">
+                                            <SelectValue placeholder="Select a doctor..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {doctors.map((doc) => (
+                                                <SelectItem key={doc.id} value={String(doc.id)}>
+                                                    {doc.name} — {doc.specialization || doc.department_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                                {selectedDoctorObj && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {selectedDoctorObj.specialization} • {selectedDoctorObj.hospital}
+                                    </p>
+                                )}
                             </div>
 
+                            {/* Priority */}
                             <div className="space-y-2">
                                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Priority Level</Label>
                                 <Select value={priority} onValueChange={setPriority}>
@@ -119,10 +159,11 @@ export default function ReferralModal({ isOpen, onClose, patientId, patientName 
                                 </Select>
                             </div>
 
+                            {/* Clinical Notes */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Clinical Notes</Label>
+                                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Reason & Clinical Notes</Label>
                                 <Textarea
-                                    placeholder="Reason for referral, key symptoms, etc..."
+                                    placeholder="Reason for referral, key symptoms, relevant history..."
                                     className="min-h-[120px] rounded-xl border-border bg-muted/20 resize-none"
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
@@ -134,7 +175,7 @@ export default function ReferralModal({ isOpen, onClose, patientId, patientName 
                             <Button variant="ghost" onClick={onClose} disabled={isLoading} className="font-bold">Cancel</Button>
                             <Button
                                 onClick={handleSubmit}
-                                disabled={!department || isLoading}
+                                disabled={!selectedDoctor || !notes.trim() || isLoading}
                                 className="font-bold shadow-lg shadow-primary/20"
                             >
                                 {isLoading ? 'Sending...' : (
@@ -152,7 +193,8 @@ export default function ReferralModal({ isOpen, onClose, patientId, patientName 
                         </div>
                         <h3 className="text-2xl font-black text-foreground mb-2">Referral Sent!</h3>
                         <p className="text-muted-foreground max-w-xs mx-auto">
-                            The referral request has been successfully transmitted to the <b>{department}</b> department.
+                            The referral has been sent to <b>{selectedDoctorObj?.name || 'the specialist'}</b>.
+                            They will receive access to the patient&apos;s records.
                         </p>
                     </div>
                 )}

@@ -152,25 +152,40 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
   ];
 
   const handleOpenReferral = (patient: any) => {
-    setSelectedPatient({ id: patient.displayId || patient.patient || patient.id, name: patient.name || 'Patient' });
+    setSelectedPatient({ id: String(patient.id || patient.patient), name: patient.name || patient.patient_name || 'Patient' });
     setShowReferralModal(true);
   };
 
   const handleOpenEmergency = (patient: any) => {
-    setSelectedPatient({ id: patient.displayId || patient.patient || patient.id, name: patient.name || 'Patient' });
+    setSelectedPatient({ id: String(patient.id || patient.patient), name: patient.name || patient.patient_name || 'Patient' });
     setShowEmergencyModal(true);
   };
 
   const handleAcceptAppointment = async (appt: Appointment) => {
     try {
-      await appointmentService.updateAppointmentStatus(appt.id, 'confirmed');
+      // Determine next status based on current status
+      let newStatus = 'confirmed';
+      let message = 'confirmed';
+      
+      if (appt.status === 'scheduled') {
+        newStatus = 'confirmed';
+        message = 'confirmed';
+      } else if (appt.status === 'confirmed') {
+        newStatus = 'in_progress';
+        message = 'started (in progress)';
+      } else if (appt.status === 'in_progress') {
+        newStatus = 'completed';
+        message = 'marked as completed';
+      }
+      
+      await appointmentService.updateAppointmentStatus(appt.id, newStatus);
       // Refresh appointments
       const appts = await appointmentService.getAppointments();
       setAppointments(appts);
-      toast.success(`Appointment with Patient #${appt.patient} confirmed.`);
+      toast.success(`Appointment ${message}.`);
     } catch (error) {
-      console.error('Error accepting appointment:', error);
-      toast.error('Failed to confirm appointment.');
+      console.error('Error updating appointment:', error);
+      toast.error('Failed to update appointment.');
     }
   };
 
@@ -189,10 +204,15 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
           </span>
         );
       case 'scheduled':
-      case 'confirmed':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs font-black uppercase tracking-wider">
             <Calendar className="h-3 w-3" /> Scheduled
+          </span>
+        );
+      case 'confirmed':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-600 text-xs font-black uppercase tracking-wider">
+            <CheckCircle className="h-3 w-3" /> Confirmed
           </span>
         );
       default:

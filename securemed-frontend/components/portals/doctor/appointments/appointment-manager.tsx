@@ -58,7 +58,7 @@ export default function AppointmentManager({
                                     <Button
                                         size="sm"
                                         className="font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
-                                        onClick={() => onAcceptAppointment({ ...apt, status: 'in_progress' } as any)} // Hack: reusing onAccept for now, or need new prop
+                                        onClick={() => onAcceptAppointment(apt)}
                                     >
                                         Start Consult
                                     </Button>
@@ -68,7 +68,7 @@ export default function AppointmentManager({
                                     <Button
                                         size="sm"
                                         className="font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/20"
-                                        onClick={() => onAcceptAppointment({ ...apt, status: 'completed' } as any)}
+                                        onClick={() => onAcceptAppointment(apt)}
                                     >
                                         Complete
                                     </Button>
