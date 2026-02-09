@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { API_BASE_URL } from '@/lib/urls';
 import { Shield, CheckCircle } from 'lucide-react';
 
 interface TermsOfServiceModalProps {
@@ -36,7 +37,7 @@ export function TermsOfServiceModal({ isOpen, onAccept, token }: TermsOfServiceM
         setIsLoading(true);
         try {
             await axios.post(
-                'http://localhost:8000/api/auth/accept-policy/',
+                `${API_BASE_URL}/auth/accept-policy/`,
                 {},
                 {
                     headers: {

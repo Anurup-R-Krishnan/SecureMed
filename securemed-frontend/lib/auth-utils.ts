@@ -8,6 +8,16 @@ export interface AuthTokens {
     refresh: string;
 }
 
+export function parseJSON<T>(raw: string | null): T | null {
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw) as T;
+    } catch (e) {
+        console.error('Failed to parse JSON from storage:', e);
+        return null;
+    }
+}
+
 /**
  * Get the access token from localStorage
  */
@@ -15,8 +25,8 @@ export function getAccessToken(): string | null {
     try {
         const storedTokens = localStorage.getItem('auth_tokens');
         if (storedTokens) {
-            const tokens: AuthTokens = JSON.parse(storedTokens);
-            return tokens.access || null;
+            const tokens = parseJSON<AuthTokens>(storedTokens);
+            return tokens?.access || null;
         }
     } catch (e) {
         console.error('Failed to parse auth tokens:', e);
@@ -31,8 +41,8 @@ export function getRefreshToken(): string | null {
     try {
         const storedTokens = localStorage.getItem('auth_tokens');
         if (storedTokens) {
-            const tokens: AuthTokens = JSON.parse(storedTokens);
-            return tokens.refresh || null;
+            const tokens = parseJSON<AuthTokens>(storedTokens);
+            return tokens?.refresh || null;
         }
     } catch (e) {
         console.error('Failed to parse auth tokens:', e);

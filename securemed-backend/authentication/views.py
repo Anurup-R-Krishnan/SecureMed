@@ -361,8 +361,8 @@ def login_view(request):
     user.locked_until = None
     user.save()
     
-    # Check if MFA is enabled
-    if user.mfa_enabled:
+    # Check if MFA is enabled and feature flag is on
+    if getattr(settings, 'MFA_ENABLED', False) and user.mfa_enabled:
         # Return temp token for MFA verification
         temp_token = generate_temp_token(user)
         return Response({
@@ -399,6 +399,9 @@ def mfa_setup_view(request):
         "provisioning_uri": "otpauth://..."
     }
     """
+    if not getattr(settings, 'MFA_ENABLED', False):
+        return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     user = request.user
     
     # Generate new TOTP secret
@@ -433,6 +436,9 @@ def mfa_verify_view(request):
         "otp": "123456"
     }
     """
+    if not getattr(settings, 'MFA_ENABLED', False):
+        return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     serializer = MFAVerifySerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -489,6 +495,9 @@ def mfa_deactivate_view(request):
         "message": "MFA deactivated successfully"
     }
     """
+    if not getattr(settings, 'MFA_ENABLED', False):
+        return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     print("\n" + "="*70)
     print("[MFA DEACTIVATE] Request received")
     print("="*70)
@@ -570,6 +579,9 @@ def regenerate_recovery_codes_view(request):
         "recovery_codes": ["ABC12345", "XYZ67890", ...]
     }
     """
+    if not getattr(settings, 'MFA_ENABLED', False):
+        return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     print("\n" + "="*70)
     print("[RECOVERY CODES] Regeneration request received")
     print("="*70)
@@ -627,6 +639,9 @@ def mfa_login_view(request):
         "user": {...}
     }
     """
+    if not getattr(settings, 'MFA_ENABLED', False):
+        return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     print("\n" + "="*70)
     print("[MFA LOGIN] Request received")
     print("="*70)
@@ -1107,7 +1122,7 @@ class SendInviteView(APIView):
         )
         
         # Generate registration link
-        registration_link = f"http://localhost:3000/register?token={invitation.token}"
+        registration_link = f"{settings.FRONTEND_URL}/register?token={invitation.token}"
         
         # Mock email sending - print to console
         print("\n" + "="*70)

@@ -15,9 +15,8 @@ import {
     Building2,
     Loader2,
 } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/urls';
 
-// Backend API URL
-const API_BASE_URL = 'http://localhost:8000/api';
 
 // Supported insurance providers
 const SUPPORTED_PROVIDERS = [

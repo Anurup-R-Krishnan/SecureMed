@@ -26,6 +26,7 @@ import {
     Filler,
 } from 'chart.js';
 import { Line, Pie, Bar } from 'react-chartjs-2';
+import { API_BASE_URL } from '@/lib/urls';
 
 // Register Chart.js components
 ChartJS.register(
@@ -53,8 +54,6 @@ const COLORS = [
     'rgba(236, 72, 153, 0.8)',
 ];
 
-// Backend API URL
-const API_BASE_URL = 'http://localhost:8000/api';
 
 export default function ClinicalAnalytics() {
     const [data, setData] = useState<any>(null);

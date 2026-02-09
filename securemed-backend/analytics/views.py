@@ -8,9 +8,11 @@ from django.contrib.auth import get_user_model
 import random
 import uuid
 import os
+import logging
 from django.conf import settings
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 # ============================================
@@ -30,12 +32,14 @@ def get_dashboard_stats(request):
     # Get real counts from database
     try:
         total_patients = Patient.objects.count()
-    except:
+    except Exception:
+        logger.exception("Failed to count patients")
         total_patients = 0
     
     try:
         active_doctors = Doctor.objects.filter(is_available=True).count()
-    except:
+    except Exception:
+        logger.exception("Failed to count active doctors")
         active_doctors = User.objects.filter(role='doctor', is_active=True).count()
     
     try:
@@ -44,7 +48,8 @@ def get_dashboard_stats(request):
         today_appointments = Appointment.objects.filter(
             appointment_date=today
         ).count()
-    except:
+    except Exception:
+        logger.exception("Failed to count today's appointments")
         today_appointments = 0
     
     # Calculate hospital occupancy (placeholder - would need beds/admissions model)
@@ -173,12 +178,12 @@ def get_alerts(request):
             alerts.append({
                 'id': 1,
                 'type': 'info',
-                'title': f'Growing Patient Base',
+                'title': 'Growing Patient Base',
                 'message': f'{patient_count} patients registered in the system',
                 'timestamp': timezone.now().isoformat(),
             })
-    except:
-        pass
+    except Exception:
+        logger.exception("Failed to compute patient count alerts")
     
     try:
         today = timezone.now().date()
@@ -194,8 +199,8 @@ def get_alerts(request):
                 'message': f'{pending} appointments scheduled for today',
                 'timestamp': timezone.now().isoformat(),
             })
-    except:
-        pass
+    except Exception:
+        logger.exception("Failed to compute appointment alerts")
     
     # Default alert if none
     if not alerts:

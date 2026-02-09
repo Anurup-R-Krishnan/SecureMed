@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { getAccessToken } from '@/lib/auth-utils';
 
 export interface Doctor {
     id: number;
@@ -185,8 +186,7 @@ export const appointmentService = {
 export const medicalRecordService = {
     getMedicalRecords: async (): Promise<any[]> => {
         try {
-            const authTokens = localStorage.getItem('auth_tokens');
-            const token = authTokens ? JSON.parse(authTokens).access : null;
+            const token = getAccessToken();
             if (!token) return [];
 
             const response = await api.get('/medical_records/', {
@@ -200,8 +200,7 @@ export const medicalRecordService = {
     },
 
     uploadRecord: async (formData: FormData): Promise<any> => {
-        const authTokens = localStorage.getItem('auth_tokens');
-        const token = authTokens ? JSON.parse(authTokens).access : null;
+        const token = getAccessToken();
         if (!token) throw new Error("No auth token");
 
         const response = await api.post('/medical_records/', formData, {
@@ -215,8 +214,7 @@ export const medicalRecordService = {
 
     getPrescriptions: async (): Promise<any[]> => {
         try {
-            const authTokens = localStorage.getItem('auth_tokens');
-            const token = authTokens ? JSON.parse(authTokens).access : null;
+            const token = getAccessToken();
             if (!token) return [];
 
             const response = await api.get('/medical_records/prescriptions/', {

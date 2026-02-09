@@ -87,13 +87,13 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
         from appointments.models import Appointment
         appts = Appointment.objects.filter(patient_id=patient_id)
         for a in appts:
-             events.append({
+            events.append({
                 "id": f"apt-{a.id}",
-            "date": a.appointment_date,
+                "date": a.appointment_date,
                 "type": "appointment",
                 "title": f"Appointment with Dr. {a.doctor.user.last_name if a.doctor else 'Unknown'}",
                 "description": a.status,
-            "details": [f"Time: {a.appointment_time.strftime('%H:%M')}"]
+                "details": [f"Time: {a.appointment_time.strftime('%H:%M')}"]
             })
             
         # Sort by date desc

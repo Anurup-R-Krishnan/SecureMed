@@ -5,7 +5,7 @@ Run with: python manage.py shell < test_password_reset.py
 import requests
 import json
 
-BASE_URL = "http://localhost:8001/api/v1/auth"
+BASE_URL = "http://localhost:8001/api/auth"
 
 def test_password_reset_flow():
     """Test the complete password reset flow."""

@@ -159,9 +159,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
     'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
-    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
-    'DEFAULT_VERSION': 'v1',
-    'ALLOWED_VERSIONS': ['v1'],
 }
 
 # Custom User Model
@@ -198,6 +195,9 @@ SIMPLE_JWT = {
 # Determine if we're in a secure (HTTPS) environment
 # Set DJANGO_SECURE_SSL=True in production environment variables
 SECURE_SSL = os.environ.get('DJANGO_SECURE_SSL', 'False') == 'True'
+
+# MFA Feature Flag (disabled by default)
+MFA_ENABLED = os.environ.get('MFA_ENABLED', 'False') == 'True'
 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False

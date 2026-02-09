@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Mail, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { API_BASE_URL } from '@/lib/urls';
 
 type ResetStep = 'REQUEST' | 'SUCCESS' | 'ERROR';
 
@@ -19,7 +20,7 @@ export default function ForgotPasswordPage() {
         setErrorMessage('');
 
         try {
-            const response = await fetch('http://localhost:8000/api/auth/password-reset/', {
+            const response = await fetch(`${API_BASE_URL}/auth/password-reset/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

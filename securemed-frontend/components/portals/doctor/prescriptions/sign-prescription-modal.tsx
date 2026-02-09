@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, CheckCircle2, Loader2, FileSignature } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth-utils';
+import { API_BASE_URL } from '@/lib/urls';
 
 interface Prescription {
     id: number;
@@ -52,7 +53,7 @@ export function SignPrescriptionModal({
         try {
             const token = getAccessToken();
             const response = await fetch(
-                `http://localhost:8000/api/medical-records/prescriptions/${prescription.id}/sign/`,
+                `${API_BASE_URL}/medical-records/prescriptions/${prescription.id}/sign/`,
                 {
                     method: 'POST',
                     headers: {

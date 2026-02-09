@@ -7,6 +7,7 @@ import { Lock, Mail, Eye, EyeOff, X, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { API_ORIGIN } from '@/lib/urls';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export default function LoginModal({
     } else if (role === 'patient') {
       router.push('/portal');
     } else if (role === 'admin') {
-      window.location.href = 'http://localhost:8000/admin';
+      window.location.href = `${API_ORIGIN}/admin`;
     }
   };
 

@@ -13,9 +13,9 @@ import {
     Stethoscope,
     FlaskConical,
 } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/urls';
 
 // Backend API URL
-const API_BASE_URL = 'http://localhost:8000/api';
 
 // Common symptoms list
 const commonSymptoms = [

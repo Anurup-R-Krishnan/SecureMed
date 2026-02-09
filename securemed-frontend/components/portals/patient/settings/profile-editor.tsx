@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, User } from 'lucide-react';
 import api from '@/lib/api';
+import { getAccessToken } from '@/lib/auth-utils';
 
 interface PatientProfile {
     id: number;
@@ -34,7 +35,7 @@ export default function ProfileEditor() {
 
     const fetchProfile = useCallback(async () => {
         try {
-            const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+            const token = getAccessToken();
             if (!token) return;
 
             const response = await api.get('/patients/profile/', {
@@ -63,7 +64,8 @@ export default function ProfileEditor() {
 
         setSaving(true);
         try {
-            const token = localStorage.getItem('auth_tokens') ? JSON.parse(localStorage.getItem('auth_tokens')!).access : null;
+            const token = getAccessToken();
+            if (!token) throw new Error('No auth token');
 
             await api.put('/patients/profile/', profile, {
                 headers: { Authorization: `Bearer ${token}` }

@@ -6,6 +6,7 @@ import { ArrowLeft, Mail, Lock, User, Code, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { API_BASE_URL } from '@/lib/urls';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, RegisterFormData } from '@/lib/schemas';
@@ -56,7 +57,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
   const verifyInvitationToken = useCallback(async (token: string) => {
     try {
-      const response = await fetch('http://localhost:8000/api/auth/invite/verify/', {
+      const response = await fetch(`${API_BASE_URL}/auth/invite/verify/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,12 +114,12 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/register/', {
+      const response = await fetch(`${API_BASE_URL}/auth/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+          body: JSON.stringify({
           ...data,
           token: invitationToken,
           captcha_token: captchaToken,

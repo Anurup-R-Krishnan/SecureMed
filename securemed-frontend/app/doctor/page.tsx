@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { API_ORIGIN } from '@/lib/urls';
 import DoctorPortal from '@/components/portals/doctor-portal';
 
 export default function DoctorPage() {
@@ -37,7 +38,7 @@ export default function DoctorPage() {
         if (role === 'patient') {
             router.push('/portal');
         } else if (role === 'admin') {
-            window.location.href = 'http://localhost:8000/admin';
+            window.location.href = `${API_ORIGIN}/admin`;
         }
     };
 

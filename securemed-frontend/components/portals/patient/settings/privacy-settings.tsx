@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { API_BASE_URL } from '@/lib/urls';
 
 interface Consent {
   id: number;
@@ -45,7 +46,7 @@ interface Consent {
   }>;
 }
 
-const API_BASE_URL = 'http://localhost:8000/api/consents/';
+const CONSENTS_BASE_URL = `${API_BASE_URL}/consents/`;
 
 const DURATION_OPTIONS = [
   { label: '24 Hours', value: '24h', hours: 24 },
@@ -81,7 +82,7 @@ export default function PrivacySettings() {
   const fetchConsents = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get<Consent[]>(API_BASE_URL, {
+      const response = await axios.get<Consent[]>(CONSENTS_BASE_URL, {
         headers: getAuthHeaders(),
       });
 
@@ -170,7 +171,7 @@ export default function PrivacySettings() {
 
     try {
       await axios.patch(
-        `${API_BASE_URL}${id}/`,
+        `${CONSENTS_BASE_URL}${id}/`,
         { is_granted: false },
         { headers: getAuthHeaders() }
       );
@@ -211,7 +212,7 @@ export default function PrivacySettings() {
 
     try {
       await axios.patch(
-        `${API_BASE_URL}${selectedConsent.id}/`,
+        `${CONSENTS_BASE_URL}${selectedConsent.id}/`,
         {
           is_granted: true,
           expires_at: expiresAt
@@ -452,7 +453,7 @@ export default function PrivacySettings() {
               className="gap-2"
               onClick={async () => {
                 try {
-                  const receiptUrl = API_BASE_URL.replace('consents/', 'auth/download-policy-receipt/');
+                  const receiptUrl = `${API_BASE_URL}/auth/download-policy-receipt/`;
                   const response = await axios.get(receiptUrl, {
                     headers: getAuthHeaders(),
                     responseType: 'blob'
@@ -524,7 +525,7 @@ export default function PrivacySettings() {
 
                   try {
                     // Single API call: Fetch certificate (auto-marks account for deletion)
-                    const certificateUrl = API_BASE_URL.replace('consents/', 'auth/deletion-certificate/');
+                    const certificateUrl = `${API_BASE_URL}/auth/deletion-certificate/`;
 
                     const certificateResponse = await axios.get(certificateUrl, {
                       headers: getAuthHeaders(),

@@ -6,6 +6,8 @@ import { Shield, ShieldCheck, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { API_BASE_URL } from '@/lib/urls';
+import { getAccessToken } from '@/lib/auth-utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/auth-context';
 
@@ -47,12 +49,16 @@ export default function MfaSetup() {
         return;
       }
 
-      const tokens = JSON.parse(authTokens);
-      const accessToken = tokens.access;
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        toast.error('Session expired. Please sign in again.');
+        setIsLoading(false);
+        return;
+      }
 
       console.log('Starting MFA setup with token:', accessToken?.substring(0, 20) + '...');
 
-      const response = await fetch('http://localhost:8000/api/auth/mfa/setup/', {
+      const response = await fetch(`${API_BASE_URL}/auth/mfa/setup/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,12 +125,16 @@ export default function MfaSetup() {
         return;
       }
 
-      const tokens = JSON.parse(authTokens);
-      const accessToken = tokens.access;
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        toast.error('Session expired. Please sign in again.');
+        setIsLoading(false);
+        return;
+      }
 
       console.log('Verifying MFA code:', verificationCode);
 
-      const response = await fetch('http://localhost:8000/api/auth/mfa/verify/', {
+      const response = await fetch(`${API_BASE_URL}/auth/mfa/verify/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,12 +203,16 @@ export default function MfaSetup() {
         return;
       }
 
-      const tokens = JSON.parse(authTokens);
-      const accessToken = tokens.access;
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        toast.error('Session expired. Please sign in again.');
+        setIsLoading(false);
+        return;
+      }
 
       console.log('[MFA DEACTIVATE] Sending deactivation request');
 
-      const response = await fetch('http://localhost:8000/api/auth/mfa/deactivate/', {
+      const response = await fetch(`${API_BASE_URL}/auth/mfa/deactivate/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

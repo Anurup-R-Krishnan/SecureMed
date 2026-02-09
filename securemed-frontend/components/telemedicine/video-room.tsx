@@ -16,6 +16,7 @@ import {
     Maximize2,
 } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth-utils';
+import { API_BASE_URL } from '@/lib/urls';
 
 interface VideoRoomProps {
     roomId: string;
@@ -119,7 +120,7 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
         // Call API to end room
         try {
             const token = getAccessToken();
-            await fetch(`http://localhost:8000/api/telemedicine/rooms/${roomId}/end/`, {
+            await fetch(`${API_BASE_URL}/telemedicine/rooms/${roomId}/end/`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

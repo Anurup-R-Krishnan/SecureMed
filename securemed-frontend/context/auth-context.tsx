@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { TermsOfServiceModal } from '@/components/auth/terms-of-service-modal';
+import { API_BASE_URL, API_ORIGIN } from '@/lib/urls';
+import { parseJSON } from '@/lib/auth-utils';
 
 interface User {
     id: number;
@@ -47,17 +49,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { toast } = useToast();
     const router = useRouter();
 
+    const parseResponseJson = async (response: Response) => {
+        const text = await response.text();
+        if (!text) return null;
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            console.error('Failed to parse response JSON:', error);
+            return { raw: text };
+        }
+    };
+
     // Load tokens from localStorage on mount
     useEffect(() => {
         const storedTokens = localStorage.getItem('auth_tokens');
         const storedUser = localStorage.getItem('auth_user');
 
         if (storedTokens && storedUser) {
-            try {
-                setTokens(JSON.parse(storedTokens));
-                setUser(JSON.parse(storedUser));
-            } catch (error) {
-                console.error('Failed to parse stored auth data:', error);
+            const parsedTokens = parseJSON<Tokens>(storedTokens);
+            const parsedUser = parseJSON<User>(storedUser);
+
+            if (parsedTokens && parsedUser) {
+                setTokens(parsedTokens);
+                setUser(parsedUser);
+            } else {
                 localStorage.removeItem('auth_tokens');
                 localStorage.removeItem('auth_user');
             }
@@ -78,14 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } else if (user.role === 'patient') {
                 router.push('/portal');
             } else if (user.role === 'admin') {
-                window.location.href = 'http://localhost:8000/admin';
+                window.location.href = `${API_ORIGIN}/admin`;
             }
         }
     };
 
     const login = async (username: string, password: string): Promise<LoginResult> => {
         try {
-            const response = await fetch('http://localhost:8000/api/auth/login/', {
+            const response = await fetch(`${API_BASE_URL}/auth/login/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -93,24 +108,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify({ username, password }),
             });
 
-            const data = await response.json();
+            const data = await parseResponseJson(response);
 
             if (!response.ok) {
                 return {
                     status: 'SUCCESS',
-                    error: data.error || 'Login failed',
+                    error: data?.error || 'Login failed',
                 };
             }
 
             // Check if MFA is required
-            if (data.mfa_required) {
+            if (data?.mfa_required) {
                 return {
                     status: 'MFA_REQUIRED',
-                    tempToken: data.temp_token,
+                    tempToken: data?.temp_token,
                 };
             }
 
             // No MFA - store tokens and user
+            if (!data?.access || !data?.refresh || !data?.user) {
+                return {
+                    status: 'SUCCESS',
+                    error: 'Invalid login response from server',
+                };
+            }
+
             const newTokens = {
                 access: data.access,
                 refresh: data.refresh,
@@ -125,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             return {
                 status: 'SUCCESS',
-                requires_policy_acceptance: data.requires_policy_acceptance,
+                requires_policy_acceptance: data?.requires_policy_acceptance,
                 tokens: newTokens
             };
         } catch (error) {
@@ -144,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ? { temp_token: tempToken, recovery_code: code }
                 : { temp_token: tempToken, otp: code };
 
-            const response = await fetch('http://localhost:8000/api/auth/mfa/login/', {
+            const response = await fetch(`${API_BASE_URL}/auth/mfa/login/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -152,16 +174,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify(requestBody),
             });
 
-            const data = await response.json();
+            const data = await parseResponseJson(response);
 
             if (!response.ok) {
                 return {
                     status: 'SUCCESS', // Using SUCCESS status with error field to match pattern, or could define FAILED
-                    error: data.error || (isRecoveryCode ? 'Invalid recovery code' : 'Invalid OTP code')
+                    error: data?.error || (isRecoveryCode ? 'Invalid recovery code' : 'Invalid OTP code')
                 };
             }
 
             // Store tokens and user
+            if (!data?.access || !data?.refresh || !data?.user) {
+                return {
+                    status: 'SUCCESS',
+                    error: 'Invalid MFA response from server',
+                };
+            }
+
             const newTokens = {
                 access: data.access,
                 refresh: data.refresh,
@@ -176,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             return {
                 status: 'SUCCESS',
-                requires_policy_acceptance: data.requires_policy_acceptance,
+                requires_policy_acceptance: data?.requires_policy_acceptance,
                 tokens: newTokens
             };
         } catch (error) {
@@ -192,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!tokens?.refresh) return false;
 
         try {
-            const response = await fetch('http://localhost:8000/api/auth/refresh/', {
+            const response = await fetch(`${API_BASE_URL}/auth/refresh/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -200,9 +229,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify({ refresh: tokens.refresh }),
             });
 
-            const data = await response.json();
+            const data = await parseResponseJson(response);
 
             if (!response.ok) {
+                logout();
+                return false;
+            }
+
+            if (!data?.access || !data?.refresh) {
                 logout();
                 return false;
             }
@@ -230,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return false;
             }
 
-            const response = await fetch('http://localhost:8000/api/auth/user/', {
+            const response = await fetch(`${API_BASE_URL}/auth/user/`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${tokens.access}`,
@@ -243,9 +277,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return false;
             }
 
-            const userData = await response.json();
+            const userData = await parseResponseJson(response);
 
             // Update user state and localStorage
+            if (!userData) {
+                console.error('Empty user profile response');
+                return false;
+            }
+
             setUser(userData);
             localStorage.setItem('auth_user', JSON.stringify(userData));
 
@@ -267,8 +306,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const storedTokens = localStorage.getItem('auth_tokens');
                 if (storedTokens) {
                     try {
-                        const parsedTokens = JSON.parse(storedTokens);
-                        refreshToken = parsedTokens.refresh;
+                        const parsedTokens = parseJSON<Tokens>(storedTokens);
+                        refreshToken = parsedTokens?.refresh;
                     } catch (e) {
                         console.error('Failed to parse stored tokens:', e);
                     }
@@ -280,7 +319,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('[LOGOUT] Sending logout request to backend');
                 console.log('[LOGOUT] Refresh token:', refreshToken.substring(0, 30) + '...');
 
-                const response = await fetch('http://localhost:8000/api/auth/logout/', {
+                const response = await fetch(`${API_BASE_URL}/auth/logout/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -290,7 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
+                    const errorData = await parseResponseJson(response);
                     console.error('[LOGOUT] Backend logout failed:', response.status, errorData);
                 } else {
                     console.log('[LOGOUT] Backend logout successful');

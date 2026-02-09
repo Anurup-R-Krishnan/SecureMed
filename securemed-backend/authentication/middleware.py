@@ -20,7 +20,7 @@ class RoleMiddleware:
                     request.user = auth_result[0]
             except Exception:
                 # Token invalid or missing; proceed as Anonymous
-                pass
+                logger.debug("JWT authentication failed", exc_info=True)
 
         # 1. Skip checks if user is still not logged in (Anonymous)
         if not request.user.is_authenticated:

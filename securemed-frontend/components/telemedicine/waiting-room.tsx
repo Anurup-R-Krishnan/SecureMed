@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Video, Clock, UserCheck, AlertCircle } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth-utils';
+import { API_BASE_URL } from '@/lib/urls';
 
 interface WaitingRoomProps {
     roomId: string;
@@ -31,7 +32,7 @@ export function WaitingRoom({
             try {
                 const token = getAccessToken();
                 const response = await fetch(
-                    `http://localhost:8000/api/telemedicine/rooms/${roomId}/join/`,
+                    `${API_BASE_URL}/telemedicine/rooms/${roomId}/join/`,
                     {
                         method: 'POST',
                         headers: {
@@ -65,7 +66,7 @@ export function WaitingRoom({
             try {
                 const token = getAccessToken();
                 const response = await fetch(
-                    `http://localhost:8000/api/telemedicine/rooms/${roomId}/status_check/`,
+                    `${API_BASE_URL}/telemedicine/rooms/${roomId}/status_check/`,
                     {
                         headers: {
                             'Authorization': `Bearer ${token}`,

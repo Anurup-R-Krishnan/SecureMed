@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/auth-context';
+import { API_BASE_URL } from '@/lib/urls';
+import { getAccessToken } from '@/lib/auth-utils';
 
 type MFAState = 'IDLE' | 'SETUP' | 'VERIFY' | 'ACTIVE';
 
@@ -66,10 +68,14 @@ export default function SecuritySettingsPage() {
                 return;
             }
 
-            const tokens = JSON.parse(authTokens);
-            const accessToken = tokens.access;
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                toast.error('Session expired. Please sign in again.');
+                setIsLoading(false);
+                return;
+            }
 
-            const response = await fetch('http://localhost:8000/api/auth/mfa/setup/', {
+            const response = await fetch(`${API_BASE_URL}/auth/mfa/setup/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -116,10 +122,14 @@ export default function SecuritySettingsPage() {
                 return;
             }
 
-            const tokens = JSON.parse(authTokens);
-            const accessToken = tokens.access;
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                toast.error('Session expired. Please sign in again.');
+                setIsLoading(false);
+                return;
+            }
 
-            const response = await fetch('http://localhost:8000/api/auth/mfa/verify/', {
+            const response = await fetch(`${API_BASE_URL}/auth/mfa/verify/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -173,10 +183,14 @@ export default function SecuritySettingsPage() {
                 return;
             }
 
-            const tokens = JSON.parse(authTokens);
-            const accessToken = tokens.access;
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                toast.error('Session expired. Please sign in again.');
+                setIsLoading(false);
+                return;
+            }
 
-            const response = await fetch('http://localhost:8000/api/auth/mfa/deactivate/', {
+            const response = await fetch(`${API_BASE_URL}/auth/mfa/deactivate/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -231,10 +245,14 @@ export default function SecuritySettingsPage() {
                 return;
             }
 
-            const tokens = JSON.parse(authTokens);
-            const accessToken = tokens.access;
+            const accessToken = getAccessToken();
+            if (!accessToken) {
+                toast.error('Session expired. Please sign in again.');
+                setIsLoading(false);
+                return;
+            }
 
-            const response = await fetch('http://localhost:8000/api/auth/mfa/recovery-codes/regenerate/', {
+            const response = await fetch(`${API_BASE_URL}/auth/mfa/recovery-codes/regenerate/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

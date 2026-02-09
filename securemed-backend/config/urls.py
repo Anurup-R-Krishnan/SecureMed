@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from authentication import views as auth_views
-api_v1_patterns = [
+api_patterns = [
     path('auth/', include('authentication.urls')),
     path('consents/', include('consents.urls')),
     
@@ -50,11 +50,7 @@ api_v1_patterns = [
     path('billing/', include('billing.urls')),
 ]
 
-from django.views.generic import RedirectView
-
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/', include(api_v1_patterns)),
-    # Redirect non-versioned api/ to v1
-    path('api/', RedirectView.as_view(url='/api/v1/', permanent=False)),
+    path('api/', include(api_patterns)),
 ]
