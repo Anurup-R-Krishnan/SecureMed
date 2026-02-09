@@ -115,13 +115,19 @@ def get_doctor_availability(request, doctor_id):
     available_ranges = [slot for slot in schedule_slots if slot.slot_type == 'available']
     blocked_ranges = [slot for slot in schedule_slots if slot.slot_type in ['surgery', 'break']]
 
-    def is_time_allowed(slot_time):
+    def slot_type_for_time(slot_time):
         if not has_schedule:
-            return True
+            return 'available'
+
+        in_blocked = next((s for s in blocked_ranges if s.start_time <= slot_time < s.end_time), None)
+        if in_blocked:
+            return in_blocked.slot_type
 
         in_available = any(s.start_time <= slot_time < s.end_time for s in available_ranges)
-        in_blocked = any(s.start_time <= slot_time < s.end_time for s in blocked_ranges)
-        return in_available and not in_blocked
+        if in_available:
+            return 'available'
+
+        return 'unavailable'
 
     # Generate time slots (9 AM to 5 PM, 30-minute intervals)
     slots = []
@@ -131,10 +137,14 @@ def get_doctor_availability(request, doctor_id):
     while current_time < end_time:
         time_str = current_time.strftime('%H:%M')
         slot_time_value = current_time.time()
-        is_available = is_time_allowed(slot_time_value) and time_str not in booked_times
+        slot_type = slot_type_for_time(slot_time_value)
+        is_booked = time_str in booked_times
+        is_available = slot_type == 'available' and not is_booked
         slots.append({
             'time': time_str,
-            'available': is_available
+            'available': is_available,
+            'slot_type': slot_type,
+            'is_booked': is_booked,
         })
         current_time += timedelta(minutes=30)
     

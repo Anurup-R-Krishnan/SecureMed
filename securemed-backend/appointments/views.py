@@ -135,6 +135,43 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                       'insurance': "Insurance pre-authorization failed. Please contact your provider."
                   })
 
+        # Prevent double booking
+        appointment_time = serializer.validated_data.get('appointment_time')
+        appointment_date = serializer.validated_data.get('appointment_date')
+        doctor = serializer.validated_data.get('doctor')
+        if Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date=appointment_date,
+            appointment_time=appointment_time,
+            status__in=['scheduled', 'confirmed', 'in_progress']
+        ).exists():
+            raise serializers.ValidationError({
+                'appointment_time': 'This time slot is already booked for the selected doctor.'
+            })
+
+        # Validate against doctor availability schedule (if configured)
+        from .models import DoctorAvailabilitySlot
+        slots = DoctorAvailabilitySlot.objects.filter(
+            doctor=doctor,
+            date=appointment_date,
+            is_active=True
+        )
+        if slots.exists():
+            in_available = slots.filter(
+                slot_type='available',
+                start_time__lte=appointment_time,
+                end_time__gt=appointment_time
+            ).exists()
+            in_blocked = slots.filter(
+                slot_type__in=['surgery', 'break'],
+                start_time__lte=appointment_time,
+                end_time__gt=appointment_time
+            ).exists()
+            if not in_available or in_blocked:
+                raise serializers.ValidationError({
+                    'appointment_time': 'Selected time is outside the doctor availability.'
+                })
+
         appointment = serializer.save(
             patient=self.request.user.patient_profile,
             appointment_id=appointment_id,
@@ -266,4 +303,26 @@ class ReferralViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only the assigned specialist can extend access.")
         
         referral.grant_access(days=int(days))
+        return Response(ReferralSerializer(referral).data)
+
+    @action(detail=True, methods=['post'])
+    def override_specialist(self, request, pk=None):
+        """Admin override to reassign specialist for staffing changes."""
+        if not request.user.is_staff and request.user.role != 'admin':
+            raise PermissionDenied("Only admins can override referral assignments.")
+
+        referral = self.get_object()
+        specialist_id = request.data.get('specialist_id')
+        if not specialist_id:
+            return Response({"error": "specialist_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from departments.models import Doctor
+            new_specialist = Doctor.objects.get(id=specialist_id)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Specialist not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        referral.specialist = new_specialist
+        referral.status = 'pending'
+        referral.grant_access(days=30)
         return Response(ReferralSerializer(referral).data)

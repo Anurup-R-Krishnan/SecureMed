@@ -34,6 +34,7 @@ class MedicalRecord(models.Model):
     symptoms = models.TextField(blank=True)
     treatment = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    private_notes = models.TextField(blank=True, help_text="Private clinical notes (not visible to patients)")
     file = models.FileField(upload_to='medical_records/', null=True, blank=True)
     
     # Data Authority Fields
@@ -209,9 +210,17 @@ class MedicalRecordAccess(models.Model):
         return f"{self.medical_record.record_id} accessed by {self.accessed_by}"
 
 class EmergencyAccessLog(models.Model):
+    EMERGENCY_TYPE_CHOICES = [
+        ('life_threatening', 'Life Threatening'),
+        ('urgent_care', 'Urgent Care'),
+        ('critical_lab', 'Critical Lab Result'),
+        ('other', 'Other'),
+    ]
+
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='emergency_access_logs')
     accessed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     reason = models.TextField()
+    emergency_type = models.CharField(max_length=30, choices=EMERGENCY_TYPE_CHOICES, default='other')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     

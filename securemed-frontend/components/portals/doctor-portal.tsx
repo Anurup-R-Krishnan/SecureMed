@@ -61,6 +61,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
   const [activeTab, setActiveTab] = useState<DoctorTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { isAuthenticated } = useAuth();
+  const [emergencyMode, setEmergencyMode] = useState(false);
 
   // API Data States
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -195,6 +196,11 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     }
   };
 
+  const handleEmergencyGranted = () => {
+    setEmergencyMode(true);
+    window.setTimeout(() => setEmergencyMode(false), 30 * 60 * 1000);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -231,7 +237,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className={`min-h-screen bg-background text-foreground ${emergencyMode ? 'ring-4 ring-destructive ring-offset-4 ring-offset-background' : ''}`}>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -415,7 +421,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
             patientId={selectedPatient.id}
             patientName={selectedPatient.name}
             onClose={() => { setShowEmergencyModal(false); setSelectedPatient(null); }}
-            onSubmit={() => { }}
+            onSubmit={handleEmergencyGranted}
             isOpen={showEmergencyModal && !!selectedPatient}
           />
           <ReferralModal
@@ -434,7 +440,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
           patientId=""
           patientName="Enter Patient ID"
           onClose={() => setShowEmergencyModal(false)}
-          onSubmit={() => { }}
+          onSubmit={handleEmergencyGranted}
         />
       )}
     </div>

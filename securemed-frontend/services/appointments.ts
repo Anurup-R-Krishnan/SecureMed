@@ -96,12 +96,22 @@ export const appointmentService = {
                 const endHours = minutes >= 30 ? hours + 1 : hours;
                 const endMinutes = minutes >= 30 ? '00' : '30';
 
+                const slotTypeRaw = (slot.slot_type || '').toString().toLowerCase();
+                const slotType: TimeSlot['slotType'] =
+                    slotTypeRaw === 'surgery' ? 'SURGERY' :
+                    slotTypeRaw === 'break' ? 'BREAK' :
+                    slotTypeRaw === 'available' ? 'AVAILABLE' :
+                    'UNAVAILABLE';
+
+                const isBooked = Boolean(slot.is_booked ?? (!slot.available && slotType === 'AVAILABLE'));
+                const isAvailable = Boolean(slot.available ?? (slotType === 'AVAILABLE' && !isBooked));
+
                 return {
                     startTime: `${time}:00`,
                     endTime: `${String(endHours).padStart(2, '0')}:${endMinutes}:00`,
-                    isAvailable: slot.available,
-                    isBooked: !slot.available,
-                    slotType: slot.available ? 'AVAILABLE' : 'UNAVAILABLE'
+                    isAvailable,
+                    isBooked,
+                    slotType
                 };
             });
         } catch (error) {

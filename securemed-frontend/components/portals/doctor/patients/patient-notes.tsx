@@ -31,6 +31,8 @@ interface PatientNotesProps {
 
 export default function PatientNotes({ patient }: PatientNotesProps) {
     const [notes, setNotes] = useState('');
+    const [privateNotes, setPrivateNotes] = useState('');
+    const [markPrivate, setMarkPrivate] = useState(false);
     const [finalDiagnosis, setFinalDiagnosis] = useState('');
     const [acceptedSuggestions, setAcceptedSuggestions] = useState<AIDiagnosisSuggestion[]>([]);
     const [saving, setSaving] = useState(false);
@@ -66,7 +68,8 @@ export default function PatientNotes({ patient }: PatientNotesProps) {
                 record_type: 'consultation',
                 record_date: new Date().toISOString().split('T')[0],
                 diagnosis: finalDiagnosis,
-                notes: notes,
+                notes: markPrivate ? '' : notes,
+                private_notes: markPrivate ? notes : privateNotes,
                 symptoms: acceptedSuggestions.map(s => s.diagnosis).join(', '),
             });
             setSaved(true);
@@ -222,7 +225,30 @@ export default function PatientNotes({ patient }: PatientNotesProps) {
                         placeholder="Enter clinical observations, symptoms, examination findings..."
                         className="w-full h-32 px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     />
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                            id="private-notes-toggle"
+                            type="checkbox"
+                            checked={markPrivate}
+                            onChange={(e) => setMarkPrivate(e.target.checked)}
+                        />
+                        <label htmlFor="private-notes-toggle">Mark observations as private (hidden from patient)</label>
+                    </div>
                 </div>
+
+                {!markPrivate && (
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Private Clinical Notes
+                        </label>
+                        <textarea
+                            value={privateNotes}
+                            onChange={(e) => setPrivateNotes(e.target.value)}
+                            placeholder="Optional private notes (only visible to clinicians)..."
+                            className="w-full h-24 px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        />
+                    </div>
+                )}
 
                 {/* Final Diagnosis */}
                 <div className="mb-4">

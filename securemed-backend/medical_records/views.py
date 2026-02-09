@@ -109,41 +109,6 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         except Exception:
             pass
 
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Get details of a specific medical record.
-        Logs the access for audit trail.
-        """
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        
-        # AUDIT: Log view access
-        from .audit import log_medical_record_access
-        log_medical_record_access(request.user, instance, 'viewed', 'Clinical review', request)
-        
-        return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        # Saving happens here
-        record = serializer.save()
-        
-        # AUDIT: Log creation
-        from .audit import log_medical_record_access
-        try:
-             log_medical_record_access(self.request.user, record, 'created', 'New record entry', self.request)
-        except Exception:
-             pass
-
-    def perform_update(self, serializer):
-        record = serializer.save()
-        
-        # AUDIT: Log update
-        from .audit import log_medical_record_access
-        try:
-            log_medical_record_access(self.request.user, record, 'updated', 'Record modification', self.request)
-        except Exception:
-            pass
-
     @action(detail=True, methods=['post'])
     def attest(self, request, pk=None):
         """
@@ -267,6 +232,7 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         """
         patient_id = request.data.get('patient_id')
         reason = request.data.get('reason')
+        emergency_type = request.data.get('emergency_type', 'other')
         
         if not patient_id or not reason:
             return Response(
@@ -297,6 +263,7 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
             patient=patient,
             accessed_by=request.user,
             reason=reason,
+            emergency_type=emergency_type,
             ip_address=request.META.get('REMOTE_ADDR'),
             # expires_at = timezone.now() + timedelta(hours=24) 
         )
@@ -304,7 +271,26 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         # Log to system logger for critical alert
         import logging
         logger = logging.getLogger('security')
-        logger.critical(f"BREAK-GLASS EVENT: User {request.user.email} accessed patient {patient.patient_id}. Reason: {reason}")
+        logger.critical(
+            "BREAK-GLASS EVENT: User %s accessed patient %s. Type: %s. Reason: %s",
+            request.user.email,
+            patient.patient_id,
+            emergency_type,
+            reason,
+        )
+
+        from core.notifications import NotificationService
+        NotificationService.send_security_alert(
+            subject="SECURITY ALERT: Break-Glass Access",
+            message=(
+                f"User: {request.user.email}\n"
+                f"Patient: {patient.patient_id}\n"
+                f"Type: {emergency_type}\n"
+                f"Reason: {reason}\n"
+                f"IP: {request.META.get('REMOTE_ADDR')}\n"
+                f"Timestamp: {log.timestamp}"
+            ),
+        )
         
         return Response({
             "status": "access_granted",

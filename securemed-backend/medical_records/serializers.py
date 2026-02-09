@@ -32,8 +32,18 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'record_id', 'record_type', 'record_type_display', 
             'record_date', 'doctor_name', 'diagnosis', 'file', 'file_url',
-            'prescriptions', 'created_at', 'source', 'is_attested', 'notes'
+            'prescriptions', 'created_at', 'source', 'is_attested', 'notes',
+            'private_notes'
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        is_doctor = hasattr(user, 'doctor_profile') or getattr(user, 'role', None) == 'doctor' or getattr(user, 'is_staff', False)
+        if not is_doctor:
+            data.pop('private_notes', None)
+        return data
 
     def get_doctor_name(self, obj):
         if obj.doctor and obj.doctor.user:
@@ -104,4 +114,3 @@ class VitalSignSerializer(serializers.ModelSerializer):
             })
         
         return data
-
