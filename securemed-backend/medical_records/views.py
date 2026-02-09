@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import viewsets, permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from .models import MedicalRecord
@@ -64,7 +65,7 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
                 "id": f"rec-{r.id}",
                 "date": r.created_at.date(), # Assuming generated field
                 "type": "visit", # or logic to determine type
-                "title": r.title or "Medical Record",
+                "title": r.get_record_type_display() if hasattr(r, 'get_record_type_display') else r.record_type,
                 "description": r.notes[:50] if r.notes else "",
                 "details": [r.notes] if r.notes else []
             })
@@ -88,11 +89,11 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
         for a in appts:
              events.append({
                 "id": f"apt-{a.id}",
-                "date": a.start_time.date(),
+            "date": a.appointment_date,
                 "type": "appointment",
                 "title": f"Appointment with Dr. {a.doctor.user.last_name if a.doctor else 'Unknown'}",
                 "description": a.status,
-                "details": [f"Time: {a.start_time.strftime('%H:%M')}"]
+            "details": [f"Time: {a.appointment_time.strftime('%H:%M')}"]
             })
             
         # Sort by date desc
@@ -194,7 +195,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if hasattr(user, 'doctor_profile'):
-             return self.queryset.filter(doctor=user.doctor_profile) # This needs update since Doctor is on MedicalRecord
+               return self.queryset.filter(medical_record__doctor=user.doctor_profile)
         elif hasattr(user, 'patient_profile'):
              return self.queryset.filter(medical_record__patient=user.patient_profile)
         return self.queryset
@@ -237,11 +238,16 @@ class VitalSignViewSet(viewsets.ModelViewSet):
         return self.queryset.none()
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, 'patient_profile'):
-             serializer.save(patient=self.request.user.patient_profile)
-        else:
-             # Handle staff creating vitals
-             pass
+        user = self.request.user
+        if hasattr(user, 'patient_profile'):
+            serializer.save(patient=user.patient_profile)
+            return
+
+        patient = serializer.validated_data.get('patient')
+        if not patient:
+            raise ValidationError({"patient": "Patient is required when staff create vitals."})
+
+        serializer.save()
 
 
 @action(detail=False, methods=['get'])

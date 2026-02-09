@@ -46,6 +46,36 @@ class Appointment(models.Model):
         return f"{self.appointment_id} - {self.patient.patient_id} with Dr. {self.doctor.user.last_name}"
 
 
+class DoctorAvailabilitySlot(models.Model):
+    SLOT_TYPE_CHOICES = [
+        ('available', 'Available'),
+        ('surgery', 'Surgery'),
+        ('break', 'Break'),
+    ]
+
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availability_slots')
+    date = models.DateField(db_index=True)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    slot_type = models.CharField(max_length=20, choices=SLOT_TYPE_CHOICES, default='available')
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'doctor_availability_slots'
+        ordering = ['date', 'start_time']
+        unique_together = ['doctor', 'date', 'start_time', 'end_time']
+        indexes = [
+            models.Index(fields=['doctor', 'date']),
+            models.Index(fields=['date', 'start_time']),
+        ]
+
+    def __str__(self):
+        return f"{self.doctor.user.get_full_name()} - {self.date} {self.start_time}-{self.end_time}"
+
+
 class AppointmentHistory(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='history')
     status = models.CharField(max_length=20)

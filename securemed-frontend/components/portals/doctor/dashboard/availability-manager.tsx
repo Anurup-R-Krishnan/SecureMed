@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -16,6 +16,7 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { appointmentService, DoctorAvailabilitySlot } from '@/services/appointments';
 
 interface TimeSlotConfig {
     id: string;
@@ -34,17 +35,79 @@ export default function AvailabilityManager() {
     ]);
     const [isLoading, setIsLoading] = useState(false);
 
-    // TODO: Integrate with backend API for availability management
+    const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    useEffect(() => {
+        const loadSchedule = async () => {
+            if (!selectedDate) return;
+            setIsLoading(true);
+            try {
+                const dateStr = formatDate(selectedDate);
+                const scheduleSlots = await appointmentService.getDoctorSchedule(dateStr);
+                if (scheduleSlots.length > 0) {
+                    setSlots(scheduleSlots.map((slot) => ({
+                        id: slot.id?.toString() || Math.random().toString(),
+                        startTime: slot.startTime,
+                        endTime: slot.endTime,
+                        type: slot.type
+                    })));
+                } else {
+                    setSlots([]);
+                }
+            } catch (error) {
+                console.error('Failed to load schedule', error);
+                toast({
+                    title: 'Load Failed',
+                    description: 'Unable to load availability for this date.',
+                    variant: 'destructive'
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadSchedule();
+    }, [selectedDate, toast]);
+
     const handleSave = async () => {
+        if (!selectedDate) {
+            toast({
+                title: 'Select a Date',
+                description: 'Please select a date before saving availability.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
         setIsLoading(true);
-        // Placeholder for API call - integrate with backend when endpoint is ready
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            const dateStr = formatDate(selectedDate);
+            const payload: DoctorAvailabilitySlot[] = slots.map((slot) => ({
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                type: slot.type
+            }));
+
+            await appointmentService.saveDoctorSchedule(dateStr, payload);
             toast({
                 title: 'Schedule Updated',
-                description: `Availability for ${selectedDate?.toLocaleDateString()} has been saved.`,
+                description: `Availability for ${selectedDate.toLocaleDateString()} has been saved.`,
             });
-        }, 1000);
+        } catch (error) {
+            console.error('Failed to save schedule', error);
+            toast({
+                title: 'Save Failed',
+                description: 'Unable to save availability. Please try again.',
+                variant: 'destructive'
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const addSlot = () => {

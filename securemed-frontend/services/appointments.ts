@@ -23,6 +23,13 @@ export interface TimeSlot {
     slotType: 'AVAILABLE' | 'UNAVAILABLE' | 'SURGERY' | 'BREAK';
 }
 
+export interface DoctorAvailabilitySlot {
+    id?: string | number;
+    startTime: string;
+    endTime: string;
+    type: 'available' | 'surgery' | 'break';
+}
+
 export interface Appointment {
     id: number;
     appointment_id: string;
@@ -148,6 +155,30 @@ export const appointmentService = {
             console.error('Error updating appointment status:', error);
             throw error;
         }
+    },
+
+    getDoctorSchedule: async (date: string): Promise<DoctorAvailabilitySlot[]> => {
+        try {
+            const response = await api.get(`/appointments/doctor/availability/?date=${date}`);
+            const slots = response.data?.slots || [];
+            return slots.map((slot: any) => ({
+                id: slot.id,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                type: slot.type
+            }));
+        } catch (error) {
+            console.error('Error fetching doctor schedule:', error);
+            return [];
+        }
+    },
+
+    saveDoctorSchedule: async (date: string, slots: DoctorAvailabilitySlot[]) => {
+        const response = await api.post('/appointments/doctor/availability/', {
+            date,
+            slots
+        });
+        return response.data;
     }
 };
 

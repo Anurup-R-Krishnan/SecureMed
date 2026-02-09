@@ -26,7 +26,6 @@ class MedicalRecord(models.Model):
     diagnosis = models.TextField()
     symptoms = models.TextField(blank=True)
     treatment = models.TextField(blank=True)
-    treatment = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     file = models.FileField(upload_to='medical_records/', null=True, blank=True)
     

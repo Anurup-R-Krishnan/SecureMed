@@ -50,9 +50,11 @@ api_v1_patterns = [
     path('billing/', include('billing.urls')),
 ]
 
+from django.views.generic import RedirectView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include(api_v1_patterns)),
-    # Fallback for non-versioned api/ to v1 for backward compatibility (optional but safer)
-    path('api/', include(api_v1_patterns)), 
+    # Redirect non-versioned api/ to v1
+    path('api/', RedirectView.as_view(url='/api/v1/', permanent=False)),
 ]
