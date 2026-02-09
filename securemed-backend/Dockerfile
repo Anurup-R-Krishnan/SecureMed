@@ -1,7 +1,7 @@
 # SecureMed Backend Dockerfile
-# Python 3.11 slim base image for smaller footprint
+# Python 3.14 slim base image (Django 6.0+ requires Python 3.14+)
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1

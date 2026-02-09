@@ -1083,8 +1083,8 @@ class SendInviteView(APIView):
     permission_classes = (IsAuthenticated,)
     
     def post(self, request):
-        # Check if user has Admin role
-        if not request.user.groups.filter(name='Admin').exists():
+        # Check if user has Admin role (use role field, not groups)
+        if request.user.role != 'admin' and not request.user.is_superuser:
             return Response(
                 {"error": "Access denied. Admin role required."},
                 status=status.HTTP_403_FORBIDDEN

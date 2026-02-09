@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+.git
+*.md
+.env*
+.vscode
+media/
+staticfiles/
+privacy_audit.log
+*.csv
+check_output.txt

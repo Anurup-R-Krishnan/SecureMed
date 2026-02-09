@@ -4,3 +4,7 @@ python manage.py createsuperuser
 // Admin Login Credentials
 // Username (Email): admin@securemed.com
 // Password: admin
+
+// Pharmacist Login Credentials
+// Username (Email): pharmacist@securemed.com
+// Password: SecurePharm@2026!

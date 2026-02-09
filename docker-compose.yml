@@ -1,8 +1,6 @@
 # SecureMed Docker Compose
 # Full stack deployment: Backend, Frontend, PostgreSQL
 
-version: '3.8'
-
 services:
   # PostgreSQL Database
   db:
@@ -60,10 +58,13 @@ services:
     build:
       context: ./securemed-frontend
       dockerfile: Dockerfile
+      args:
+        - BACKEND_URL=http://backend:8000
     container_name: securemed-frontend
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - BACKEND_URL=http://backend:8000
       - NODE_ENV=production
     ports:
       - "3000:3000"
