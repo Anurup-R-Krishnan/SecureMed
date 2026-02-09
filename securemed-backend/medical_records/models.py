@@ -100,6 +100,7 @@ class Prescription(models.Model):
         blank=True, 
         help_text='SHA-256 hash of prescription content for integrity verification'
     )
+    override_reason = models.TextField(blank=True, help_text='Reason for overriding interaction warning')
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -140,6 +141,91 @@ class Prescription(models.Model):
     def is_locked(self):
         """Check if prescription is locked (signed prescriptions cannot be modified)."""
         return self.is_signed
+
+
+class DrugInteraction(models.Model):
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('moderate', 'Moderate'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+
+    drug_a = models.CharField(max_length=200)
+    drug_b = models.CharField(max_length=200)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='moderate')
+    description = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'drug_interactions'
+        indexes = [
+            models.Index(fields=['drug_a']),
+            models.Index(fields=['drug_b']),
+            models.Index(fields=['severity']),
+        ]
+
+    def __str__(self):
+        return f"{self.drug_a} + {self.drug_b} ({self.severity})"
+
+
+class PharmacyOrder(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('verified', 'Verified'),
+        ('fulfilled', 'Fulfilled'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    prescription = models.OneToOneField(Prescription, on_delete=models.CASCADE, related_name='pharmacy_order')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    pickup_code = models.CharField(max_length=32, unique=True, db_index=True)
+    verification_notes = models.TextField(blank=True)
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_pharmacy_orders')
+    fulfilled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='fulfilled_pharmacy_orders')
+    dispensed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pharmacy_orders'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"PharmacyOrder #{self.id} ({self.status})"
+
+
+class MedicationAdherenceLog(models.Model):
+    prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name='adherence_logs')
+    taken_at = models.DateTimeField(auto_now_add=True)
+    taken_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='medication_adherence')
+
+    class Meta:
+        db_table = 'medication_adherence_logs'
+        ordering = ['-taken_at']
+
+    def __str__(self):
+        return f"Adherence for {self.prescription.medication_name} at {self.taken_at}"
+
+
+class MedicationHistoryEvent(models.Model):
+    EVENT_CHOICES = [
+        ('started', 'Started'),
+        ('stopped', 'Stopped'),
+        ('dispensed', 'Dispensed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name='history_events')
+    event_type = models.CharField(max_length=20, choices=EVENT_CHOICES)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'medication_history_events'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.prescription.medication_name} {self.event_type}"
 
 
 class LabTest(models.Model):

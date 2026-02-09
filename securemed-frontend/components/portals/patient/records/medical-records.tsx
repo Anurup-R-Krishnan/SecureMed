@@ -18,6 +18,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [adherenceLoading, setAdherenceLoading] = useState<number | null>(null);
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -51,6 +52,19 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   });
 
   const recordTypes = [...new Set(medicalRecords.map(r => r.record_type))];
+  const activePrescriptions = prescriptions.filter((rx) => ['signed', 'dispensed'].includes(rx.status));
+  const pastPrescriptions = prescriptions.filter((rx) => ['cancelled'].includes(rx.status));
+
+  const handleMarkTaken = async (rxId: number) => {
+    setAdherenceLoading(rxId);
+    try {
+      await medicalRecordService.logMedicationTaken(rxId);
+    } catch (error) {
+      console.error('Failed to log adherence', error);
+    } finally {
+      setAdherenceLoading(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -82,7 +96,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Active Medications</p>
-              <p className="text-2xl font-bold text-foreground">{prescriptions.length}</p>
+              <p className="text-2xl font-bold text-foreground">{activePrescriptions.length}</p>
             </div>
           </div>
         </Card>
@@ -108,7 +122,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
           <h3 className="text-lg font-bold text-foreground">Current Prescriptions</h3>
         </div>
 
-        {prescriptions.length === 0 ? (
+        {activePrescriptions.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Pill className="h-12 w-12 mx-auto mb-3 opacity-20" />
             <p>No active prescriptions</p>
@@ -122,16 +136,27 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Dosage</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Frequency</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Duration</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Refill</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Status</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Adherence</th>
                 </tr>
               </thead>
               <tbody>
-                {prescriptions.map((rx) => (
+                {activePrescriptions.map((rx) => (
                   <tr key={rx.id} className="border-b border-border hover:bg-muted/30">
                     <td className="py-3 px-4 font-medium text-foreground">{rx.medication_name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{rx.dosage}</td>
                     <td className="py-3 px-4 text-muted-foreground">{rx.frequency}</td>
                     <td className="py-3 px-4 text-muted-foreground">{rx.duration}</td>
+                    <td className="py-3 px-4">
+                      {rx.is_refill_needed ? (
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                          Refill Needed
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{rx.end_date || 'N/A'}</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4">
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                         rx.status === 'active' || rx.status === 'signed' 
@@ -143,6 +168,16 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                         {rx.status}
                       </span>
                     </td>
+                    <td className="py-3 px-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={adherenceLoading === rx.id}
+                        onClick={() => handleMarkTaken(rx.id)}
+                      >
+                        {adherenceLoading === rx.id ? 'Logging...' : 'Mark Taken'}
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -150,6 +185,26 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
           </div>
         )}
       </Card>
+
+      {pastPrescriptions.length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Pill className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-bold text-foreground">Past Medications</h3>
+          </div>
+          <div className="space-y-2">
+            {pastPrescriptions.map((rx) => (
+              <div key={rx.id} className="flex items-center justify-between border border-border rounded-lg p-3">
+                <div>
+                  <p className="font-medium text-foreground">{rx.medication_name}</p>
+                  <p className="text-xs text-muted-foreground">{rx.dosage} · {rx.frequency} · {rx.duration}</p>
+                </div>
+                <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-700">Cancelled</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-6">

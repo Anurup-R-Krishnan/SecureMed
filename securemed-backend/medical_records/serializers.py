@@ -1,16 +1,21 @@
 from rest_framework import serializers
-from .models import MedicalRecord, Prescription, VitalSign
+from .models import MedicalRecord, Prescription, VitalSign, DrugInteraction, PharmacyOrder, MedicationAdherenceLog, MedicationHistoryEvent
 from appointments.serializers import DoctorSerializer
+from datetime import timedelta
 
 class PrescriptionSerializer(serializers.ModelSerializer):
     patient_id = serializers.IntegerField(write_only=True, required=False)
     doctor_name = serializers.SerializerMethodField()
+    is_refill_needed = serializers.SerializerMethodField()
+    days_remaining = serializers.SerializerMethodField()
+    end_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Prescription
         fields = [
             'id', 'medical_record', 'patient_id', 'medication_name', 'dosage', 'frequency', 'duration', 'instructions',
-            'status', 'is_signed', 'signed_at', 'signed_by', 'signature_hash', 'doctor_name'
+            'status', 'is_signed', 'signed_at', 'signed_by', 'signature_hash', 'override_reason',
+            'doctor_name', 'is_refill_needed', 'days_remaining', 'end_date'
         ]
         read_only_fields = ['status', 'is_signed', 'signed_at', 'signed_by', 'signature_hash', 'medical_record']
     
@@ -20,6 +25,51 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         if obj.signed_by:
              return obj.signed_by.get_full_name()
         return "Unknown Provider"
+
+    def _parse_duration_days(self, duration: str):
+        if not duration:
+            return None
+        value = duration.strip().lower()
+        if 'ongoing' in value or 'indefinite' in value:
+            return None
+        parts = value.split()
+        for i, part in enumerate(parts):
+            if part.isdigit():
+                try:
+                    days = int(part)
+                    if 'week' in value:
+                        return days * 7
+                    if 'month' in value:
+                        return days * 30
+                    return days
+                except ValueError:
+                    return None
+        return None
+
+    def get_end_date(self, obj):
+        if not obj.signed_at:
+            return None
+        days = self._parse_duration_days(obj.duration)
+        if not days:
+            return None
+        return (obj.signed_at.date() + timedelta(days=days)).isoformat()
+
+    def get_days_remaining(self, obj):
+        if not obj.signed_at:
+            return None
+        days = self._parse_duration_days(obj.duration)
+        if not days:
+            return None
+        from django.utils import timezone
+        end_date = obj.signed_at.date() + timedelta(days=days)
+        remaining = (end_date - timezone.now().date()).days
+        return max(0, remaining)
+
+    def get_is_refill_needed(self, obj):
+        days_remaining = self.get_days_remaining(obj)
+        if days_remaining is None:
+            return False
+        return days_remaining <= 5
 
 class MedicalRecordSerializer(serializers.ModelSerializer):
     doctor_name = serializers.SerializerMethodField()
@@ -114,3 +164,35 @@ class VitalSignSerializer(serializers.ModelSerializer):
             })
         
         return data
+
+
+class DrugInteractionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DrugInteraction
+        fields = '__all__'
+
+
+class PharmacyOrderSerializer(serializers.ModelSerializer):
+    qr_payload = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PharmacyOrder
+        fields = '__all__'
+        read_only_fields = ['id', 'pickup_code', 'created_at']
+
+    def get_qr_payload(self, obj):
+        return f"SECUREMED:RX:{obj.pickup_code}"
+
+
+class MedicationAdherenceLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MedicationAdherenceLog
+        fields = '__all__'
+        read_only_fields = ['id', 'taken_at']
+
+
+class MedicationHistoryEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MedicationHistoryEvent
+        fields = '__all__'
+        read_only_fields = ['id', 'timestamp']

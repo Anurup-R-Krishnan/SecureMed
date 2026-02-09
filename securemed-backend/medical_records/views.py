@@ -1,8 +1,10 @@
 from django.shortcuts import render
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from django.db.models import Q
 from .models import MedicalRecord, MedicalRecordAccess
 from .serializers import MedicalRecordSerializer
 from authentication.permissions import IsPatient
@@ -330,6 +332,38 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         if not hasattr(self.request.user, 'doctor_profile'):
             raise PermissionDenied('Only doctors can create prescriptions.')
         doctor_profile = self.request.user.doctor_profile
+
+        # Drug-drug interaction check
+        from .models import Prescription as PrescriptionModel, DrugInteraction
+        new_med = serializer.validated_data.get('medication_name', '').strip()
+        override_reason = serializer.validated_data.get('override_reason', '').strip()
+        interactions = []
+        if new_med:
+            active_rx = PrescriptionModel.objects.filter(
+                medical_record__patient_id=patient_id,
+                status__in=['signed', 'dispensed']
+            )
+            for rx in active_rx:
+                inter = DrugInteraction.objects.filter(
+                    Q(drug_a__iexact=new_med, drug_b__iexact=rx.medication_name) |
+                    Q(drug_a__iexact=rx.medication_name, drug_b__iexact=new_med)
+                ).first()
+                if inter:
+                    interactions.append(inter)
+
+        high_interactions = [i for i in interactions if i.severity in ['high', 'critical']]
+        if high_interactions and not override_reason:
+            raise serializers.ValidationError({
+                'override_reason': 'Override reason required for high severity interaction.',
+                'interactions': [
+                    {
+                        'drug_a': i.drug_a,
+                        'drug_b': i.drug_b,
+                        'severity': i.severity,
+                        'description': i.description
+                    } for i in high_interactions
+                ]
+            })
         
         # Create a Medical Record wrapper for this prescription
         # In a real app, we might group them by visit, but for now 1-to-1 or 1-to-many is fine
@@ -353,6 +387,18 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
              return self.queryset.filter(medical_record__patient=user.patient_profile)
         return self.queryset
 
+    def update(self, request, *args, **kwargs):
+        prescription = self.get_object()
+        if prescription.is_signed:
+            return Response({"error": "Signed prescriptions cannot be edited."}, status=status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        prescription = self.get_object()
+        if prescription.is_signed:
+            return Response({"error": "Signed prescriptions cannot be edited."}, status=status.HTTP_400_BAD_REQUEST)
+        return super().partial_update(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'])
     def sign(self, request, pk=None):
         prescription = self.get_object()
@@ -360,9 +406,27 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         # Verify user is a doctor
         if not hasattr(request.user, 'doctor_profile') and request.user.role != 'doctor':
              return Response({"error": "Only doctors can sign prescriptions."}, status=status.HTTP_403_FORBIDDEN)
+
+        password = request.data.get('password')
+        if not password or not request.user.check_password(password):
+            return Response({"error": "Invalid password."}, status=status.HTTP_400_BAD_REQUEST)
              
         try:
             prescription.sign(request.user)
+            from .models import MedicationHistoryEvent, PharmacyOrder
+            from django.utils import timezone
+            import secrets
+
+            MedicationHistoryEvent.objects.create(
+                prescription=prescription,
+                event_type='started',
+                changed_by=request.user
+            )
+
+            PharmacyOrder.objects.get_or_create(
+                prescription=prescription,
+                defaults={'pickup_code': secrets.token_hex(6).upper()}
+            )
             return Response({
                 "status": "signed", 
                 "message": "Prescription digitally signed and locked.",
@@ -371,6 +435,134 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             })
         except ValueError as e:
              return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        prescription = self.get_object()
+        if not hasattr(request.user, 'doctor_profile') and request.user.role != 'doctor':
+            return Response({"error": "Only doctors can cancel prescriptions."}, status=status.HTTP_403_FORBIDDEN)
+        prescription.status = 'cancelled'
+        prescription.save(update_fields=['status'])
+        from .models import MedicationHistoryEvent
+        MedicationHistoryEvent.objects.create(
+            prescription=prescription,
+            event_type='cancelled',
+            changed_by=request.user
+        )
+        return Response({"status": "cancelled"})
+
+
+class DrugInteractionViewSet(viewsets.ModelViewSet):
+    from .models import DrugInteraction
+    from .serializers import DrugInteractionSerializer
+    queryset = DrugInteraction.objects.all()
+    serializer_class = DrugInteractionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff or self.request.user.role == 'admin':
+            return self.queryset
+        return self.queryset.none()
+
+
+class PharmacyOrderViewSet(viewsets.ModelViewSet):
+    from .models import PharmacyOrder
+    from .serializers import PharmacyOrderSerializer
+    queryset = PharmacyOrder.objects.all()
+    serializer_class = PharmacyOrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return self.queryset
+        if hasattr(user, 'doctor_profile'):
+            return self.queryset.filter(prescription__medical_record__doctor=user.doctor_profile)
+        if hasattr(user, 'patient_profile'):
+            return self.queryset.filter(prescription__medical_record__patient=user.patient_profile)
+        return self.queryset.none()
+
+    def create(self, request, *args, **kwargs):
+        return Response({"error": "Pharmacy orders are created when prescriptions are signed."}, status=400)
+
+    @action(detail=True, methods=['post'])
+    def verify(self, request, pk=None):
+        order = self.get_object()
+        if not request.user.is_staff:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        order.status = 'verified'
+        order.verified_by = request.user
+        order.verification_notes = request.data.get('notes', '')
+        order.save(update_fields=['status', 'verified_by', 'verification_notes'])
+        return Response({"status": "verified"})
+
+    @action(detail=True, methods=['post'])
+    def fulfill(self, request, pk=None):
+        order = self.get_object()
+        if not request.user.is_staff:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        pickup_code = request.data.get('pickup_code')
+        if pickup_code and pickup_code != order.pickup_code:
+            return Response({"error": "Invalid pickup code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.status = 'fulfilled'
+        order.fulfilled_by = request.user
+        order.dispensed_at = timezone.now()
+        order.save(update_fields=['status', 'fulfilled_by', 'dispensed_at'])
+
+        # Update prescription status and log history
+        prescription = order.prescription
+        prescription.status = 'dispensed'
+        prescription.save(update_fields=['status'])
+        from .models import MedicationHistoryEvent
+        MedicationHistoryEvent.objects.create(
+            prescription=prescription,
+            event_type='dispensed',
+            changed_by=request.user
+        )
+        return Response({"status": "fulfilled"})
+
+
+class MedicationAdherenceLogViewSet(viewsets.ModelViewSet):
+    from .models import MedicationAdherenceLog
+    from .serializers import MedicationAdherenceLogSerializer
+    queryset = MedicationAdherenceLog.objects.all()
+    serializer_class = MedicationAdherenceLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'patient_profile'):
+            return self.queryset.filter(prescription__medical_record__patient=user.patient_profile)
+        if user.is_staff:
+            return self.queryset
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        prescription = serializer.validated_data.get('prescription')
+        if not hasattr(self.request.user, 'patient_profile'):
+            raise PermissionDenied("Only patients can log adherence.")
+        if prescription.medical_record.patient != self.request.user.patient_profile:
+            raise PermissionDenied("Cannot log adherence for another patient.")
+        serializer.save(taken_by=self.request.user)
+
+
+class MedicationHistoryEventViewSet(viewsets.ReadOnlyModelViewSet):
+    from .models import MedicationHistoryEvent
+    from .serializers import MedicationHistoryEventSerializer
+    queryset = MedicationHistoryEvent.objects.all()
+    serializer_class = MedicationHistoryEventSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'patient_profile'):
+            return self.queryset.filter(prescription__medical_record__patient=user.patient_profile)
+        if hasattr(user, 'doctor_profile'):
+            return self.queryset.filter(prescription__medical_record__doctor=user.doctor_profile)
+        if user.is_staff:
+            return self.queryset
+        return self.queryset.none()
 
 
 class VitalSignViewSet(viewsets.ModelViewSet):

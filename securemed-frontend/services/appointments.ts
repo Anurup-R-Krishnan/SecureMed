@@ -251,5 +251,17 @@ export const medicalRecordService = {
             console.error('Error fetching prescriptions:', error);
             return [];
         }
+    },
+
+    logMedicationTaken: async (prescriptionId: number): Promise<any> => {
+        const token = getAccessToken();
+        if (!token) throw new Error("No auth token");
+
+        const response = await api.post('/medical-records/medication-adherence/', {
+            prescription: prescriptionId
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return response.data;
     }
 };
