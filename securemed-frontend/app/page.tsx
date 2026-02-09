@@ -9,6 +9,7 @@ import PatientPortal from '@/components/portals/patient-portal';
 import DoctorPortal from '@/components/portals/doctor-portal';
 import AdminPortal from '@/components/portals/admin-portal';
 import LabTechnicianPortal from '@/components/portals/lab-technician-portal';
+import PharmacyPortal from '@/components/portals/pharmacy-portal';
 import RoleGuard from '@/components/auth/role-guard';
 
 export default function Home() {
@@ -76,6 +77,18 @@ export default function Home() {
     );
   }
 
+  // Show pharmacist portal
+  if (userRole === 'pharmacist') {
+    return (
+      <RoleGuard allowedRoles={['pharmacist']}>
+        <PharmacyPortal
+          onLogout={handleLogout}
+          onSwitchRole={() => { }}
+        />
+      </RoleGuard>
+    );
+  }
+
   // Show landing page (no user authenticated)
   return (
     <div className="min-h-screen bg-background">
@@ -90,4 +103,3 @@ export default function Home() {
     </div>
   );
 }
-

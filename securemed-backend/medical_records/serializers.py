@@ -174,6 +174,8 @@ class DrugInteractionSerializer(serializers.ModelSerializer):
 
 class PharmacyOrderSerializer(serializers.ModelSerializer):
     qr_payload = serializers.SerializerMethodField()
+    prescription_details = serializers.SerializerMethodField()
+    patient_details = serializers.SerializerMethodField()
 
     class Meta:
         model = PharmacyOrder
@@ -182,6 +184,25 @@ class PharmacyOrderSerializer(serializers.ModelSerializer):
 
     def get_qr_payload(self, obj):
         return f"SECUREMED:RX:{obj.pickup_code}"
+
+    def get_prescription_details(self, obj):
+        rx = obj.prescription
+        return {
+            "medication_name": rx.medication_name,
+            "dosage": rx.dosage,
+            "frequency": rx.frequency,
+            "duration": rx.duration,
+            "instructions": rx.instructions,
+            "status": rx.status,
+        }
+
+    def get_patient_details(self, obj):
+        patient = obj.prescription.medical_record.patient
+        return {
+            "id": patient.id,
+            "patient_id": patient.patient_id,
+            "name": f"{patient.user.first_name} {patient.user.last_name}"
+        }
 
 
 class MedicationAdherenceLogSerializer(serializers.ModelSerializer):

@@ -474,7 +474,7 @@ class PharmacyOrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
+        if user.is_staff or user.role == 'pharmacist':
             return self.queryset
         if hasattr(user, 'doctor_profile'):
             return self.queryset.filter(prescription__medical_record__doctor=user.doctor_profile)
@@ -488,7 +488,7 @@ class PharmacyOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
         order = self.get_object()
-        if not request.user.is_staff:
+        if not request.user.is_staff and request.user.role != 'pharmacist':
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
         order.status = 'verified'
         order.verified_by = request.user
@@ -499,7 +499,7 @@ class PharmacyOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def fulfill(self, request, pk=None):
         order = self.get_object()
-        if not request.user.is_staff:
+        if not request.user.is_staff and request.user.role != 'pharmacist':
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
         pickup_code = request.data.get('pickup_code')
         if pickup_code and pickup_code != order.pickup_code:
