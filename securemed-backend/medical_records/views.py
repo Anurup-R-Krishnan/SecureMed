@@ -276,11 +276,15 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
 
         from patients.models import Patient
         try:
-            # Try to lookup by patient_id string first (e.g., 'P-10001')
+            # Try to lookup by patient_id string first (e.g., 'PAT-XXXXXXXX')
             patient = Patient.objects.filter(patient_id=patient_id).first()
             if not patient:
-                # Fallback to user ID lookup
-                patient = Patient.objects.get(user__id=patient_id)
+                # Try by Patient table PK (numeric)
+                try:
+                    patient = Patient.objects.get(pk=int(patient_id))
+                except (Patient.DoesNotExist, ValueError, TypeError):
+                    # Fallback to user ID lookup
+                    patient = Patient.objects.get(user__id=patient_id)
         except (Patient.DoesNotExist, ValueError):
             return Response({"error": "Patient not found."}, status=status.HTTP_404_NOT_FOUND)
 

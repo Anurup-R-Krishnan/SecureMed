@@ -15,11 +15,12 @@ class DoctorSerializer(serializers.ModelSerializer):
     hospital = serializers.SerializerMethodField()
     experience = serializers.SerializerMethodField()
     department_name = serializers.CharField(source='department.name', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
     
     class Meta:
         model = Doctor
         fields = [
-            'id', 'name', 'specialization', 'hospital', 'department_name',
+            'id', 'user_id', 'name', 'specialization', 'hospital', 'department_name',
             'consultation_fee', 'experience', 'rating', 'reviews'
         ]
 

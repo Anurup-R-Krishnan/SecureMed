@@ -3,6 +3,7 @@ import { getAccessToken } from '@/lib/auth-utils';
 
 export interface Doctor {
     id: number;
+    user_id: number;
     name: string;
     specialization: string;
     specialty: string;
@@ -65,6 +66,7 @@ export const appointmentService = {
 
             return results.map((doc: any) => ({
                 id: doc.id,
+                user_id: doc.user_id || doc.id,
                 name: doc.name,
                 specialization: doc.specialization,
                 specialty: doc.specialization,
