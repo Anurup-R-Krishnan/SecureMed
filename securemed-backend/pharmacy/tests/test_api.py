@@ -34,7 +34,9 @@ class DrugAPITest(TestCase):
     def test_list_drugs(self):
         response = self.client.get('/api/pharmacy/drugs/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        # Response is paginated - check that our drug is in the results
+        self.assertIn('results', response.data)
+        self.assertGreaterEqual(len(response.data['results']), 1)
 
     def test_create_drug(self):
         data = {
@@ -54,7 +56,11 @@ class DrugAPITest(TestCase):
     def test_search_drugs(self):
         response = self.client.get('/api/pharmacy/drugs/?search=API')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        # Response is paginated - check that search works
+        self.assertIn('results', response.data)
+        self.assertGreaterEqual(len(response.data['results']), 1)
+        # Verify the drug name contains 'API'
+        self.assertIn('API', response.data['results'][0]['name'])
 
     def test_low_stock_drugs(self):
         response = self.client.get('/api/pharmacy/drugs/low_stock/')

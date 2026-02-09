@@ -67,7 +67,7 @@ class RateLimitMiddleware(MiddlewareMixin):
     def process_request(self, request):
         if request.path.startswith('/api/'):
             ip_address = self.get_client_ip(request)
-            user_id = request.user.id if request.user.is_authenticated else None
+            user_id = getattr(request.user, 'id', None) if hasattr(request, 'user') and request.user.is_authenticated else None
             
             # Create cache key
             cache_key = f"rate_limit:{request.path}:{ip_address}:{user_id}"
