@@ -122,6 +122,29 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                       <span>•</span>
                       <span>{record.doctor_name || 'Dr. Unknown'}</span>
                     </div>
+
+                    {/* Show prescriptions nested in this record */}
+                    {record.prescriptions && record.prescriptions.length > 0 && (
+                      <div className="ml-11 mt-3 space-y-1">
+                        <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                          <Pill className="h-3 w-3" /> Prescriptions:
+                        </p>
+                        {record.prescriptions.map((rx: any) => (
+                          <div key={rx.id} className="text-xs text-muted-foreground pl-4 border-l-2 border-primary/20">
+                            <span className="font-medium text-foreground">{rx.medication_name}</span> — {rx.dosage}, {rx.frequency}
+                            {rx.duration && <span> ({rx.duration})</span>}
+                            {rx.is_signed && <span className="ml-1 text-green-600">✓ Signed</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Show clinical notes if present */}
+                    {record.notes && (
+                      <div className="ml-11 mt-2">
+                        <p className="text-xs text-muted-foreground italic">{record.notes}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
