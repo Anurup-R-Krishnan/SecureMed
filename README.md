@@ -152,28 +152,3 @@ The project includes a `docker-compose.yml` for orchestrating the Backend, Front
     ```
 
 ---
-
-## 🔐 Environment Variables
-
-Create a `.env` file in the `securemed-backend` directory:
-
-```env
-# Django Settings
-DEBUG=True
-SECRET_KEY=your_secure_random_key
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database
-DB_NAME=securemed_db
-DB_USER=postgres
-DB_PASSWORD=yourpassword
-DB_HOST=localhost
-DB_PORT=5432
-
-# Email (For Password Reset)
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
-DEFAULT_FROM_EMAIL=noreply@securemed.com
-
-# Frontend Connection
-FRONTEND_URL=http://localhost:3000
-CORS_ALLOWED_ORIGINS=http://localhost:3000
