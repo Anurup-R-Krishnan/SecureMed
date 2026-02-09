@@ -73,10 +73,10 @@ export default function DoctorDashboard({
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                                        P
+                                        {(apt.patient_name || 'P')[0].toUpperCase()}
                                     </div>
                                     <div>
-                                        <p className="font-bold text-foreground text-lg">Patient #{apt.patient}</p>
+                                        <p className="font-bold text-foreground text-lg">{apt.patient_name || `Patient #${apt.patient}`}</p>
                                         <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                                             <Clock className="h-3 w-3" /> {formatTime(apt.appointment_time)} • {apt.reason || 'Consultation'}
                                         </p>

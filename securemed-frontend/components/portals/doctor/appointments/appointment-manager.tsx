@@ -38,11 +38,12 @@ export default function AppointmentManager({
                             className="flex flex-col md:flex-row md:items-center md:justify-between p-6 border border-border/50 bg-background rounded-2xl shadow-sm"
                         >
                             <div>
-                                <p className="font-bold text-foreground text-lg">Patient #{apt.patient}</p>
+                                <p className="font-bold text-foreground text-lg">{apt.patient_name || `Patient #${apt.patient}`}</p>
                                 <p className="text-sm text-muted-foreground mt-1">{apt.appointment_date} at {formatTime(apt.appointment_time)} • {apt.reason}</p>
                             </div>
                             <div className="flex gap-3 mt-4 md:mt-0">
                                 {getStatusBadge(apt.status)}
+
                                 {apt.status === 'scheduled' && (
                                     <Button
                                         size="sm"
@@ -52,10 +53,30 @@ export default function AppointmentManager({
                                         Accept
                                     </Button>
                                 )}
+
+                                {apt.status === 'confirmed' && (
+                                    <Button
+                                        size="sm"
+                                        className="font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
+                                        onClick={() => onAcceptAppointment({ ...apt, status: 'in_progress' } as any)} // Hack: reusing onAccept for now, or need new prop
+                                    >
+                                        Start Consult
+                                    </Button>
+                                )}
+
+                                {apt.status === 'in_progress' && (
+                                    <Button
+                                        size="sm"
+                                        className="font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/20"
+                                        onClick={() => onAcceptAppointment({ ...apt, status: 'completed' } as any)}
+                                    >
+                                        Complete
+                                    </Button>
+                                )}
+
                                 <Button variant="outline" size="sm" className="font-bold rounded-xl" onClick={() => onOpenReferral(apt)}>
                                     Refer
                                 </Button>
-                                <Button size="sm" className="font-bold rounded-xl shadow-lg shadow-primary/20">Start Consultation</Button>
                             </div>
                         </div>
                     ))}

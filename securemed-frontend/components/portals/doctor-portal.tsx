@@ -29,6 +29,7 @@ import AvailabilityManager from '@/components/portals/doctor/dashboard/availabil
 import EmergencyAccessModal from '@/components/portals/doctor/shared/emergency-access-modal';
 import ReferralModal from '@/components/portals/doctor/shared/referral-modal';
 import PatientManager, { DoctorPatient } from '@/components/portals/doctor/patients/patient-manager';
+import PatientProfileView from '@/components/portals/doctor/patients/patient-profile-view';
 import DoctorDashboard from '@/components/portals/doctor/dashboard/doctor-dashboard';
 import AppointmentManager from '@/components/portals/doctor/appointments/appointment-manager';
 import { appointmentService, Appointment } from '@/services/appointments';
@@ -70,6 +71,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<{ id: string, name: string } | null>(null);
+  const [viewingPatient, setViewingPatient] = useState<DoctorPatient | null>(null);
 
   // Fetch data from API
   useEffect(() => {
@@ -102,8 +104,8 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
             if (!uniquePatients.has(apt.patient)) {
               uniquePatients.set(apt.patient, {
                 id: apt.patient,
-                displayId: `P-${apt.patient}`,
-                name: apt.doctor_name ? `Patient of ${apt.doctor_name}` : `Patient #${apt.patient}`, // Fallback naming if no patient details
+                displayId: apt.patient_name ? `P-${apt.patient}` : `P-${apt.patient}`,
+                name: apt.patient_name || `Patient #${apt.patient}`,
                 lastVisit: apt.appointment_date,
                 condition: 'N/A',
                 status: 'Active'
@@ -241,6 +243,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
               onClick={() => {
                 setActiveTab(tab.id);
                 setSidebarOpen(false);
+                if (tab.id !== 'patients') setViewingPatient(null);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeTab === tab.id
                 ? 'bg-primary/10 text-primary shadow-sm'
@@ -315,13 +318,29 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
               />
             )}
 
-            {activeTab === 'patients' && (
+            {activeTab === 'patients' && !viewingPatient && (
               <PatientManager
                 patients={patients}
                 loading={loading}
                 onEmergencyAccess={handleOpenEmergency}
                 onRefer={handleOpenReferral}
-                onViewPatient={(p) => console.log('View patient', p)}
+                onViewPatient={(p) => {
+                  setViewingPatient(p);
+                }}
+              />
+            )}
+
+            {activeTab === 'patients' && viewingPatient && (
+              <PatientProfileView
+                patient={{
+                  id: String(viewingPatient.id),
+                  name: viewingPatient.name,
+                  age: 0,
+                  status: 'Outpatient' as const,
+                  lastVisit: viewingPatient.lastVisit,
+                  condition: viewingPatient.condition,
+                }}
+                onBack={() => setViewingPatient(null)}
               />
             )}
 

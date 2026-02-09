@@ -35,6 +35,7 @@ export interface Appointment {
     id: number;
     appointment_id: string;
     patient: number;
+    patient_name?: string;
     doctor: number;
     doctor_name: string;
     doctor_specialty: string;
@@ -47,6 +48,7 @@ export interface Appointment {
     notes?: string;
     created_at: string;
 }
+
 
 export const appointmentService = {
     getDoctors: async (specialty?: string, search?: string): Promise<Doctor[]> => {
@@ -133,6 +135,7 @@ export const appointmentService = {
                 id: appt.id,
                 appointment_id: appt.appointment_id,
                 patient: appt.patient,
+                patient_name: appt.patient_name,
                 doctor: appt.doctor,
                 doctor_name: appt.doctor_name || 'Unknown Doctor',
                 doctor_specialty: appt.doctor_specialty || 'General',

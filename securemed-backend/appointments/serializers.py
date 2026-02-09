@@ -46,14 +46,21 @@ class AppointmentSerializer(serializers.ModelSerializer):
     patient_id = serializers.CharField(source='patient.patient_id', read_only=True)
     patient = serializers.PrimaryKeyRelatedField(read_only=True)
     
+    patient_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = Appointment
         fields = [
-            'id', 'appointment_id', 'patient', 'patient_id', 'doctor', 'doctor_name', 'doctor_specialty',
+            'id', 'appointment_id', 'patient', 'patient_name', 'patient_id', 'doctor', 'doctor_name', 'doctor_specialty',
             'hospital', 'appointment_date', 'appointment_time', 'reason', 
             'status', 'status_display', 'created_at'
         ]
         read_only_fields = ['id', 'appointment_id', 'patient', 'patient_id', 'created_at']
+
+    def get_patient_name(self, obj):
+        if obj.patient and obj.patient.user:
+            return f"{obj.patient.user.first_name} {obj.patient.user.last_name}"
+        return "Unknown Patient"
 
     def get_hospital(self, obj):
         if obj.doctor and obj.doctor.department:
