@@ -67,6 +67,9 @@ export default function PrivacySettings() {
   const [accessType, setAccessType] = useState<'permanent' | 'temporary'>('permanent');
   const [selectedDuration, setSelectedDuration] = useState<string>('24h');
 
+  // Access log state
+  const [accessLogs, setAccessLogs] = useState<{ date: string; provider: string; department: string; action: string }[]>([]);
+
 
 
   const getAuthHeaders = useCallback(() => {
@@ -119,6 +122,25 @@ export default function PrivacySettings() {
   useEffect(() => {
     fetchConsents();
   }, [fetchConsents]);
+
+  // Fetch access logs from backend
+  useEffect(() => {
+    const fetchAccessLogs = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/medical-records/my-access-log/`, {
+          headers: getAuthHeaders(),
+        });
+        if (Array.isArray(response.data)) {
+          setAccessLogs(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch access logs:', error);
+      }
+    };
+    if (tokens?.access) {
+      fetchAccessLogs();
+    }
+  }, [tokens, getAuthHeaders]);
 
   const calculateExpiryDate = (duration: string): string => {
     const option = DURATION_OPTIONS.find((opt) => opt.value === duration);
@@ -403,33 +425,18 @@ export default function PrivacySettings() {
           </div>
 
           <div className="divide-y divide-border">
-            {[
-              {
-                date: '2025-01-25 14:30',
-                provider: 'Dr. Sarah Johnson',
-                department: 'Cardiology',
-                action: 'Viewed Records',
-              },
-              {
-                date: '2025-01-24 10:15',
-                provider: 'Dr. Michael Chen',
-                department: 'Neurology',
-                action: 'Viewed Records',
-              },
-              {
-                date: '2025-01-23 16:45',
-                provider: 'Dr. Emily Rodriguez',
-                department: 'Orthopedics',
-                action: 'Viewed Records',
-              },
-            ].map((log, idx) => (
-              <div key={idx} className="grid grid-cols-4 gap-4 p-4">
-                <div className="text-sm text-muted-foreground">{log.date}</div>
-                <div className="text-sm font-medium text-foreground">{log.provider}</div>
-                <div className="text-sm text-muted-foreground">{log.department}</div>
-                <div className="text-sm text-accent">{log.action}</div>
-              </div>
-            ))}
+            {accessLogs.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">No access logs recorded yet.</div>
+            ) : (
+              accessLogs.map((log: { date: string; provider: string; department: string; action: string }, idx: number) => (
+                <div key={idx} className="grid grid-cols-4 gap-4 p-4">
+                  <div className="text-sm text-muted-foreground">{log.date}</div>
+                  <div className="text-sm font-medium text-foreground">{log.provider}</div>
+                  <div className="text-sm text-muted-foreground">{log.department}</div>
+                  <div className="text-sm text-accent">{log.action}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

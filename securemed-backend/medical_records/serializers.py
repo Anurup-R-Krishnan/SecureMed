@@ -3,9 +3,8 @@ from .models import MedicalRecord, Prescription, VitalSign
 from appointments.serializers import DoctorSerializer
 
 class PrescriptionSerializer(serializers.ModelSerializer):
-    patient_id = serializers.IntegerField(write_only=True, required=False) # Optional for updates
+    patient_id = serializers.IntegerField(write_only=True, required=False)
     doctor_name = serializers.SerializerMethodField()
-    # medical_record = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Prescription

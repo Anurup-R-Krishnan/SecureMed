@@ -37,22 +37,6 @@ const MONTHS = [
     'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-// Generate time slots from 9 AM to 5 PM
-const generateTimeSlots = (): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    for (let hour = 9; hour < 17; hour++) {
-        slots.push({
-            time: `${hour.toString().padStart(2, '0')}:00`,
-            available: Math.random() > 0.3, // Simulate availability
-        });
-        slots.push({
-            time: `${hour.toString().padStart(2, '0')}:30`,
-            available: Math.random() > 0.3,
-        });
-    }
-    return slots;
-};
-
 export function AppointmentCalendar({ doctors, onBookAppointment }: AppointmentCalendarProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);

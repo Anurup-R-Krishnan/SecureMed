@@ -12,6 +12,7 @@ import {
     AlertTriangle,
     CheckCircle,
 } from 'lucide-react';
+import api from '@/lib/api';
 import AIDecisionSupport from '../shared/ai-decision-support';
 import { AIDiagnosisSuggestion } from '@/lib/types';
 
@@ -59,11 +60,22 @@ export default function PatientNotes({ patient }: PatientNotesProps) {
 
     const handleSave = async () => {
         setSaving(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setSaving(false);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        try {
+            await api.post('/medical-records/records/', {
+                patient: patient.id,
+                record_type: 'consultation',
+                record_date: new Date().toISOString().split('T')[0],
+                diagnosis: finalDiagnosis,
+                notes: notes,
+                symptoms: acceptedSuggestions.map(s => s.diagnosis).join(', '),
+            });
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        } catch (error) {
+            console.error('Failed to save consultation:', error);
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (

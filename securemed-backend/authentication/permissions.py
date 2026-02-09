@@ -18,14 +18,14 @@ class IsAdminUser(BasePermission):
 class IsDoctor(BasePermission):
     """
     Permission class to allow access only to users with DOCTOR role.
-    User must be authenticated and have role == 'provider' (doctor).
+    User must be authenticated and have role == 'provider' or 'doctor'.
     """
     
     def has_permission(self, request, view):
         return (
             request.user and
             request.user.is_authenticated and
-            request.user.role == 'provider'
+            request.user.role in ('provider', 'doctor')
         )
 
 
@@ -53,5 +53,5 @@ class IsDoctorOrPatient(BasePermission):
         return (
             request.user and
             request.user.is_authenticated and
-            request.user.role in ['provider', 'patient']
+            request.user.role in ['provider', 'doctor', 'patient']
         )

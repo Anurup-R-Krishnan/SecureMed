@@ -76,8 +76,13 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
             setDuration('');
             setInstructions('');
 
-        } catch (error) {
-            console.error('Error creating prescription:', error);
+        } catch (error: any) {
+            const detail = error?.response?.data;
+            const msg = typeof detail === 'object'
+                ? Object.values(detail).flat().join(', ')
+                : (detail || 'Failed to create prescription');
+            console.error('Error creating prescription:', msg, error);
+            alert(`Error: ${msg}`);
         } finally {
             setIsSubmitting(false);
         }

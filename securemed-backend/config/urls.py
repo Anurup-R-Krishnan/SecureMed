@@ -16,7 +16,23 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from authentication import views as auth_views
+
+def api_root(request):
+    return JsonResponse({
+        'message': 'SecureMed API',
+        'endpoints': {
+            'admin': '/admin/',
+            'api': '/api/',
+            'auth': '/api/auth/',
+            'patients': '/api/patients/',
+            'appointments': '/api/appointments/',
+            'medical_records': '/api/medical-records/',
+            'telemedicine': '/api/telemedicine/',
+            'labs': '/api/labs/',
+        }
+    })
 api_patterns = [
     path('auth/', include('authentication.urls')),
     path('consents/', include('consents.urls')),
@@ -51,6 +67,7 @@ api_patterns = [
 ]
 
 urlpatterns = [
+    path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
     path('api/', include(api_patterns)),
 ]

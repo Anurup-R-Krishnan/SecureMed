@@ -1,9 +1,9 @@
 from django.shortcuts import render
-from rest_framework import viewsets, permissions, status
-from rest_framework.exceptions import ValidationError
+from rest_framework import viewsets, permissions, status, serializers
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from .models import MedicalRecord
+from .models import MedicalRecord, MedicalRecordAccess
 from .serializers import MedicalRecordSerializer
 from authentication.permissions import IsPatient
 
@@ -337,7 +337,12 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         import uuid
         
-        patient_id = serializer.validated_data.pop('patient_id')
+        patient_id = serializer.validated_data.pop('patient_id', None)
+        if not patient_id:
+            raise serializers.ValidationError({'patient_id': 'This field is required.'})
+        
+        if not hasattr(self.request.user, 'doctor_profile'):
+            raise PermissionDenied('Only doctors can create prescriptions.')
         doctor_profile = self.request.user.doctor_profile
         
         # Create a Medical Record wrapper for this prescription
@@ -522,3 +527,42 @@ def patient_dashboard_stats(request):
             "patient_name": f"{user.first_name} {user.last_name}",
             "error": "Failed to load clinical data"
         })
+
+
+@api_view(['GET'])
+@permission_classes([IsPatient])
+def patient_access_log(request):
+    """
+    Returns the access log for the authenticated patient's medical records.
+    GET /api/medical-records/my-access-log/
+    """
+    user = request.user
+    if not hasattr(user, 'patient_profile'):
+        return Response({"error": "Patient profile not found"}, status=404)
+
+    patient = user.patient_profile
+
+    logs = MedicalRecordAccess.objects.filter(
+        medical_record__patient=patient
+    ).select_related(
+        'accessed_by', 'accessed_by__doctor_profile__department',
+        'medical_record'
+    ).order_by('-access_timestamp')[:50]
+
+    result = []
+    for log in logs:
+        accessed_by = log.accessed_by
+        dept = ''
+        provider = accessed_by.get_full_name() or accessed_by.username
+        if hasattr(accessed_by, 'doctor_profile') and accessed_by.doctor_profile:
+            dp = accessed_by.doctor_profile
+            dept = dp.department.name if dp.department else dp.specialization
+            provider = f"Dr. {accessed_by.get_full_name()}"
+        result.append({
+            "date": log.access_timestamp.strftime('%Y-%m-%d %H:%M'),
+            "provider": provider,
+            "department": dept,
+            "action": log.get_action_display(),
+        })
+
+    return Response(result)

@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import MedicalRecordViewSet, PrescriptionViewSet, VitalSignViewSet, patient_dashboard_stats
+from .views import MedicalRecordViewSet, PrescriptionViewSet, VitalSignViewSet, patient_dashboard_stats, patient_access_log
 from .signing import sign_prescription, verify_prescription_signature
 
 router = DefaultRouter()
@@ -11,6 +11,7 @@ router.register(r'vitals', VitalSignViewSet, basename='vitals')
 urlpatterns = [
     path('', include(router.urls)),
     path('dashboard/stats/', patient_dashboard_stats, name='patient-dashboard-stats'),
+    path('my-access-log/', patient_access_log, name='patient-access-log'),
     # Prescription signing endpoints
     path('prescriptions/<int:prescription_id>/sign/', sign_prescription, name='sign-prescription'),
     path('prescriptions/<int:prescription_id>/verify/', verify_prescription_signature, name='verify-prescription'),
