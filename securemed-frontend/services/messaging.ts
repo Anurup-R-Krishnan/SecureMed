@@ -62,7 +62,10 @@ export const messagingService = {
             const response = await api.get(`/telemedicine/messages/?conversation=${conversationId}`);
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
-        } catch (error) {
+        } catch (error: any) {
+            if (error?.response?.status === 401 || error?.response?.status === 403) {
+                return [];
+            }
             console.error('Error fetching messages:', error);
             return [];
         }

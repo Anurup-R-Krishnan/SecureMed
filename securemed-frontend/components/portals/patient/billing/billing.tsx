@@ -28,8 +28,10 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
         const response = await api.get('/billing/invoices/');
         setInvoices(response.data.invoices);
         setBillingSummary(response.data.summary);
-      } catch (error) {
-        console.error('Failed to fetch billing data:', error);
+      } catch (error: any) {
+        if (error?.response?.status !== 403 && error?.response?.status !== 401) {
+          console.error('Failed to fetch billing data:', error);
+        }
       } finally {
         setLoading(false);
       }

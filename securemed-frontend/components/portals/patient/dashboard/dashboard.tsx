@@ -33,8 +33,10 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 try {
                     const statsRes = await getDashboardStats();
                     setDashboardStats(statsRes.data);
-                } catch (e) {
-                    console.error("Failed to fetch dashboard stats", e);
+                } catch (e: any) {
+                    if (e?.response?.status !== 403 && e?.response?.status !== 401) {
+                        console.error("Failed to fetch dashboard stats", e);
+                    }
                 }
 
                 // Fetch Appointments

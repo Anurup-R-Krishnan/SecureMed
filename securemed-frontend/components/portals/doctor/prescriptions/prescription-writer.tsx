@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
     Pill,
     Search,
-    Plus,
     X,
     CheckCircle2,
     Loader2,
@@ -45,31 +44,26 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
-    // Recent suggestions (could be fetched from API in full implementation)
-    const commonMeds = [
-        "Amoxicillin", "Lisinopril", "Metformin", "Atorvastatin", "Ibuprofen"
-    ];
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedPatient || !medicationName || !dosage) return;
 
         setIsSubmitting(true);
         try {
-            await api.post('/medical-records/prescriptions/', {
+            const payload: any = {
                 patient_id: parseInt(selectedPatient),
-                medication_name: medicationName,
-                dosage,
-                frequency,
-                duration,
-                instructions,
-                status: 'draft'
-            });
+                medication_name: medicationName.trim(),
+                dosage: dosage.trim(),
+                frequency: frequency.trim() || 'As directed',
+                duration: duration.trim() || 'As prescribed',
+                instructions: instructions.trim() || '',
+            };
+
+            await api.post('/medical-records/prescriptions/', payload);
 
             setSubmitted(true);
             if (onSuccess) onSuccess();
 
-            // Reset form but keep patient selected for multiple scripts
             setMedicationName('');
             setDosage('');
             setFrequency('');
@@ -129,42 +123,20 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
             <CardContent className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Patient Selection */}
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label>Select Patient</Label>
-                            <Select value={selectedPatient} onValueChange={setSelectedPatient}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Search or select patient..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {patients.map(p => (
-                                        <SelectItem key={p.id} value={p.id.toString()}>
-                                            {p.name} <span className="text-muted-foreground ml-2">({p.displayId})</span>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Quick Add Common Meds */}
-                        <div className="space-y-2">
-                            <Label>Quick Select</Label>
-                            <div className="flex flex-wrap gap-2">
-                                {commonMeds.map(med => (
-                                    <Button
-                                        key={med}
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 text-xs"
-                                        onClick={() => setMedicationName(med)}
-                                    >
-                                        <Plus className="w-3 h-3 mr-1" />
-                                        {med}
-                                    </Button>
+                    <div className="space-y-2">
+                        <Label>Select Patient</Label>
+                        <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Search or select patient..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {patients.map(p => (
+                                    <SelectItem key={p.id} value={p.id.toString()}>
+                                        {p.name} <span className="text-muted-foreground ml-2">({p.displayId})</span>
+                                    </SelectItem>
                                 ))}
-                            </div>
-                        </div>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-6">
@@ -193,19 +165,20 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="duration">Duration</Label>
+                                    <Label htmlFor="duration">Duration <span className="text-red-500">*</span></Label>
                                     <Input
                                         id="duration"
                                         placeholder="e.g. 7 days"
                                         value={duration}
                                         onChange={(e) => setDuration(e.target.value)}
+                                        required
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="frequency">Frequency</Label>
-                                <Select value={frequency} onValueChange={setFrequency}>
+                                <Label htmlFor="frequency">Frequency <span className="text-red-500">*</span></Label>
+                                <Select value={frequency} onValueChange={setFrequency} required>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select frequency" />
                                     </SelectTrigger>
@@ -215,6 +188,7 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                                         <SelectItem value="Three times daily">Three times daily (TID)</SelectItem>
                                         <SelectItem value="Four times daily">Four times daily (QID)</SelectItem>
                                         <SelectItem value="As needed">As needed (PRN)</SelectItem>
+                                        <SelectItem value="As directed">As directed</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -239,7 +213,7 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                         <Button type="button" variant="ghost" onClick={() => setSelectedPatient('')}>
                             Reset Form
                         </Button>
-                        <Button type="submit" disabled={isSubmitting || !selectedPatient || !medicationName} className="min-w-[140px]">
+                        <Button type="submit" disabled={isSubmitting || !selectedPatient || !medicationName || !dosage || !frequency || !duration} className="min-w-[140px]">
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
