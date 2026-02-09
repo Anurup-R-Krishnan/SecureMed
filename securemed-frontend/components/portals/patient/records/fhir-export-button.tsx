@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileJson, Download, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { API_BASE_URL } from '@/lib/urls';
 
@@ -82,44 +81,34 @@ export default function FHIRExportButton({ patientId }: FHIRExportButtonProps) {
                 onClick={handleExport}
                 disabled={exportState.status === 'loading'}
                 variant="outline"
-                className="flex items-center gap-2 w-full sm:w-auto"
+                className="flex items-center gap-2"
             >
                 {exportState.status === 'loading' ? (
                     <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Exporting from backend...
+                        Exporting...
                     </>
                 ) : (
                     <>
-                        <FileJson className="h-4 w-4" />
-                        Download Medical History (FHIR)
+                        <Download className="h-4 w-4" />
+                        Export FHIR
                     </>
                 )}
             </Button>
 
-            {/* Export Status Message */}
             {exportState.status === 'success' && (
-                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                     <CheckCircle className="h-4 w-4" />
-                    <span>
-                        {exportState.message}
-                        {exportState.resourceCount && ` (${exportState.resourceCount} resources)`}
-                    </span>
+                    <span>Export successful</span>
                 </div>
             )}
 
             {exportState.status === 'error' && (
-                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                     <AlertCircle className="h-4 w-4" />
-                    <span>{exportState.message}</span>
+                    <span>Export failed</span>
                 </div>
             )}
-
-            {/* FHIR Info */}
-            <p className="text-xs text-muted-foreground">
-                Export your complete medical history in HL7 FHIR R4 format from Django backend.
-                Includes visits, diagnoses, lab results, and medications.
-            </p>
         </div>
     );
 }

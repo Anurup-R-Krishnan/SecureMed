@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import MfaSetup from '@/components/auth/mfa-setup';
 import AIDecisionSupport from '@/components/portals/doctor/shared/ai-decision-support';
-import PatientTimeline from '@/components/portals/doctor/patients/patient-timeline';
+import DoctorMedicalRecords from '@/components/portals/doctor/records/doctor-medical-records';
 import PrescriptionWriter from '@/components/portals/doctor/prescriptions/prescription-writer';
 import LabOrderForm from '@/components/portals/doctor/labs/lab-order-form';
 import AvailabilityManager from '@/components/portals/doctor/dashboard/availability-manager';
@@ -151,13 +151,19 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
-  const handleOpenReferral = (patient: any) => {
-    setSelectedPatient({ id: String(patient.id || patient.patient), name: patient.name || patient.patient_name || 'Patient' });
+  const handleOpenReferral = (item: any) => {
+    // item.patient is the Patient PK when called with an Appointment object
+    // item.id is the Patient PK when called with a DoctorPatient object
+    const patientId = item.patient || item.id;
+    const patientName = item.patient_name || item.name || 'Patient';
+    setSelectedPatient({ id: String(patientId), name: patientName });
     setShowReferralModal(true);
   };
 
-  const handleOpenEmergency = (patient: any) => {
-    setSelectedPatient({ id: String(patient.id || patient.patient), name: patient.name || patient.patient_name || 'Patient' });
+  const handleOpenEmergency = (item: any) => {
+    const patientId = item.patient || item.id;
+    const patientName = item.patient_name || item.name || 'Patient';
+    setSelectedPatient({ id: String(patientId), name: patientName });
     setShowEmergencyModal(true);
   };
 
@@ -372,25 +378,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
             )}
 
             {activeTab === 'records' && (
-              <div className="space-y-6">
-                <div className="bg-card p-8 rounded-[32px] border border-border shadow-sm">
-                  <div className="mb-6">
-                    <h3 className="text-xl font-black text-foreground">Recent Patient Activity</h3>
-                    <p className="text-muted-foreground">Live feed of patient updates, labs, and history.</p>
-                  </div>
-                  {selectedPatient ? (
-                    <PatientTimeline
-                      patientId={selectedPatient.id}
-                      className="shadow-none border-none bg-transparent"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                      <Users className="h-12 w-12 mb-4 opacity-20" />
-                      <p>Select a patient from the Patients tab to view their timeline</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <DoctorMedicalRecords patientId={selectedPatient?.id} />
             )}
 
 

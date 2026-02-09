@@ -88,9 +88,23 @@ export default function ReferralModal({ isOpen, onClose, patientId, patientName 
                 onClose();
             }, 2000);
         } catch (error: any) {
+            const errData = error.response?.data;
+            let errMsg = 'Failed to send referral. Please try again.';
+            if (errData) {
+                if (typeof errData === 'string') errMsg = errData;
+                else if (errData.detail) errMsg = errData.detail;
+                else if (errData.error) errMsg = errData.error;
+                else {
+                    // Collect field errors
+                    const fieldErrors = Object.entries(errData)
+                        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                        .join('; ');
+                    if (fieldErrors) errMsg = fieldErrors;
+                }
+            }
             toast({
                 title: 'Error',
-                description: error.response?.data?.detail || 'Failed to send referral. Please try again.',
+                description: errMsg,
                 variant: 'destructive',
             });
         } finally {
