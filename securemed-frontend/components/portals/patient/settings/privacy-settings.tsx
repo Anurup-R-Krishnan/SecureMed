@@ -560,7 +560,7 @@ export default function PrivacySettings() {
                     logout();
 
                     // Redirect to login with message
-                    router.push('/login?message=Account scheduled for deletion');
+                    router.push('/?message=Account scheduled for deletion');
                   } catch (error: any) {
                     console.error('Error requesting account deletion:', error);
                     toast.error(
