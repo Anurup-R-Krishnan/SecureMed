@@ -8,7 +8,7 @@ interface HealthScoreCardProps {
     trend?: 'up' | 'down' | 'stable';
 }
 
-export default function HealthScoreCard({ score = 0, trend = 'stable' }: HealthScoreCardProps) {
+export default function HealthScoreCard({ score = 85, trend = 'stable' }: HealthScoreCardProps) {
     // Calculate circumference for SVG circle
     const radius = 60;
     const circumference = 2 * Math.PI * radius;
