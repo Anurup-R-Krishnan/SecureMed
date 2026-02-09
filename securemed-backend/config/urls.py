@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
 from authentication import views as auth_views
+from core.health_views import HealthCheckView, ReadinessCheckView, LivenessCheckView
 
 def api_root(request):
     return JsonResponse({
@@ -70,4 +71,9 @@ urlpatterns = [
     path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
     path('api/', include(api_patterns)),
+    
+    # Health check endpoints
+    path('health/', HealthCheckView.as_view(), name='health'),
+    path('health/ready/', ReadinessCheckView.as_view(), name='readiness'),
+    path('health/live/', LivenessCheckView.as_view(), name='liveness'),
 ]

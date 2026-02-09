@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-0tf^1ob=elb^f%1r$n#t8t(y$iknnnk7ubj+qclku=s9xpjntb')
 
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 if 'testserver' not in ALLOWED_HOSTS:
@@ -57,13 +57,16 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.security_middleware.SecurityHeadersMiddleware',
+    'core.security_middleware.RateLimitMiddleware',
+    'core.security_middleware.RequestLoggingMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'authentication.middleware.RoleMiddleware',  # Role-based access control
-    'authentication.middleware_logging.PrivacyLoggingMiddleware',  # Privacy-aware access logging
+    'authentication.middleware.RoleMiddleware',
+    'authentication.middleware_logging.PrivacyLoggingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

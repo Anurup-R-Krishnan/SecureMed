@@ -111,11 +111,9 @@ def profile_details(request):
     Get or update the current user's patient profile.
     """
     user = request.user
-    print(f"DEBUG: profile_details called for user: {user.username} (ID: {user.id})")
     patient = get_patient_profile(user)
     
     if not patient:
-        print(f"DEBUG: Profile not found for {user.username}")
         return Response({"error": "Patient profile not found."}, status=404)
 
     if request.method == 'GET':
