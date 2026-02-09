@@ -38,31 +38,18 @@ api_patterns = [
     path('auth/', include('authentication.urls')),
     path('consents/', include('consents.urls')),
     
-    # RBAC Test Endpoints
     path('doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
     path('patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),
     path('admin/test-dashboard/', auth_views.admin_dashboard_test, name='admin_test'),
 
-    # Appointments & Medical Records
     path('appointments/', include('appointments.urls')),
     path('medical-records/', include('medical_records.urls')),
-    
-    # Telemedicine
     path('telemedicine/', include('telemedicine.urls')),
-    
-    # Analytics (Epic 8)
     path('admin/', include('analytics.urls')),
-    
-    # Epic 8: Doctor AI Decision Support
     path('doctor/', include('analytics.doctor_urls')),
-    
-    # Epic 8: Patient FHIR Export
     path('patient/', include('analytics.patient_urls')),
-    
-    # Epic 4: Labs
     path('labs/', include('labs.urls')),
-    
-    # Patients (Timeline, Profile)
+    path('pharmacy/', include('pharmacy.urls')),
     path('patients/', include('patients.urls')),
     path('billing/', include('billing.urls')),
 ]
