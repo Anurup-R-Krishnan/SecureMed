@@ -545,19 +545,23 @@ def health_check(request):
 @permission_classes([IsAuthenticated])
 def get_audit_logs(request):
     """
-    Returns the content of privacy_audit.log.
-    GET /api/admin/audit-logs/
+    Returns emergency access logs from database.
+    Admin only. GET /api/admin/audit-logs/
     """
-    log_file_path = os.path.join(settings.BASE_DIR, 'privacy_audit.log')
-    logs = []
-    try:
-        if os.path.exists(log_file_path):
-            with open(log_file_path, 'r') as f:
-                # Read last 100 lines for performance
-                lines = f.readlines()
-                logs = [line.strip() for line in lines[-100:]]
-                logs.reverse() # Newest first
-    except Exception as e:
-        print(f"Error reading audit log: {e}")
-        
-    return Response({'logs': logs})
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+    
+    from medical_records.models import EmergencyAccessLog
+    logs = EmergencyAccessLog.objects.select_related(
+        'doctor', 'patient'
+    ).order_by('-accessed_at')[:100]
+    
+    data = [{
+        'doctor': log.doctor.get_full_name(),
+        'patient': log.patient.get_full_name(),
+        'reason': log.reason,
+        'emergency_type': log.emergency_type,
+        'accessed_at': log.accessed_at.isoformat(),
+    } for log in logs]
+    
+    return Response({'logs': data})
