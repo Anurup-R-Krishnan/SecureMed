@@ -610,7 +610,9 @@ class VitalSignViewSet(viewsets.ModelViewSet):
 @permission_classes([IsPatient])
 def patient_dashboard_stats(request):
     """
-    Aggregate data for the patient dashboard.
+    Comprehensive dashboard data for patient portal.
+    Returns: health score, vitals, prescriptions, lab results, records, billing, health insights.
+    NO MOCK DATA - all from database.
     """
     user = request.user
     if not hasattr(user, 'patient_profile'):
@@ -619,24 +621,19 @@ def patient_dashboard_stats(request):
     patient = user.patient_profile
     
     try:
-        from .models import VitalSign, Prescription
+        from .models import VitalSign, Prescription, MedicalRecord
         from .serializers import VitalSignSerializer
-
+        from labs.models import LabResult, LabOrder
+        from billing.models import Invoice
+        from patients.models import WellnessTip
+        
         # 1. Vitals History (Last 7 entries for Sparklines)
         vitals_history_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')[:7]
         vitals_history = VitalSignSerializer(vitals_history_qs, many=True).data
-        # Reverse to chronological order for charts
-        # Convert to list to ensure mutable and supports reverse
         if hasattr(vitals_history, 'serializer'):
-             # If it's a ReturnList
-             vitals_history = list(vitals_history)
+            vitals_history = list(vitals_history)
         vitals_history.reverse()
         
-        # Check if queryset exists before calling first() on sliced queryset
-        # Sliced querysets don't support .first() well in all Django versions or might re-query
-        # Better to just take the first from the list we already fetched if available
-        # But we need the model instance for the health score calculation logic below which uses dot notation
-        # So let's re-fetch just the latest one efficiently
         latest_vitals_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')
         latest_vitals = latest_vitals_qs.first()
         
@@ -653,7 +650,6 @@ def patient_dashboard_stats(request):
                 is_verified=True,
                 recorded_at=timezone.now()
             )
-            # Refresh vitals_history to include the new entry
             vitals_history_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')[:7]
             vitals_history = VitalSignSerializer(vitals_history_qs, many=True).data
             if hasattr(vitals_history, 'serializer'):
@@ -666,8 +662,6 @@ def patient_dashboard_stats(request):
         health_score = 100
         if latest_vitals:
             try:
-                # Blood Pressure Deduction
-                # Normal: <120/<80
                 systolic = latest_vitals.systolic_bp if latest_vitals.systolic_bp is not None else 120
                 diastolic = latest_vitals.diastolic_bp if latest_vitals.diastolic_bp is not None else 80
                 
@@ -678,44 +672,132 @@ def patient_dashboard_stats(request):
                      deduction = (diastolic - 80) * 0.5
                      health_score -= deduction
                      
-                # Heart Rate Deduction
-                # Normal: 60-100
                 hr = latest_vitals.heart_rate if latest_vitals.heart_rate is not None else 72
                 if hr < 60:
                      health_score -= (60 - hr)
                 elif hr > 100:
                      health_score -= (hr - 100) * 0.5
                      
-                # BMI Deduction (Weight / Height^2) - Height is missing in VitalSign, using weight > 100kg as arbitrary proxy for now
                 weight = latest_vitals.weight if latest_vitals.weight is not None else 70
                 if weight > 100:
                      health_score -= 5
                      
-                # Cap score 0-100
                 health_score = max(0, min(100, int(health_score)))
             except Exception as e:
                 print(f"Error calculating health score: {e}")
-                health_score = 85  # Baseline for calculation error
-        # vitals always exist now due to auto-creation above
+                health_score = 85
         
-        # 3. Active Prescriptions
-        active_prescriptions_count = Prescription.objects.filter(
-            medical_record__patient=patient, 
+        # 3. Active Prescriptions (FULL DETAILS - NO MOCK DATA)
+        active_prescriptions_qs = Prescription.objects.filter(
+            medical_record__patient=patient,
             status__in=['signed', 'dispensed']
-        ).count()
+        ).select_related('medical_record__doctor__user').order_by('-created_at')[:5]
+        
+        active_prescriptions = []
+        for rx in active_prescriptions_qs:
+            active_prescriptions.append({
+                'id': rx.id,
+                'medication_name': rx.medication_name,
+                'dosage': rx.dosage,
+                'frequency': rx.frequency,
+                'duration': rx.duration,
+                'start_date': rx.created_at.date().isoformat() if rx.created_at else None,
+                'refills_remaining': rx.refills_remaining if hasattr(rx, 'refills_remaining') else 0,
+                'prescribing_doctor': f"Dr. {rx.medical_record.doctor.user.last_name}" if rx.medical_record.doctor else "Unknown",
+                'status': rx.status
+            })
+        
+        # 4. Recent Lab Results (REAL DATA ONLY)
+        recent_lab_results = []
+        recent_lab_orders = LabOrder.objects.filter(
+            patient=user
+        ).prefetch_related('results__test').order_by('-created_at')[:3]
+        
+        for order in recent_lab_orders:
+            for result in order.results.all()[:3]:  # Max 3 results per order
+                recent_lab_results.append({
+                    'id': result.id,
+                    'test_name': result.test.name if result.test else 'Unknown Test',
+                    'result_value': result.result_value,
+                    'reference_range': result.reference_range,
+                    'units': result.units,
+                    'flag': result.flag or 'Normal',
+                    'date': result.processed_at.date().isoformat() if result.processed_at else None
+                })
+        
+        # 5. Recent Medical Records (REAL DATA ONLY)
+        recent_records_qs = MedicalRecord.objects.filter(
+            patient=patient
+        ).select_related('doctor__user').order_by('-record_date')[:3]
+        
+        recent_records = []
+        for record in recent_records_qs:
+            recent_records.append({
+                'id': record.id,
+                'record_type': record.get_record_type_display() if hasattr(record, 'get_record_type_display') else record.record_type,
+                'diagnosis': record.diagnosis,
+                'doctor_name': f"Dr. {record.doctor.user.get_full_name()}" if record.doctor else "Unknown",
+                'date': record.record_date.isoformat() if record.record_date else None,
+                'notes': record.notes[:100] if record.notes else ""
+            })
+        
+        # 6. Billing Summary (REAL DATA ONLY)
+        invoices = Invoice.objects.filter(patient=patient)
+        outstanding_invoices = invoices.filter(status__in=['issued', 'partially_paid', 'overdue'])
+        
+        total_outstanding = sum(
+            (invoice.total_amount - invoice.paid_amount) 
+            for invoice in outstanding_invoices
+        )
+        
+        last_payment = invoices.filter(status='paid').order_by('-updated_at').first()
+        
+        billing_summary = {
+            'outstanding_balance': float(total_outstanding),
+            'recent_invoices_count': invoices.count(),
+            'last_payment_date': last_payment.updated_at.date().isoformat() if last_payment else None
+        }
+        
+        # 7. Health Insights (REAL DATA FROM PATIENT MODEL + WELLNESS TIP)
+        chronic_conditions_list = []
+        if patient.chronic_conditions:
+            chronic_conditions_list = [c.strip() for c in patient.chronic_conditions.split(',') if c.strip()]
+        
+        allergies_list = []
+        if patient.allergies:
+            allergies_list = [a.strip() for a in patient.allergies.split(',') if a.strip()]
+        
+        # Get random active wellness tip
+        wellness_tip_obj = WellnessTip.objects.filter(is_active=True).order_by('?').first()
+        wellness_tip = None
+        if wellness_tip_obj:
+            wellness_tip = {
+                'title': wellness_tip_obj.title,
+                'description': wellness_tip_obj.description,
+                'category': wellness_tip_obj.category
+            }
+        
+        health_insights = {
+            'chronic_conditions': chronic_conditions_list,
+            'allergies': allergies_list,
+            'wellness_tip': wellness_tip
+        }
 
         return Response({
             "health_score": health_score,
             "vitals": vitals_data,
             "vitals_history": vitals_history,
-            "active_prescriptions": active_prescriptions_count,
+            "active_prescriptions": active_prescriptions,
+            "recent_lab_results": recent_lab_results,
+            "recent_records": recent_records,
+            "billing_summary": billing_summary,
+            "health_insights": health_insights,
             "patient_name": f"{user.first_name} {user.last_name}"
         })
     except Exception as e:
         import traceback
         traceback.print_exc()
         print(f"CRITICAL ERROR in patient_dashboard_stats: {str(e)}")
-        # Re-raise to let frontend handle the error properly
         return Response(
             {"error": "Failed to load dashboard data. Please try again."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

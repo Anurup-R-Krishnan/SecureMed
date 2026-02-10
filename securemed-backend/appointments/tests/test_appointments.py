@@ -30,8 +30,8 @@ class AppointmentModelTest(TestCase):
             username='doctor_model_user',
             email='doctor_model@test.com',
             password='testpass123',
-            first_name='John',
-            last_name='Doe',
+            first_name='Test',
+            last_name='Doctor',
             role='doctor'
         )
         self.doctor = Doctor.objects.create(
@@ -51,8 +51,8 @@ class AppointmentModelTest(TestCase):
             username='patient_model_user',
             email='patient_model@test.com',
             password='testpass123',
-            first_name='Jane',
-            last_name='Smith',
+            first_name='Test',
+            last_name='Patient',
             role='patient'
         )
         self.patient_profile = Patient.objects.create(
@@ -100,8 +100,8 @@ class AppointmentAPITest(APITestCase):
             username='doctor_api_user',
             email='doctor_api@test.com',
             password='testpass123',
-            first_name='John',
-            last_name='Doe',
+            first_name='Test',
+            last_name='Doctor',
             role='doctor'
         )
         self.doctor = Doctor.objects.create(
@@ -121,8 +121,8 @@ class AppointmentAPITest(APITestCase):
             username='patient_api_user',
             email='patient_api@test.com',
             password='testpass123',
-            first_name='Jane',
-            last_name='Smith',
+            first_name='Test',
+            last_name='Patient',
             role='patient'
         )
         self.patient_profile = Patient.objects.create(
@@ -139,7 +139,7 @@ class AppointmentAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.data if isinstance(response.data, list) else response.data.get('results', [])
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['name'], 'Dr. John Doe')
+        self.assertEqual(data[0]['name'], 'Dr. Test Doctor')
 
     def test_accept_appointment_by_doctor(self):
         """Test that a doctor can accept (confirm) an appointment"""

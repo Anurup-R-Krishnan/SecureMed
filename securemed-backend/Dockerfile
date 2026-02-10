@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # SecureMed Backend Dockerfile
 # Python 3.14 slim base image (Django 6.0+ requires Python 3.14+)
 
@@ -19,8 +20,8 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install gunicorn
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 # Copy project files
 COPY . .

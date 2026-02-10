@@ -1,17 +1,6 @@
 'use client';
 
-import React from 'react';
-import PharmacyInventory from './pharmacy/inventory-management';
-
-interface PharmacyPortalProps {
-  onLogout: () => void;
-  onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
-}
-
-export default function PharmacyPortal({ onLogout, onSwitchRole }: PharmacyPortalProps) {
-  return <PharmacyInventory onLogout={onLogout} />;
-}
-
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

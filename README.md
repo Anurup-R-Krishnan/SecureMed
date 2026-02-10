@@ -126,9 +126,7 @@ The project includes a `docker-compose.yml` for orchestrating the Backend, Front
     ```
 5.  Seed Initial Data (Roles, Admin):
     ```bash
-    python manage.py runscript seed_data  # If using django-extensions
-    # OR create superuser manually
-    python manage.py createsuperuser
+    python manage.py seed_db --flush
     ```
 6.  Start Server:
     ```bash

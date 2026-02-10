@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'analytics',
     'labs',
     'pharmacy',
+    'seeds',
 ]
 
 MIDDLEWARE = [

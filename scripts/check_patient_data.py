@@ -4,7 +4,7 @@ import sys
 from django.conf import settings
 
 # Setup Django environment
-sys.path.append('/home/anuruprkris/Project/SecureMed/securemed-backend')
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'securemed-backend'))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 

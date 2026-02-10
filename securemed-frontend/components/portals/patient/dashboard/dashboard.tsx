@@ -6,15 +6,19 @@ import { Calendar, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { appointmentService, Appointment as BaseAppointment } from '@/services/appointments';
 import HealthScoreCard from './health-score-card';
+import VitalsRow from './vitals-row';
+import QuickActions from './quick-actions';
+import ActivePrescriptionsCard from './active-prescriptions-card';
+import LabResultsCard from './lab-results-card';
+import RecentRecordsCard from './recent-records-card';
+import BillingSummaryCard from './billing-summary-card';
+import HealthInsightsCard from './health-insights-card';
+import { getDashboardStats } from '@/lib/api';
 
-// Extend Appointment type locally if needed or just cast
 interface Appointment extends Omit<BaseAppointment, 'doctor_name'> {
     specialty?: string;
     doctor_name?: string;
 }
-import VitalsRow from './vitals-row';
-import QuickActions from './quick-actions';
-import { getDashboardStats } from '@/lib/api';
 
 interface PatientDashboardProps {
     onNavigate: (tab: any) => void;
@@ -29,7 +33,7 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Fetch Dashboard Stats (Health Score, Vitals)
+                // Fetch Dashboard Stats (Health Score, Vitals, Prescriptions, Labs, etc.)
                 try {
                     const statsRes = await getDashboardStats();
                     setDashboardStats(statsRes.data);
@@ -46,7 +50,7 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                     const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
                     return aptDate >= now && (apt.status === 'scheduled' || apt.status === 'confirmed');
                 });
-                setAppointments(upcoming.slice(0, 3)); // Show max 3 for cleaner UI
+                setAppointments(upcoming.slice(0, 3));
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
             } finally {
@@ -93,14 +97,12 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 <p className="text-muted-foreground text-sm">Here&apos;s your health overview for today.</p>
             </div>
 
-            {/* Main Stats Grid */}
+            {/* Row 1: Health Score + Vitals */}
             <div className="grid lg:grid-cols-3 gap-6">
-                {/* Left Column: Health Score */}
                 <div className="lg:col-span-1 h-64">
                     <HealthScoreCard score={dashboardStats?.health_score ?? 0} />
                 </div>
 
-                {/* Right Column: Vitals & Quick Actions */}
                 <div className="lg:col-span-2 space-y-6">
                     {vitals ? (
                         <VitalsRow
@@ -115,50 +117,74 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 </div>
             </div>
 
-            {/* Appointments Section */}
-            <div className="grid gap-6">
-                {/* Upcoming Appointments */}
-                <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-semibold text-lg">Upcoming Appointments</h3>
-                        <Button variant="link" className="text-primary text-sm h-auto p-0" onClick={() => onNavigate('appointments')}>
-                            View all
-                        </Button>
-                    </div>
+            {/* Row 2: Active Prescriptions + Lab Results */}
+            <div className="grid lg:grid-cols-2 gap-6">
+                <ActivePrescriptionsCard
+                    prescriptions={dashboardStats?.active_prescriptions || []}
+                    onNavigate={onNavigate}
+                />
+                <LabResultsCard
+                    results={dashboardStats?.recent_lab_results || []}
+                    onNavigate={onNavigate}
+                />
+            </div>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {appointments.length === 0 ? (
-                            <div className="col-span-full text-center py-8 text-muted-foreground bg-white/5 rounded-lg border border-dashed border-white/10">
-                                No upcoming appointments.
-                                <div className="mt-2">
-                                    <Button variant="outline" size="sm" onClick={() => onNavigate('appointments')}>Book Now</Button>
-                                </div>
+            {/* Row 3: Upcoming Appointments */}
+            <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-semibold text-lg">Upcoming Appointments</h3>
+                    <Button variant="link" className="text-primary text-sm h-auto p-0" onClick={() => onNavigate('appointments')}>
+                        View all
+                    </Button>
+                </div>
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {appointments.length === 0 ? (
+                        <div className="col-span-full text-center py-8 text-muted-foreground bg-white/5 rounded-lg border border-dashed border-white/10">
+                            No upcoming appointments.
+                            <div className="mt-2">
+                                <Button variant="outline" size="sm" onClick={() => onNavigate('appointments')}>Book Now</Button>
                             </div>
-                        ) : (
-                            appointments.map((apt) => (
-                                <div key={apt.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold shrink-0">
-                                            {apt.doctor_name ? apt.doctor_name.charAt(4) : 'D'}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="font-semibold text-foreground truncate">{apt.doctor_name || 'Doctor'}</p>
-                                            <p className="text-sm text-muted-foreground truncate">{apt.specialty || 'General Practice'}</p>
-                                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(apt.appointment_date)}</span>
-                                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatTime(apt.appointment_time)}</span>
-                                            </div>
+                        </div>
+                    ) : (
+                        appointments.map((apt) => (
+                            <div key={apt.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors group">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold shrink-0">
+                                        {apt.doctor_name ? apt.doctor_name.charAt(4) : 'D'}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-foreground truncate">{apt.doctor_name || 'Doctor'}</p>
+                                        <p className="text-sm text-muted-foreground truncate">{apt.specialty || 'General Practice'}</p>
+                                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(apt.appointment_date)}</span>
+                                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatTime(apt.appointment_time)}</span>
                                         </div>
                                     </div>
-                                    <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 shrink-0">
-                                        Join
-                                    </Button>
                                 </div>
-                            ))
-                        )}
-                    </div>
-                </Card>
+                                <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 shrink-0">
+                                    Join
+                                </Button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </Card>
+
+            {/* Row 4: Recent Medical Records + Billing Summary */}
+            <div className="grid lg:grid-cols-2 gap-6">
+                <RecentRecordsCard
+                    records={dashboardStats?.recent_records || []}
+                    onNavigate={onNavigate}
+                />
+                <BillingSummaryCard
+                    summary={dashboardStats?.billing_summary || null}
+                    onNavigate={onNavigate}
+                />
             </div>
+
+            {/* Row 5: Health Insights */}
+            <HealthInsightsCard insights={dashboardStats?.health_insights || null} />
         </div>
     );
 }

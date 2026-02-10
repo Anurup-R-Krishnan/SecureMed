@@ -53,7 +53,8 @@ def get_dashboard_stats(request):
         today_appointments = 0
     
     # Calculate hospital occupancy (placeholder - would need beds/admissions model)
-    occupancy = min(65 + (total_patients % 30), 95)  # Simulate occupancy 65-95%
+    # Default to 0 until Bed Management module is implemented
+    occupancy = 0
     
     # Calculate revenue (placeholder - would need billing integration)
     avg_revenue_per_patient = 2500  # In INR
@@ -224,7 +225,7 @@ def get_alerts(request):
 def get_analytics(request):
     """
     Returns aggregated clinical analytics data for the dashboard.
-    Uses REAL database counts instead of mock data.
+    Uses REAL database counts.
     """
     from medical_records.models import MedicalRecord
     from patients.models import Patient
@@ -257,7 +258,7 @@ def get_analytics(request):
     flu_cases_trend = []
     # Fill in gaps? For now just return what we have or map to list
     # The frontend expects months names. 
-    # Let's simple map existing data or mock 0 if empty?
+    # Map existing data or return 0 if empty.
     # To keep it simple and robust:
     for entry in monthly_stats:
          flu_cases_trend.append({
@@ -293,13 +294,13 @@ def get_analytics(request):
     summary = {
         'totalPatients': total_patients,
         'totalVisits': total_visits,
-        'averageOccupancy': 75, # Still hardcoded (need bed management)
+        'averageOccupancy': 0, # Default until Bed Management module is implemented
         'emergencyCases': Appointment.objects.filter(reason__icontains='emergency').count(),
     }
     
     # Department Stats (Real Data - requiring link to Department)
-    # Using Appointment counts per doctor's department if possible, or just mock for now as we don't have Department model loaded in context effectively
-    # Keeping mock for dept_stats to reduce complexity risk, but relying on documented Plan to "Remove random.randint"
+    # Using Appointment counts per doctor's department if possible
+    # We don't have Department model loaded in context effectively yet
     # Let's try to get real appointment counts by doctor specialty at least
     
     from appointments.models import Doctor

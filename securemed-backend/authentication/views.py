@@ -1131,9 +1131,9 @@ class SendInviteView(APIView):
         # Generate registration link
         registration_link = f"{settings.FRONTEND_URL}/register?token={invitation.token}"
         
-        # Mock email sending - print to console
+        # Log email sending - print to console
         print("\n" + "="*70)
-        print("INVITATION EMAIL (Mock)")
+        print("INVITATION EMAIL (LOG)")
         print("="*70)
         print(f"To: {email}")
         print(f"From: {request.user.email}")
