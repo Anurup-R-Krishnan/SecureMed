@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { useAuth } from '@/context/auth-context';
 import Header from '@/components/layout/header';
 import LandingPage from '@/components/landing-page';
@@ -15,6 +17,14 @@ export default function Home() {
   const { user, logout } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginRole, setLoginRole] = useState<'patient' | 'doctor' | 'admin'>('patient');
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const message = searchParams.get('message');
+    if (message) {
+      toast.info(message);
+    }
+  }, [searchParams]);
 
   const handleOpenLogin = (role?: 'patient' | 'doctor' | 'admin') => {
     if (role) setLoginRole(role);
@@ -83,9 +93,7 @@ export default function Home() {
       <LandingPage onGetStarted={handleOpenLogin} />
       <LoginModal
         isOpen={showLoginModal}
-        role={loginRole}
         onClose={() => setShowLoginModal(false)}
-        onChangeRole={setLoginRole}
       />
     </div>
   );
