@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Package, TrendingDown, Calendar, Plus, AlertTriangle, LogOut } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import api from '@/lib/api';
 
 interface Drug {
   id: number;
@@ -48,11 +49,7 @@ interface StockTransaction {
   created_by_name: string;
 }
 
-interface PharmacyInventoryProps {
-  onLogout: () => void;
-}
-
-export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) {
+export default function PharmacyInventory() {
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [batches, setBatches] = useState<DrugBatch[]>([]);
   const [transactions, setTransactions] = useState<StockTransaction[]>([]);
@@ -84,22 +81,15 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = { 'Authorization': `Bearer ${token}` };
-
       const [drugsRes, batchesRes, transactionsRes] = await Promise.all([
-        fetch('http://localhost:8000/api/pharmacy/drugs/', { headers }),
-        fetch('http://localhost:8000/api/pharmacy/batches/', { headers }),
-        fetch('http://localhost:8000/api/pharmacy/transactions/', { headers })
+        api.get('/pharmacy/drugs/'),
+        api.get('/pharmacy/batches/'),
+        api.get('/pharmacy/transactions/')
       ]);
 
-      const drugsData = await drugsRes.json();
-      const batchesData = await batchesRes.json();
-      const transactionsData = await transactionsRes.json();
-
-      setDrugs(drugsData.results || []);
-      setBatches(batchesData.results || []);
-      setTransactions(transactionsData.results || []);
+      setDrugs(drugsRes.data.results || []);
+      setBatches(batchesRes.data.results || []);
+      setTransactions(transactionsRes.data.results || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -109,17 +99,9 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
 
   const handleAddDrug = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/pharmacy/drugs/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(drugForm)
-      });
+      const response = await api.post('/pharmacy/drugs/', drugForm);
 
-      if (response.ok) {
+      if (response.status === 201 || response.status === 200) {
         setShowAddDrug(false);
         setDrugForm({ drug_code: '', name: '', generic_name: '', manufacturer: '', dosage_form: 'tablet', strength: '', unit_price: '', reorder_level: '' });
         fetchData();
@@ -131,17 +113,9 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
 
   const handleAddBatch = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/pharmacy/batches/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(batchForm)
-      });
+      const response = await api.post('/pharmacy/batches/', batchForm);
 
-      if (response.ok) {
+      if (response.status === 201 || response.status === 200) {
         setShowAddBatch(false);
         setBatchForm({ drug: '', batch_number: '', quantity: '', expiry_date: '', supplier: '', purchase_price: '' });
         fetchData();
@@ -153,17 +127,9 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
 
   const handleTransaction = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/pharmacy/transactions/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(transactionForm)
-      });
+      const response = await api.post('/pharmacy/transactions/', transactionForm);
 
-      if (response.ok) {
+      if (response.status === 201 || response.status === 200) {
         setShowTransaction(false);
         setTransactionForm({ drug: '', transaction_type: 'purchase', quantity: '', notes: '' });
         fetchData();
@@ -188,19 +154,7 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pharmacy Inventory</h1>
-            <p className="text-sm text-gray-600">Manage drugs, stock, and batches</p>
-          </div>
-          <Button variant="outline" onClick={onLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
-        </div>
-      </div>
+    <div className="bg-gray-50 h-full">
 
       <div className="max-w-7xl mx-auto px-4 py-4 space-y-2">
         {lowStockDrugs.length > 0 && (
@@ -347,16 +301,16 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Add New Drug</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Drug Code</Label><Input value={drugForm.drug_code} onChange={(e) => setDrugForm({...drugForm, drug_code: e.target.value})} /></div>
-            <div><Label>Name</Label><Input value={drugForm.name} onChange={(e) => setDrugForm({...drugForm, name: e.target.value})} /></div>
-            <div><Label>Generic Name</Label><Input value={drugForm.generic_name} onChange={(e) => setDrugForm({...drugForm, generic_name: e.target.value})} /></div>
-            <div><Label>Manufacturer</Label><Input value={drugForm.manufacturer} onChange={(e) => setDrugForm({...drugForm, manufacturer: e.target.value})} /></div>
-            <div><Label>Dosage Form</Label><select className="w-full border rounded p-2" value={drugForm.dosage_form} onChange={(e) => setDrugForm({...drugForm, dosage_form: e.target.value})}>
+            <div><Label>Drug Code</Label><Input value={drugForm.drug_code} onChange={(e) => setDrugForm({ ...drugForm, drug_code: e.target.value })} /></div>
+            <div><Label>Name</Label><Input value={drugForm.name} onChange={(e) => setDrugForm({ ...drugForm, name: e.target.value })} /></div>
+            <div><Label>Generic Name</Label><Input value={drugForm.generic_name} onChange={(e) => setDrugForm({ ...drugForm, generic_name: e.target.value })} /></div>
+            <div><Label>Manufacturer</Label><Input value={drugForm.manufacturer} onChange={(e) => setDrugForm({ ...drugForm, manufacturer: e.target.value })} /></div>
+            <div><Label>Dosage Form</Label><select className="w-full border rounded p-2" value={drugForm.dosage_form} onChange={(e) => setDrugForm({ ...drugForm, dosage_form: e.target.value })}>
               <option value="tablet">Tablet</option><option value="capsule">Capsule</option><option value="syrup">Syrup</option><option value="injection">Injection</option><option value="cream">Cream</option>
             </select></div>
-            <div><Label>Strength</Label><Input value={drugForm.strength} onChange={(e) => setDrugForm({...drugForm, strength: e.target.value})} /></div>
-            <div><Label>Unit Price</Label><Input type="number" value={drugForm.unit_price} onChange={(e) => setDrugForm({...drugForm, unit_price: e.target.value})} /></div>
-            <div><Label>Reorder Level</Label><Input type="number" value={drugForm.reorder_level} onChange={(e) => setDrugForm({...drugForm, reorder_level: e.target.value})} /></div>
+            <div><Label>Strength</Label><Input value={drugForm.strength} onChange={(e) => setDrugForm({ ...drugForm, strength: e.target.value })} /></div>
+            <div><Label>Unit Price</Label><Input type="number" value={drugForm.unit_price} onChange={(e) => setDrugForm({ ...drugForm, unit_price: e.target.value })} /></div>
+            <div><Label>Reorder Level</Label><Input type="number" value={drugForm.reorder_level} onChange={(e) => setDrugForm({ ...drugForm, reorder_level: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDrug(false)}>Cancel</Button>
@@ -369,14 +323,14 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
         <DialogContent>
           <DialogHeader><DialogTitle>Add New Batch</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Drug</Label><select className="w-full border rounded p-2" value={batchForm.drug} onChange={(e) => setBatchForm({...batchForm, drug: e.target.value})}>
+            <div><Label>Drug</Label><select className="w-full border rounded p-2" value={batchForm.drug} onChange={(e) => setBatchForm({ ...batchForm, drug: e.target.value })}>
               <option value="">Select Drug</option>{drugs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select></div>
-            <div><Label>Batch Number</Label><Input value={batchForm.batch_number} onChange={(e) => setBatchForm({...batchForm, batch_number: e.target.value})} /></div>
-            <div><Label>Quantity</Label><Input type="number" value={batchForm.quantity} onChange={(e) => setBatchForm({...batchForm, quantity: e.target.value})} /></div>
-            <div><Label>Expiry Date</Label><Input type="date" value={batchForm.expiry_date} onChange={(e) => setBatchForm({...batchForm, expiry_date: e.target.value})} /></div>
-            <div><Label>Supplier</Label><Input value={batchForm.supplier} onChange={(e) => setBatchForm({...batchForm, supplier: e.target.value})} /></div>
-            <div><Label>Purchase Price</Label><Input type="number" value={batchForm.purchase_price} onChange={(e) => setBatchForm({...batchForm, purchase_price: e.target.value})} /></div>
+            <div><Label>Batch Number</Label><Input value={batchForm.batch_number} onChange={(e) => setBatchForm({ ...batchForm, batch_number: e.target.value })} /></div>
+            <div><Label>Quantity</Label><Input type="number" value={batchForm.quantity} onChange={(e) => setBatchForm({ ...batchForm, quantity: e.target.value })} /></div>
+            <div><Label>Expiry Date</Label><Input type="date" value={batchForm.expiry_date} onChange={(e) => setBatchForm({ ...batchForm, expiry_date: e.target.value })} /></div>
+            <div><Label>Supplier</Label><Input value={batchForm.supplier} onChange={(e) => setBatchForm({ ...batchForm, supplier: e.target.value })} /></div>
+            <div><Label>Purchase Price</Label><Input type="number" value={batchForm.purchase_price} onChange={(e) => setBatchForm({ ...batchForm, purchase_price: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddBatch(false)}>Cancel</Button>
@@ -389,14 +343,14 @@ export default function PharmacyInventory({ onLogout }: PharmacyInventoryProps) 
         <DialogContent>
           <DialogHeader><DialogTitle>Record Transaction</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Drug</Label><select className="w-full border rounded p-2" value={transactionForm.drug} onChange={(e) => setTransactionForm({...transactionForm, drug: e.target.value})}>
+            <div><Label>Drug</Label><select className="w-full border rounded p-2" value={transactionForm.drug} onChange={(e) => setTransactionForm({ ...transactionForm, drug: e.target.value })}>
               <option value="">Select Drug</option>{drugs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select></div>
-            <div><Label>Transaction Type</Label><select className="w-full border rounded p-2" value={transactionForm.transaction_type} onChange={(e) => setTransactionForm({...transactionForm, transaction_type: e.target.value})}>
+            <div><Label>Transaction Type</Label><select className="w-full border rounded p-2" value={transactionForm.transaction_type} onChange={(e) => setTransactionForm({ ...transactionForm, transaction_type: e.target.value })}>
               <option value="purchase">Purchase</option><option value="dispense">Dispense</option><option value="return">Return</option><option value="adjustment">Adjustment</option><option value="expired">Expired</option>
             </select></div>
-            <div><Label>Quantity</Label><Input type="number" value={transactionForm.quantity} onChange={(e) => setTransactionForm({...transactionForm, quantity: e.target.value})} /></div>
-            <div><Label>Notes</Label><Input value={transactionForm.notes} onChange={(e) => setTransactionForm({...transactionForm, notes: e.target.value})} /></div>
+            <div><Label>Quantity</Label><Input type="number" value={transactionForm.quantity} onChange={(e) => setTransactionForm({ ...transactionForm, quantity: e.target.value })} /></div>
+            <div><Label>Notes</Label><Input value={transactionForm.notes} onChange={(e) => setTransactionForm({ ...transactionForm, notes: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTransaction(false)}>Cancel</Button>

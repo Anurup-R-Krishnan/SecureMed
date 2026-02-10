@@ -18,7 +18,8 @@ import {
   Activity,
   Pill,
   FlaskConical,
-  MessageSquare
+  MessageSquare,
+  Video
 } from 'lucide-react';
 import MfaSetup from '@/components/auth/mfa-setup';
 import AIDecisionSupport from '@/components/portals/doctor/shared/ai-decision-support';
@@ -28,7 +29,9 @@ import LabOrderForm from '@/components/portals/doctor/labs/lab-order-form';
 import AvailabilityManager from '@/components/portals/doctor/dashboard/availability-manager';
 import EmergencyAccessModal from '@/components/portals/doctor/shared/emergency-access-modal';
 import ReferralModal from '@/components/portals/doctor/shared/referral-modal';
-import PatientManager, { DoctorPatient } from '@/components/portals/doctor/patients/patient-manager';
+import SignPrescriptionModal from '@/components/portals/doctor/prescriptions/sign-prescription-modal';
+import MyPatientsTable from '@/components/portals/doctor/patients/my-patients-table';
+import { Patient as ColumnPatient } from '@/components/portals/doctor/patients/columns';
 import PatientProfileView from '@/components/portals/doctor/patients/patient-profile-view';
 import DoctorDashboard from '@/components/portals/doctor/dashboard/doctor-dashboard';
 import AppointmentManager from '@/components/portals/doctor/appointments/appointment-manager';
@@ -37,7 +40,18 @@ import api from '@/lib/api';
 import { NotificationCenter } from '@/components/ui/notification-center';
 import { toast } from 'sonner';
 import { MessagingInterface } from '@/components/telemedicine/MessagingInterface';
+import VideoRoom from '@/components/telemedicine/video-room';
 import { useAuth } from '@/context/auth-context';
+
+// Local type definition (previously imported from patient-manager)
+interface DoctorPatient {
+  id: number;
+  displayId: string;
+  name: string;
+  lastVisit: string;
+  condition: string;
+  status: string;
+}
 
 type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'prescriptions' | 'labs' | 'messaging' | 'ai-assistant' | 'availability' | 'settings';
 
@@ -73,6 +87,30 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<{ id: string, name: string } | null>(null);
   const [viewingPatient, setViewingPatient] = useState<DoctorPatient | null>(null);
+
+  // Prescription Signing State
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [signingPrescription, setSigningPrescription] = useState<any>(null);
+  const [recentPrescriptions, setRecentPrescriptions] = useState<any[]>([]);
+
+  // Video Call State
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+
+  const fetchRecentPrescriptions = async () => {
+    try {
+      const res = await api.get('/medical-records/prescriptions/');
+      const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
+      setRecentPrescriptions(data.filter((p: any) => !p.is_signed));
+    } catch (e) {
+      console.error("Failed to fetch recent prescriptions", e);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'prescriptions') {
+      fetchRecentPrescriptions();
+    }
+  }, [activeTab]);
 
   // Fetch data from API
   useEffect(() => {
@@ -173,7 +211,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
       // Determine next status based on current status
       let newStatus = 'confirmed';
       let message = 'confirmed';
-      
+
       if (appt.status === 'scheduled') {
         newStatus = 'confirmed';
         message = 'confirmed';
@@ -184,7 +222,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
         newStatus = 'completed';
         message = 'marked as completed';
       }
-      
+
       await appointmentService.updateAppointmentStatus(appt.id, newStatus);
       // Refresh appointments
       const appts = await appointmentService.getAppointments();
@@ -336,6 +374,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
                 onAcceptAppointment={handleAcceptAppointment}
                 formatTime={formatTime}
                 getStatusBadge={getStatusBadge}
+                onStartVideoCall={(roomId) => setActiveRoomId(roomId)}
               />
             )}
 
@@ -351,13 +390,16 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
             )}
 
             {activeTab === 'patients' && !viewingPatient && (
-              <PatientManager
-                patients={patients}
-                loading={loading}
-                onEmergencyAccess={handleOpenEmergency}
-                onRefer={handleOpenReferral}
-                onViewPatient={(p) => {
-                  setViewingPatient(p);
+              <MyPatientsTable
+                patients={patients.map(p => ({
+                  id: p.id,
+                  name: p.name,
+                  status: (p.status as any) || 'Outpatient',
+                  lastVisit: p.lastVisit,
+                  condition: p.condition,
+                }))}
+                onSelectPatient={(p: ColumnPatient) => {
+                  setViewingPatient({ id: Number(p.id), displayId: String(p.id), name: p.name, lastVisit: p.lastVisit || '', condition: p.condition || '', status: p.status || '' });
                 }}
               />
             )}
@@ -377,10 +419,62 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
             )}
 
             {activeTab === 'prescriptions' && (
-              <PrescriptionWriter
-                patients={patients}
-                onSuccess={() => console.log("Prescription created")}
-              />
+              <div className="space-y-6">
+                <PrescriptionWriter
+                  patients={patients}
+                  onSuccess={() => {
+                    toast.success("Prescription created");
+                    fetchRecentPrescriptions();
+                  }}
+                />
+
+                {recentPrescriptions.length > 0 && (
+                  <div className="bg-card rounded-lg border border-border p-6 not-prose">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <ShieldAlert className="h-5 w-5 text-amber-500" />
+                      Pending Signatures ({recentPrescriptions.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {recentPrescriptions.map((rx) => (
+                        <div key={rx.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+                          <div>
+                            <p className="font-medium">{rx.medication_name} <span className="text-muted-foreground text-sm">({rx.dosage})</span></p>
+                            <p className="text-sm text-muted-foreground">Patient ID: {rx.patient} • {new Date(rx.created_at || Date.now()).toLocaleDateString()}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSigningPrescription(rx);
+                              setShowSignModal(true);
+                            }}
+                            className="gap-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Sign
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'labs' && (
+              <div className="space-y-6">
+                <LabOrderForm
+                  patients={patients.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    mrn: p.displayId || `P-${p.id}`
+                  }))}
+                  onSubmitOrder={async (order) => {
+                    console.log("Order submitted:", order);
+                    toast.success("Lab order submitted successfully");
+                    return Promise.resolve();
+                  }}
+                />
+              </div>
             )}
 
             {activeTab === 'records' && (
@@ -433,6 +527,20 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
         </>
       )}
 
+      {/* Prescription Signing Modal */}
+      <SignPrescriptionModal
+        isOpen={showSignModal}
+        prescription={signingPrescription}
+        onClose={() => {
+          setShowSignModal(false);
+          setSigningPrescription(null);
+        }}
+        onSuccess={() => {
+          toast.success("Prescription signed successfully");
+          fetchRecentPrescriptions();
+        }}
+      />
+
       {/* Global Emergency Modal if no patient selected */}
       {!selectedPatient && showEmergencyModal && (
         <EmergencyAccessModal
@@ -442,6 +550,27 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
           onClose={() => setShowEmergencyModal(false)}
           onSubmit={handleEmergencyGranted}
         />
+      )}
+
+      {/* Video Call Modal */}
+      {activeRoomId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-6xl h-[80vh] rounded-lg shadow-2xl overflow-hidden relative border border-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-50 text-white bg-black/20 hover:bg-black/40"
+              onClick={() => setActiveRoomId(null)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+            <VideoRoom
+              roomId={activeRoomId}
+              userRole="doctor"
+              onEndCall={() => setActiveRoomId(null)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

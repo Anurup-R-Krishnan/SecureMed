@@ -4,8 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { LogOut, CheckCircle, ShieldCheck, Search, QrCode, CameraOff } from 'lucide-react';
+import { LogOut, CheckCircle, ShieldCheck, Search, QrCode, CameraOff, Pill, List } from 'lucide-react';
 import { pharmacyService, PharmacyOrder } from '@/services/pharmacy';
+import PharmacyInventory from './pharmacy/inventory-management';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,8 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'orders' | 'inventory'>('orders');
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -142,9 +145,25 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black">Pharmacy Console</h1>
-            <p className="text-sm text-muted-foreground">Verify and fulfill prescriptions</p>
+          <div className="flex items-center gap-6">
+            <div>
+              <h1 className="text-2xl font-black">Pharmacy Console</h1>
+              <p className="text-sm text-muted-foreground">Verify and fulfill prescriptions</p>
+            </div>
+            <div className="flex bg-muted p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'orders' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Orders
+              </button>
+              <button
+                onClick={() => setActiveTab('inventory')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'inventory' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Inventory
+              </button>
+            </div>
           </div>
           <Button variant="outline" onClick={onLogout}>
             <LogOut className="h-4 w-4 mr-2" />
@@ -153,90 +172,96 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by pickup code, patient, or medication..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+      {activeTab === 'inventory' ? (
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          <PharmacyInventory />
+        </main>
+      ) : (
+        <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by pickup code, patient, or medication..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button variant="outline" onClick={fetchOrders}>Refresh</Button>
             </div>
-            <Button variant="outline" onClick={fetchOrders}>Refresh</Button>
-          </div>
-        </Card>
+          </Card>
 
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading pharmacy orders...</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">No pharmacy orders found.</div>
-        ) : (
-          <div className="space-y-4">
-            {filtered.map((order) => (
-              <Card key={order.id} className="p-6">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Pickup Code</p>
-                    <p className="text-xl font-black tracking-widest">{order.pickup_code}</p>
-                    <p className="text-sm text-muted-foreground">Patient</p>
-                    <p className="font-medium">{order.patient_details.name} ({order.patient_details.patient_id})</p>
-                    <p className="text-sm text-muted-foreground mt-2">Medication</p>
-                    <p className="font-semibold">{order.prescription_details.medication_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {order.prescription_details.dosage} · {order.prescription_details.frequency} · {order.prescription_details.duration}
-                    </p>
-                  </div>
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading pharmacy orders...</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">No pharmacy orders found.</div>
+          ) : (
+            <div className="space-y-4">
+              {filtered.map((order) => (
+                <Card key={order.id} className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Pickup Code</p>
+                      <p className="text-xl font-black tracking-widest">{order.pickup_code}</p>
+                      <p className="text-sm text-muted-foreground">Patient</p>
+                      <p className="font-medium">{order.patient_details.name} ({order.patient_details.patient_id})</p>
+                      <p className="text-sm text-muted-foreground mt-2">Medication</p>
+                      <p className="font-semibold">{order.prescription_details.medication_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {order.prescription_details.dosage} · {order.prescription_details.frequency} · {order.prescription_details.duration}
+                      </p>
+                    </div>
 
-                  <div className="min-w-[260px] space-y-3">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Status</p>
-                      <p className="font-semibold">{order.status}</p>
-                    </div>
-                    <div>
-                      <Input
-                        placeholder="Verification notes (optional)"
-                        value={verifyNotes[order.id] || ''}
-                        onChange={(e) => setVerifyNotes({ ...verifyNotes, [order.id]: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleVerify(order.id)}
-                        disabled={workingId === order.id || order.status !== 'pending'}
-                      >
-                        <ShieldCheck className="h-4 w-4 mr-2" />
-                        Verify
-                      </Button>
-                      <Button
-                        onClick={() => handleFulfill(order.id)}
-                        disabled={workingId === order.id || order.status === 'fulfilled'}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Fulfill
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Scan/enter pickup code"
-                        value={pickupCode[order.id] || ''}
-                        onChange={(e) => setPickupCode({ ...pickupCode, [order.id]: e.target.value })}
-                      />
-                      <Button variant="outline" onClick={() => startScan(order.id)}>
-                        <QrCode className="h-4 w-4 mr-2" />
-                        Scan
-                      </Button>
+                    <div className="min-w-[260px] space-y-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Status</p>
+                        <p className="font-semibold">{order.status}</p>
+                      </div>
+                      <div>
+                        <Input
+                          placeholder="Verification notes (optional)"
+                          value={verifyNotes[order.id] || ''}
+                          onChange={(e) => setVerifyNotes({ ...verifyNotes, [order.id]: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleVerify(order.id)}
+                          disabled={workingId === order.id || order.status !== 'pending'}
+                        >
+                          <ShieldCheck className="h-4 w-4 mr-2" />
+                          Verify
+                        </Button>
+                        <Button
+                          onClick={() => handleFulfill(order.id)}
+                          disabled={workingId === order.id || order.status === 'fulfilled'}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Fulfill
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Scan/enter pickup code"
+                          value={pickupCode[order.id] || ''}
+                          onChange={(e) => setPickupCode({ ...pickupCode, [order.id]: e.target.value })}
+                        />
+                        <Button variant="outline" onClick={() => startScan(order.id)}>
+                          <QrCode className="h-4 w-4 mr-2" />
+                          Scan
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </main>
+                </Card>
+              ))}
+            </div>
+          )}
+        </main>
+      )}
 
       <Dialog open={scanOrderId !== null} onOpenChange={closeScanner}>
         <DialogContent className="sm:max-w-lg">

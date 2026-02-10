@@ -16,16 +16,23 @@ import {
     ChevronLeft,
     ChevronRight,
     MessageSquare,
+    Video,
 } from 'lucide-react';
 import api from '@/lib/api';
 import PatientDashboard from './patient/dashboard/dashboard';
 import AppointmentBooking from './patient/appointments/appointment-booking';
+import { AppointmentCalendar } from './patient/appointments/appointment-calendar';
+import PatientTimeline from './patient/dashboard/patient-timeline';
 import MedicalRecords from './patient/records/medical-records';
+import { UploadRecordDialog } from './patient/records/upload-record-dialog';
+import WaitingRoom from '@/components/telemedicine/waiting-room';
+import VideoRoom from '@/components/telemedicine/video-room';
 import PatientBilling from './patient/billing/billing';
 import PrivacySettings from './patient/settings/privacy-settings';
 import ProfileEditor from './patient/settings/profile-editor';
 import { NotificationCenter } from '@/components/ui/notification-center';
 import { MessagingInterface } from '@/components/telemedicine/MessagingInterface';
+import { appointmentService, Doctor } from '@/services/appointments';
 
 type PatientTab = 'dashboard' | 'appointments' | 'records' | 'billing' | 'messaging' | 'profile' | 'settings';
 
@@ -40,6 +47,14 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [patient, setPatient] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
+    const [recordsKey, setRecordsKey] = useState(0);
+    const [nextAppointment, setNextAppointment] = useState<any>(null);
+
+    // Telemedicine State
+    const [showTelemed, setShowTelemed] = useState(false);
+    const [telemedStatus, setTelemedStatus] = useState<'waiting' | 'in-call'>('waiting');
+    const [activeRoomId, setActiveRoomId] = useState<string>('');
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -52,7 +67,31 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
                 setLoading(false);
             }
         };
+        const fetchNextAppointment = async () => {
+            try {
+                const appts = await appointmentService.getAppointments();
+                const now = new Date();
+                const upcoming = appts
+                    .filter((apt: any) => {
+                        const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+                        return aptDate >= now && (apt.status === 'scheduled' || apt.status === 'confirmed');
+                    })
+                    .sort((a: any, b: any) => {
+                        const dateA = new Date(`${a.appointment_date}T${a.appointment_time}`);
+                        const dateB = new Date(`${b.appointment_date}T${b.appointment_time}`);
+                        return dateA.getTime() - dateB.getTime();
+                    });
+                if (upcoming.length > 0) {
+                    setNextAppointment(upcoming[0]);
+                    setActiveRoomId(`room-${upcoming[0].id}`);
+                }
+            } catch (e) {
+                console.error('Failed to fetch upcoming appointment:', e);
+            }
+        };
         fetchProfile();
+        fetchNextAppointment();
+        appointmentService.getDoctors().then(setDoctors).catch(console.error);
     }, []);
 
     const tabs: { id: PatientTab; label: string; icon: React.ReactNode }[] = [
@@ -187,9 +226,86 @@ export default function PatientPortal({ onLogout, onSwitchRole }: PatientPortalP
                 {/* Tab Content */}
                 <div className="p-6">
                     <div className="max-w-7xl mx-auto">
-                        {activeTab === 'dashboard' && <PatientDashboard onNavigate={setActiveTab} />}
-                        {activeTab === 'appointments' && <AppointmentBooking />}
-                        {activeTab === 'records' && <MedicalRecords patientId={patient?.patient_id} />}
+                        {activeTab === 'dashboard' && (
+                            <div className="space-y-6">
+                                <PatientDashboard onNavigate={setActiveTab} />
+                                <PatientTimeline patientId={patient?.patient_id} />
+                            </div>
+                        )}
+                        {activeTab === 'appointments' && (
+                            <div className="space-y-6">
+                                {!showTelemed ? (
+                                    <>
+                                        {/* Teleconsultation - dynamic from backend */}
+                                        {nextAppointment && (
+                                            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 flex items-center justify-between flex-wrap gap-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                                                        <Video className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold text-lg text-foreground">Upcoming Teleconsultation</h3>
+                                                        <p className="text-muted-foreground">
+                                                            {nextAppointment.doctor_name || 'Doctor'} • {new Date(`${nextAppointment.appointment_date}T${nextAppointment.appointment_time}`).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    onClick={() => {
+                                                        setShowTelemed(true);
+                                                        setTelemedStatus('waiting');
+                                                    }}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                >
+                                                    Join Waiting Room
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        <AppointmentBooking />
+                                        <AppointmentCalendar
+                                            doctors={doctors}
+                                            onBookAppointment={(date, time, doctorId) => {
+                                                const formattedDate = date.toISOString().split('T')[0];
+                                                appointmentService.createAppointment({
+                                                    doctor: doctorId,
+                                                    appointment_date: formattedDate,
+                                                    appointment_time: time,
+                                                    reason: 'Online Booking'
+                                                })
+                                                    .then(() => console.log('Appointment booked via calendar'))
+                                                    .catch(console.error);
+                                            }}
+                                        />
+                                    </>
+                                ) : (
+                                    <div className="bg-card rounded-lg border border-border overflow-hidden h-[600px]">
+                                        {telemedStatus === 'waiting' ? (
+                                            <WaitingRoom
+                                                roomId={activeRoomId}
+                                                doctorName={nextAppointment?.doctor_name || 'Doctor'}
+                                                onAdmitted={() => setTelemedStatus('in-call')}
+                                                onCancel={() => setShowTelemed(false)}
+                                            />
+                                        ) : (
+                                            <VideoRoom
+                                                roomId={activeRoomId}
+                                                userRole="patient"
+                                                onEndCall={() => setShowTelemed(false)}
+                                            />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {activeTab === 'records' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-end">
+                                    <UploadRecordDialog onRecordUploaded={() => setRecordsKey(k => k + 1)} />
+                                </div>
+                                <MedicalRecords key={recordsKey} patientId={patient?.patient_id} />
+                            </div>
+                        )}
                         {activeTab === 'billing' && <PatientBilling patient={patient} />}
                         {activeTab === 'messaging' && <MessagingInterface />}
                         {activeTab === 'profile' && <ProfileEditor />}
