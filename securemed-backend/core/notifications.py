@@ -273,6 +273,6 @@ Please review this result and contact the patient immediately.
         if appt_dt:
             when = appt_dt.strftime('%b %d at %I:%M %p')
         else:
-            when = f\"{appointment.appointment_date} {appointment.appointment_time}\"
+            when = f"{appointment.appointment_date} {appointment.appointment_time}"
         msg = f"Reminder: Your appointment with Dr. {appointment.doctor.user.last_name} is on {when}."
         return NotificationService.send_sms(phone, msg)
