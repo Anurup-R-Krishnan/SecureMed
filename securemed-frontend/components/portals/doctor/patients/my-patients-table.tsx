@@ -86,21 +86,28 @@ export default function MyPatientsTable({ patients: propPatients, onSelectPatien
     }
   };
 
+  console.log('Referred Patients:', referredPatients);
+  console.log('Prop Patients:', propPatients);
+
   // Combine prop patients with referred patients
   const allPatients: Patient[] = [
     ...(propPatients || []),
-    ...referredPatients.map(rp => ({
-      id: rp.id,
-      name: rp.name,
-      status: 'Referred' as const,
-      lastVisit: new Date(rp.created_at).toLocaleDateString(),
-      condition: rp.reason,
-      referral_id: rp.referral_id,
-      referred_by: rp.referred_by,
-      priority: rp.priority,
-      access_expires_at: rp.access_expires_at,
-    })),
+    ...referredPatients.map(rp => {
+      console.log('Mapping referred patient:', rp);
+      return {
+        id: rp.id,
+        name: rp.name,
+        status: 'Referred' as const,
+        lastVisit: new Date(rp.created_at).toLocaleDateString(),
+        condition: rp.reason,
+        referral_id: rp.referral_id,
+        referred_by: rp.referred_by,
+        priority: rp.priority,
+        access_expires_at: rp.access_expires_at,
+      };
+    }),
   ];
+  console.log('All Patients:', allPatients);
 
   if (loading) {
     return (
