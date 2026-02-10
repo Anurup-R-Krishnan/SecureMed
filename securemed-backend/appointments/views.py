@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from django.utils import timezone
@@ -112,18 +112,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     'appointment_date': 'Cannot book appointments more than 6 months in advance'
                 })
               
-        # Clinical Workflow Implementation
-        
-        # Note: Patients can book with any doctor directly without referral requirements
-        # Referrals are used for doctor-to-doctor patient sharing and access management
-        
+
+        patient_profile = self.request.user.patient_profile
         if not patient_profile.insurance_provider or not patient_profile.insurance_number:
-            # For now, we strictly require insurance for all appointments to ensure billing accuracy.
-            # Future improvement: Allow self-pay override.
             pass 
         else:
-            # Placeholder for real-time Insurance Eligibility & Benefits Verification (X12 270/271)
-            # Currently validating presence of insurance details only.
+
             pass
 
         # Prevent double booking
@@ -172,7 +166,69 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Send confirmation (Email + SMS)
         from core.notifications import NotificationService
         NotificationService.send_appointment_confirmation(appointment)
-        NotificationService.send_appointment_sms_reminder(appointment) 
+        NotificationService.send_appointment_sms_reminder(appointment)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        """Doctor confirms a scheduled appointment"""
+        appointment = self.get_object()
+        if not hasattr(request.user, 'doctor_profile') or appointment.doctor != request.user.doctor_profile:
+            raise PermissionDenied("Only the assigned doctor can accept this appointment.")
+        if appointment.status != 'scheduled':
+            return Response({"error": "Can only accept scheduled appointments."}, status=status.HTTP_400_BAD_REQUEST)
+        appointment.status = 'confirmed'
+        appointment.save()
+        from .models import AppointmentHistory
+        AppointmentHistory.objects.create(appointment=appointment, status='confirmed', changed_by=request.user, reason='Doctor confirmed appointment')
+        return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=True, methods=['post'])
+    def start_consultation(self, request, pk=None):
+        """Doctor starts a consultation (in-person or telehealth)"""
+        appointment = self.get_object()
+        if not hasattr(request.user, 'doctor_profile') or appointment.doctor != request.user.doctor_profile:
+            raise PermissionDenied("Only the assigned doctor can start this consultation.")
+        if appointment.status != 'confirmed':
+            return Response({"error": "Can only start consultation on confirmed appointments."}, status=status.HTTP_400_BAD_REQUEST)
+        appointment.status = 'in_progress'
+        appointment.save()
+        from .models import AppointmentHistory
+        AppointmentHistory.objects.create(appointment=appointment, status='in_progress', changed_by=request.user, reason='Consultation started')
+        return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=True, methods=['post'])
+    def complete_consultation(self, request, pk=None):
+        """Doctor marks consultation as completed"""
+        appointment = self.get_object()
+        if not hasattr(request.user, 'doctor_profile') or appointment.doctor != request.user.doctor_profile:
+            raise PermissionDenied("Only the assigned doctor can complete this consultation.")
+        if appointment.status != 'in_progress':
+            return Response({"error": "Can only complete an in-progress consultation."}, status=status.HTTP_400_BAD_REQUEST)
+        appointment.status = 'completed'
+        notes = request.data.get('notes', '')
+        if notes:
+            appointment.notes = notes
+        appointment.save()
+        from .models import AppointmentHistory
+        AppointmentHistory.objects.create(appointment=appointment, status='completed', changed_by=request.user, reason=notes or 'Consultation completed')
+        return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel an appointment (patient or doctor)"""
+        appointment = self.get_object()
+        user = request.user
+        is_patient = hasattr(user, 'patient_profile') and appointment.patient == user.patient_profile
+        is_doctor = hasattr(user, 'doctor_profile') and appointment.doctor == user.doctor_profile
+        if not is_patient and not is_doctor and not user.is_staff:
+            raise PermissionDenied("You don't have permission to cancel this appointment.")
+        if appointment.status in ['completed', 'cancelled']:
+            return Response({"error": "Cannot cancel a completed or already cancelled appointment."}, status=status.HTTP_400_BAD_REQUEST)
+        appointment.status = 'cancelled'
+        appointment.save()
+        from .models import AppointmentHistory
+        AppointmentHistory.objects.create(appointment=appointment, status='cancelled', changed_by=request.user, reason=request.data.get('reason', 'Cancelled'))
+        return Response(AppointmentSerializer(appointment).data) 
 
 
 class ReferralViewSet(viewsets.ModelViewSet):
@@ -317,3 +373,46 @@ class ReferralViewSet(viewsets.ModelViewSet):
         referral.status = 'pending'
         referral.grant_access(days=30)
         return Response(ReferralSerializer(referral).data)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def patient_referrals_view(request):
+    """
+    Patient-facing endpoint to view their own referrals.
+    GET /api/appointments/my-referrals/
+    """
+    user = request.user
+    if not hasattr(user, 'patient_profile'):
+        return Response({"error": "Only patients can access this endpoint."}, status=status.HTTP_403_FORBIDDEN)
+    
+    patient = user.patient_profile
+    referrals = Referral.objects.filter(patient=patient).select_related(
+        'referring_doctor__user',
+        'specialist__user',
+        'specialist__department',
+        'patient__user'
+    ).order_by('-created_at')
+    
+    data = []
+    for ref in referrals:
+        data.append({
+            'id': ref.id,
+            'referral_id': ref.referral_id,
+            'referring_doctor_name': f"Dr. {ref.referring_doctor.user.get_full_name()}".strip() if ref.referring_doctor else '',
+            'referring_doctor_specialization': ref.referring_doctor.specialization if ref.referring_doctor else '',
+            'specialist_id': ref.specialist.id if ref.specialist else None,
+            'specialist_name': f"Dr. {ref.specialist.user.get_full_name()}".strip() if ref.specialist else '',
+            'specialist_specialization': ref.specialist.specialization if ref.specialist else '',
+            'specialist_department': ref.specialist.department.name if ref.specialist and ref.specialist.department else '',
+            'status': ref.status,
+            'status_display': ref.get_status_display(),
+            'priority': ref.priority,
+            'priority_display': ref.get_priority_display(),
+            'reason': ref.reason,
+            'clinical_notes': ref.clinical_notes,
+            'created_at': ref.created_at,
+            'updated_at': ref.updated_at,
+        })
+    
+    return Response(data)

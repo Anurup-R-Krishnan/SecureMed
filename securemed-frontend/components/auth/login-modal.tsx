@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, X, Shield } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { API_ORIGIN } from '@/lib/urls';
+import { getPortalRouteForRole } from '@/lib/routes';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -30,9 +31,16 @@ export default function LoginModal({
   const [tempToken, setTempToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login, verifyMfa, triggerPolicyCheck } = useAuth();
+  const { login, verifyMfa, triggerPolicyCheck, user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+
+  // Redirect after successful authentication
+  useEffect(() => {
+    if (isAuthenticated && user && isOpen) {
+      router.push(getPortalRouteForRole(user.role));
+    }
+  }, [isAuthenticated, user, isOpen, router]);
 
   if (!isOpen) return null;
 

@@ -24,22 +24,11 @@ export default function FHIRExportButton({ patientId }: FHIRExportButtonProps) {
 
         try {
             // Call Django backend for FHIR export
-            const requestUrl = patientId
-                ? `${API_BASE_URL}/patient/export/fhir/?patient_id=${patientId}`
-                : `${API_BASE_URL}/patient/export/fhir/`; // Backend should handle default to current user if no ID
-
-            const response = await fetch(requestUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+            const response = await api.get('/patient/export/fhir/', {
+                params: { patient_id: patientId }
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const fhirData = await response.json();
+            const fhirData = response.data;
 
             // Create download
             const blob = new Blob([JSON.stringify(fhirData, null, 2)], { type: 'application/fhir+json' });
@@ -55,7 +44,7 @@ export default function FHIRExportButton({ patientId }: FHIRExportButtonProps) {
             setExportState({
                 status: 'success',
                 message: 'Medical history exported successfully from backend',
-                resourceCount: fhirData.total,
+                resourceCount: fhirData.total, // Ensure backend returns 'total' or check response structure
             });
 
             // Reset to idle after 5 seconds

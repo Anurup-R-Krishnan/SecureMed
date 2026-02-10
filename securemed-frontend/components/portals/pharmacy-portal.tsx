@@ -19,9 +19,11 @@ import {
 interface PharmacyPortalProps {
   onLogout: () => void;
   onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
+  currentTab?: 'dashboard' | 'orders' | 'inventory';
+  onTabChange?: (tab: 'dashboard' | 'orders' | 'inventory') => void;
 }
 
-export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
+export default function PharmacyPortal({ onLogout, currentTab: currentTabProp, onTabChange }: PharmacyPortalProps) {
   const [orders, setOrders] = useState<PharmacyOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -33,7 +35,27 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
   const [scanning, setScanning] = useState(false);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'inventory'>('orders');
+  const [activeTab, setActiveTabState] = useState<'dashboard' | 'orders' | 'inventory'>(currentTabProp || 'dashboard');
+
+  // Sync tab with URL when currentTab prop changes
+  useEffect(() => {
+    if (currentTabProp && currentTabProp !== activeTab) {
+      setActiveTabState(currentTabProp);
+    }
+  }, [currentTabProp]);
+
+  // Wrapper that updates both local state and notifies parent for URL update
+  const setActiveTab = (tab: 'dashboard' | 'orders' | 'inventory') => {
+    setActiveTabState(tab);
+    onTabChange?.(tab);
+  };
+
+  const stats = useMemo(() => {
+    const pending = orders.filter(o => o.status === 'pending').length;
+    const verified = orders.filter(o => o.status === 'verified').length;
+    const fulfilled = orders.filter(o => o.status === 'fulfilled').length;
+    return { pending, verified, fulfilled, total: orders.length };
+  }, [orders]);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -152,6 +174,12 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
             </div>
             <div className="flex bg-muted p-1 rounded-lg">
               <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'dashboard' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Dashboard
+              </button>
+              <button
                 onClick={() => setActiveTab('orders')}
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'orders' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
@@ -176,8 +204,159 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
         <main className="max-w-7xl mx-auto px-6 py-8">
           <PharmacyInventory />
         </main>
+      ) : activeTab === 'dashboard' ? (
+        <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">Pharmacy Dashboard</h2>
+            <p className="text-muted-foreground">Overview of pharmacy operations</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-3xl font-bold mt-1">{stats.total}</p>
+                </div>
+                <List className="h-10 w-10 text-blue-500" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-3xl font-bold text-amber-500 mt-1">{stats.pending}</p>
+                </div>
+                <Pill className="h-10 w-10 text-amber-500" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Verified</p>
+                  <p className="text-3xl font-bold text-blue-500 mt-1">{stats.verified}</p>
+                </div>
+                <ShieldCheck className="h-10 w-10 text-blue-500" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Fulfilled</p>
+                  <p className="text-3xl font-bold text-green-500 mt-1">{stats.fulfilled}</p>
+                </div>
+                <CheckCircle className="h-10 w-10 text-green-500" />
+              </div>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="p-6">
+              <h3 className="font-semibold text-lg mb-4">Recent Orders</h3>
+              <div className="space-y-3">
+                {orders.slice(0, 5).map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium">{order.prescription_details.medication_name}</p>
+                      <p className="text-sm text-muted-foreground">{order.patient_details.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Code: {order.pickup_code}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        order.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                        order.status === 'verified' ? 'bg-blue-100 text-blue-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {orders.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">No orders yet</p>
+                )}
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full mt-4"
+                onClick={() => setActiveTab('orders')}
+              >
+                View All Orders
+              </Button>
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="font-semibold text-lg mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => setActiveTab('orders')}
+                >
+                  <Pill className="h-4 w-4 mr-2" />
+                  Process Orders
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => setActiveTab('inventory')}
+                >
+                  <List className="h-4 w-4 mr-2" />
+                  Manage Inventory
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={fetchOrders}
+                >
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Refresh Data
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </main>
       ) : (
         <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                </div>
+                <List className="h-8 w-8 text-blue-500" />
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-2xl font-bold text-amber-500">{stats.pending}</p>
+                </div>
+                <Pill className="h-8 w-8 text-amber-500" />
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Verified</p>
+                  <p className="text-2xl font-bold text-blue-500">{stats.verified}</p>
+                </div>
+                <ShieldCheck className="h-8 w-8 text-blue-500" />
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Fulfilled</p>
+                  <p className="text-2xl font-bold text-green-500">{stats.fulfilled}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+            </Card>
+          </div>
+
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="relative flex-1">
@@ -237,7 +416,7 @@ export default function PharmacyPortal({ onLogout }: PharmacyPortalProps) {
                         </Button>
                         <Button
                           onClick={() => handleFulfill(order.id)}
-                          disabled={workingId === order.id || order.status === 'fulfilled'}
+                          disabled={workingId === order.id || order.status !== 'verified'}
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Fulfill

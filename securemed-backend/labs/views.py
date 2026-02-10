@@ -34,33 +34,34 @@ class LabOrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         patient_id = self.request.data.get('patient_id')
-        appointment_id = self.request.data.get('appointment_id')
+        items = self.request.data.get('items', [])
         
-        if self.request.user.role == 'doctor':
-             from django.contrib.auth import get_user_model
-             User = get_user_model()
-             try:
-                 patient = User.objects.get(id=patient_id)
-                 appointment = None
-                 if appointment_id:
-                     from appointments.models import Appointment
-                     appointment = Appointment.objects.filter(
-                         id=appointment_id,
-                         patient__user=patient,
-                         doctor__user=self.request.user
-                     ).first()
-                     if not appointment:
-                         raise serializers.ValidationError({"appointment_id": "Invalid appointment for patient/doctor."})
-                 serializer.save(doctor=self.request.user, patient=patient, appointment=appointment)
-             except User.DoesNotExist:
-                 raise serializers.ValidationError({"patient_id": "Invalid patient ID"})
-                  
-        elif self.request.user.role == 'patient':
-             # RESTRICT: Patients cannot create lab orders directly
-             from rest_framework.exceptions import PermissionDenied
-             raise PermissionDenied("Patients cannot create lab orders directly. Please consult a doctor.")
-        else:
-             serializer.save(doctor=self.request.user)
+        if not patient_id:
+            raise serializers.ValidationError({"patient_id": "This field is required"})
+        
+        if not items:
+            raise serializers.ValidationError({"items": "At least one test is required"})
+        
+        from django.contrib.auth import get_user_model
+        from labs.models import LabTest
+        import uuid
+        
+        User = get_user_model()
+        
+        try:
+            patient = User.objects.get(id=patient_id)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"patient_id": "Invalid patient ID"})
+        
+        # Create the order
+        order = serializer.save(
+            doctor=self.request.user,
+            patient=patient,
+            sample_id=f"SMPL-{uuid.uuid4().hex[:8].upper()}"
+        )
+        
+        # Add items
+        order.items.set(items)
 
     @action(detail=True, methods=['post'])
     def mark_collected(self, request, pk=None):
@@ -210,7 +211,7 @@ class LabWorklistViewSet(viewsets.ViewSet):
         """Get blinded worklist for technicians"""
         
         # RESTRICT: Only staff/technicians can view worklist
-        if not request.user.is_staff and not hasattr(request.user, 'nurse_profile') and not hasattr(request.user, 'doctor_profile'):
+        if not request.user.is_staff and request.user.role not in ['lab_technician', 'doctor', 'nurse']:
              return Response({"error": "Unauthorized. Only clinical staff can view the lab worklist."}, status=status.HTTP_403_FORBIDDEN)
 
         # Filter by pending/processing orders

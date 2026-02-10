@@ -39,7 +39,7 @@ export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: A
                         variant="outline"
                         size="sm"
                         className="mt-3"
-                        onClick={() => onNavigate('medical-records')}
+                        onClick={() => onNavigate('records')}
                     >
                         View Medical Records
                     </Button>

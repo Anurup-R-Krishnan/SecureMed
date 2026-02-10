@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getPortalRouteForRole, ROUTES } from '@/lib/routes';
 
 interface RoleGuardProps {
     children: React.ReactNode;
@@ -11,11 +13,22 @@ interface RoleGuardProps {
 }
 
 export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, isLoading } = useAuth();
     const router = useRouter();
 
-    if (!isAuthenticated) {
-        return null; // Or a loading spinner, or redirect to login (handled by page logic usually)
+    useEffect(() => {
+        if (isLoading) return;
+        if (!isAuthenticated) {
+            router.replace(ROUTES.LOGIN);
+        }
+    }, [isLoading, isAuthenticated, router]);
+
+    if (isLoading || !isAuthenticated) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <p className="text-muted-foreground">Loading...</p>
+            </div>
+        );
     }
 
     if (user && !allowedRoles.includes(user.role)) {
@@ -38,9 +51,9 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
 
                     <Button
                         variant="outline"
-                        onClick={() => window.location.reload()} // Simple way to reset state/view for now
+                        onClick={() => router.push(getPortalRouteForRole(user.role))}
                     >
-                        Return to Safety
+                        Go to My Dashboard
                     </Button>
                 </div>
             </div>

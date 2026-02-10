@@ -95,16 +95,16 @@ MEDICATIONS = [
 ]
 
 LAB_TESTS = [
-    ("Complete Blood Count", "CBC-001", "Hematology", "4 hours"),
-    ("Lipid Profile", "LIP-001", "Chemistry", "6 hours"),
-    ("Thyroid Stimulating Hormone", "TSH-001", "Endocrine", "8 hours"),
-    ("Hemoglobin A1c", "HBA1C-001", "Hematology", "24 hours"),
-    ("Liver Function Test", "LFT-001", "Chemistry", "6 hours"),
-    ("Kidney Function Test", "KFT-001", "Chemistry", "6 hours"),
-    ("Urinalysis", "UA-001", "Urinalysis", "2 hours"),
-    ("Chest X-Ray", "CXR-001", "Other", "1 hour"),
-    ("ECG", "ECG-001", "Other", "30 minutes"),
-    ("Blood Glucose Fasting", "BGF-001", "Chemistry", "4 hours"),
+    ("Complete Blood Count", "CBC-001", "Hematology", "4 hours", "Measures red blood cells, white blood cells, and platelets"),
+    ("Lipid Profile", "LIP-001", "Chemistry", "6 hours", "Measures cholesterol and triglyceride levels"),
+    ("Thyroid Stimulating Hormone", "TSH-001", "Endocrine", "8 hours", "Evaluates thyroid function"),
+    ("Hemoglobin A1c", "HBA1C-001", "Hematology", "24 hours", "Measures average blood sugar over 3 months"),
+    ("Liver Function Test", "LFT-001", "Chemistry", "6 hours", "Assesses liver health and function"),
+    ("Kidney Function Test", "KFT-001", "Chemistry", "6 hours", "Evaluates kidney health and function"),
+    ("Urinalysis", "UA-001", "Urinalysis", "2 hours", "Analyzes urine for various conditions"),
+    ("Chest X-Ray", "CXR-001", "Other", "1 hour", "Imaging of chest and lungs"),
+    ("ECG", "ECG-001", "Other", "30 minutes", "Records electrical activity of the heart"),
+    ("Blood Glucose Fasting", "BGF-001", "Chemistry", "4 hours", "Measures blood sugar after fasting"),
 ]
 
 WELLNESS_TIPS = [
@@ -501,16 +501,20 @@ class Command(BaseCommand):
         from labs.models import LabTest
         self.stdout.write("[-] Seeding lab tests...")
         result = []
-        for name, code, cat, tat in LAB_TESTS:
+        for name, code, cat, tat, desc in LAB_TESTS:
             lt, created = LabTest.objects.get_or_create(
                 code=code,
                 defaults={
                     "name": name,
                     "category": cat,
                     "turnaround_time": tat,
+                    "description": desc,
                     "is_active": True
                 }
             )
+            if not created and not lt.description:
+                lt.description = desc
+                lt.save()
             result.append(lt)
         return result
 

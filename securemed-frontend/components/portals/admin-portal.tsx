@@ -30,11 +30,26 @@ type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' |
 interface AdminPortalProps {
   onLogout: () => void;
   onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
+  currentTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
 }
 
-export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabChange }: AdminPortalProps) {
+  const [activeTab, setActiveTabState] = useState<AdminTab>(currentTab || 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Sync tab with URL when currentTab prop changes
+  useEffect(() => {
+    if (currentTab && currentTab !== activeTab) {
+      setActiveTabState(currentTab);
+    }
+  }, [currentTab]);
+
+  // Wrapper that updates both local state and notifies parent for URL update
+  const setActiveTab = (tab: AdminTab) => {
+    setActiveTabState(tab);
+    onTabChange?.(tab);
+  };
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [patients, setPatients] = useState<any[]>([]);

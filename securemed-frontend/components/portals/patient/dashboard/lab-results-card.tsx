@@ -62,7 +62,7 @@ export default function LabResultsCard({ results, onNavigate }: LabResultsCardPr
                 <Button
                     variant="link"
                     className="text-primary text-sm h-auto p-0"
-                    onClick={() => onNavigate('medical-records')}
+                    onClick={() => onNavigate('records')}
                 >
                     View all
                 </Button>

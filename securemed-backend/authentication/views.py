@@ -127,24 +127,87 @@ def verify_temp_token(token):
         return None
 
 
+def get_user_data_with_profile(user):
+    """
+    Build user data dict enriched with role-specific profile information.
+    For doctors, includes specialization, department, doctor_id, etc.
+    """
+    data = UserSerializer(user).data
+    
+    # Enrich with doctor profile data if available
+    if hasattr(user, 'doctor_profile'):
+        try:
+            doctor = user.doctor_profile
+            data['doctor_profile'] = {
+                'doctor_id': doctor.doctor_id,
+                'specialization': doctor.specialization,
+                'specialization_display': doctor.get_specialization_display(),
+                'qualification': doctor.qualification,
+                'experience_years': doctor.experience_years,
+                'department_name': doctor.department.name if doctor.department else None,
+                'department_code': doctor.department.code if doctor.department else None,
+                'consultation_fee': str(doctor.consultation_fee),
+                'rating': str(doctor.rating),
+                'reviews': doctor.reviews,
+                'is_available': doctor.is_available,
+            }
+        except Exception as e:
+            print(f"[USER PROFILE] Error loading doctor profile: {e}")
+            
+    # Enrich with patient profile data if available
+    if hasattr(user, 'patient_profile'):
+        try:
+            patient = user.patient_profile
+            data['patient_profile'] = {
+                'patient_id': patient.patient_id,
+                'date_of_birth': patient.date_of_birth,
+                'gender': patient.gender,
+                'blood_group': patient.blood_group,
+                'phone': patient.phone,
+                'address': patient.address,
+                'city': patient.city,
+                'state': patient.state,
+                'postal_code': patient.postal_code,
+                'insurance_provider': patient.insurance_provider,
+                'insurance_number': patient.insurance_number,
+                'allergies': patient.allergies,
+                'chronic_conditions': patient.chronic_conditions,
+            }
+        except Exception as e:
+            print(f"[USER PROFILE] Error loading patient profile: {e}")
+    
+    return data
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_profile_view(request):
     """
-    Get current user profile.
+    Get current user profile with role-specific data.
     GET /api/auth/user/
     
-    Response:
+    Response (doctor):
     {
         "id": 1,
         "username": "john",
         "email": "john@example.com",
-        "role": "patient",
-        "mfa_enabled": true
+        "role": "provider",
+        "mfa_enabled": true,
+        "first_name": "John",
+        "last_name": "Doe",
+        "doctor_profile": {
+            "doctor_id": "DOC-001",
+            "specialization": "general",
+            "specialization_display": "General Medicine",
+            "qualification": "MBBS, MD",
+            "experience_years": 10,
+            "department_name": "General Medicine",
+            ...
+        }
     }
     """
-    serializer = UserSerializer(request.user)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    data = get_user_data_with_profile(request.user)
+    return Response(data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -387,7 +450,7 @@ def login_view(request):
     return Response({
         'access': tokens['access'],
         'refresh': tokens['refresh'],
-        'user': UserSerializer(user).data,
+        'user': get_user_data_with_profile(user),
         'requires_policy_acceptance': requires_policy,
         'latest_policy_version': latest_policy
     }, status=status.HTTP_200_OK)
@@ -745,7 +808,7 @@ def mfa_login_view(request):
         return Response({
             'access': tokens['access'],
             'refresh': tokens['refresh'],
-            'user': UserSerializer(user).data,
+            'user': get_user_data_with_profile(user),
             'requires_policy_acceptance': requires_policy,
             'latest_policy_version': latest_policy
         }, status=status.HTTP_200_OK)
@@ -808,7 +871,7 @@ def mfa_login_view(request):
         return Response({
             'access': tokens['access'],
             'refresh': tokens['refresh'],
-            'user': UserSerializer(user).data,
+            'user': get_user_data_with_profile(user),
             'requires_policy_acceptance': requires_policy,
             'latest_policy_version': latest_policy
         }, status=status.HTTP_200_OK)

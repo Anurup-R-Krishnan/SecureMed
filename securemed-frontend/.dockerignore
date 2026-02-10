@@ -2,6 +2,13 @@ node_modules
 .next
 .git
 *.md
-.env*
+.env
+.env.*
 .vscode
-testsprite_tests
+tests
+__tests__
+*.test.ts
+*.test.tsx
+jest.config.js
+jest.setup.js
+coverage

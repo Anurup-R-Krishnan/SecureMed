@@ -22,7 +22,7 @@ interface Drug {
   strength: string;
   unit_price: string;
   reorder_level: number;
-  current_stock: number;
+  stock_quantity: number;
   needs_reorder: boolean;
 }
 
@@ -206,7 +206,7 @@ export default function PharmacyInventory() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold">{drug.current_stock}</div>
+                      <div className="text-2xl font-bold">{drug.stock_quantity}</div>
                       <div className="text-sm text-gray-600">In Stock</div>
                       <div className="text-xs text-gray-500 mt-1">Reorder at: {drug.reorder_level}</div>
                     </div>
@@ -274,7 +274,7 @@ export default function PharmacyInventory() {
                 {lowStockDrugs.map(drug => (
                   <div key={drug.id} className="flex justify-between items-center p-2 bg-red-50 rounded">
                     <div><p className="font-medium">{drug.name}</p><p className="text-sm text-gray-600">{drug.drug_code}</p></div>
-                    <div className="text-right"><p className="font-bold text-red-600">{drug.current_stock}</p><p className="text-xs text-gray-600">Reorder: {drug.reorder_level}</p></div>
+                    <div className="text-right"><p className="font-bold text-red-600">{drug.stock_quantity}</p><p className="text-xs text-gray-600">Reorder: {drug.reorder_level}</p></div>
                   </div>
                 ))}
               </div>

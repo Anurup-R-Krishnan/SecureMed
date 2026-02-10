@@ -57,13 +57,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def get_patient_name(self, obj):
         if obj.patient and obj.patient.user:
-            return f"{obj.patient.user.first_name} {obj.patient.user.last_name}"
-        return "Unknown Patient"
+            return f"{obj.patient.user.first_name} {obj.patient.user.last_name}".strip()
+        return ""
 
     def get_hospital(self, obj):
         if obj.doctor and obj.doctor.department:
             return f"{obj.doctor.department.building}"
-        return "Main Hospital"
+        return ""
 
     def create(self, validated_data):
         return super().create(validated_data)
@@ -93,16 +93,16 @@ class ReferralSerializer(serializers.ModelSerializer):
     
     def get_patient_name(self, obj):
         if obj.patient and obj.patient.user:
-            return f"{obj.patient.user.first_name} {obj.patient.user.last_name}"
-        return "Unknown"
+            return f"{obj.patient.user.first_name} {obj.patient.user.last_name}".strip()
+        return ""
     
     def get_referring_doctor_name(self, obj):
         if obj.referring_doctor and obj.referring_doctor.user:
-            return f"Dr. {obj.referring_doctor.user.get_full_name()}"
-        return "Unknown"
+            return f"Dr. {obj.referring_doctor.user.get_full_name()}".strip()
+        return ""
     
     def get_specialist_name(self, obj):
         if obj.specialist and obj.specialist.user:
-            return f"Dr. {obj.specialist.user.get_full_name()}"
-        return "Unknown"
+            return f"Dr. {obj.specialist.user.get_full_name()}".strip()
+        return ""
 

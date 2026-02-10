@@ -3,11 +3,35 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Patient
+from .serializers import PatientSerializer
+
 def get_patient_profile(user):
-    # Helper to get patient profile safely
     if hasattr(user, 'patient_profile'):
         return user.patient_profile
     return None
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_patients(request):
+    """List all patients - for doctors and admins"""
+    user = request.user
+    if user.role in ['doctor', 'admin', 'provider']:
+        patients = Patient.objects.select_related('user').all()
+        serializer = PatientSerializer(patients, many=True)
+        return Response(serializer.data)
+    return Response({"error": "Unauthorized"}, status=403)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def patient_detail(request, pk):
+    """Get single patient detail - for doctors and admins"""
+    user = request.user
+    if user.role in ['doctor', 'admin', 'provider']:
+        patient = get_object_or_404(Patient, pk=pk)
+        serializer = PatientSerializer(patient)
+        return Response(serializer.data)
+    return Response({"error": "Unauthorized"}, status=403)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

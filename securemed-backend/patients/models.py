@@ -38,6 +38,7 @@ class Patient(models.Model):
     
     allergies = models.TextField(blank=True)
     chronic_conditions = models.TextField(blank=True)
+    current_medications = models.TextField(blank=True)
     
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -22,7 +22,7 @@ export default function QuickActions({ onNavigate }: QuickActionsProps) {
                 <span className="font-medium text-sm">Book Appointment</span>
             </Button>
 
-            <Button
+            {/* <Button
                 variant="ghost"
                 className="h-auto py-4 flex flex-col items-center gap-3 bg-white/5 border border-white/10 hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all group"
                 onClick={() => onNavigate('records')}
@@ -31,7 +31,7 @@ export default function QuickActions({ onNavigate }: QuickActionsProps) {
                     <Pill className="h-6 w-6 text-emerald-500" />
                 </div>
                 <span className="font-medium text-sm">Renew Prescription</span>
-            </Button>
+            </Button> */}
 
             <Button
                 variant="ghost"
