@@ -142,6 +142,30 @@ class LabResultViewSet(viewsets.ModelViewSet):
         result.released_to_patient = True
         result.released_at = timezone.now()
         result.save(update_fields=['released_to_patient', 'released_at'])
+        
+        # Mark order as completed if all results are released
+        order = result.order
+        all_results_released = all(r.released_to_patient for r in order.results.all())
+        if all_results_released and order.status != 'completed':
+            order.status = 'completed'
+            order.save(update_fields=['status'])
+            
+            # Create invoice for lab tests
+            from medical_records.billing_service import create_lab_test_invoice
+            try:
+                invoice = create_lab_test_invoice(order)
+                if invoice:
+                    return Response({
+                        "status": "released",
+                        "released_at": result.released_at,
+                        "order_completed": True,
+                        "invoice_id": invoice.invoice_id,
+                        "invoice_created": True
+                    })
+            except Exception as e:
+                import logging
+                logging.error(f"Failed to create lab invoice: {e}")
+        
         return Response({"status": "released", "released_at": result.released_at})
 
     @action(detail=True, methods=['get'])

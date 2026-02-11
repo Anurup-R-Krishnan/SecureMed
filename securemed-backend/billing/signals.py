@@ -12,13 +12,20 @@ def create_lab_invoice(sender, instance, created, **kwargs):
         # Check if an invoice already exists for this order to avoid duplicates
         # Logic: Find pending invoice for patient or create new
         
+        # Get the Patient profile from the User
+        try:
+            patient_profile = instance.patient.patient_profile
+        except AttributeError:
+            # If no patient profile exists, skip invoice creation
+            return
+        
         # Calculate cost (This could be dynamic based on tests)
         # Placeholder: $50 base + $10 per test
         test_count = instance.items.count()
         amount = 50.00 + (10.00 * test_count)
         
         invoice = Invoice.objects.create(
-            patient=instance.patient,
+            patient=patient_profile,
             appointment=instance.appointment,
             status='issued',
             due_date=timezone.now().date() + timezone.timedelta(days=30),

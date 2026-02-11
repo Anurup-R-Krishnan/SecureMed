@@ -12,6 +12,7 @@ from .views import (
     patient_access_log
 )
 from .signing import sign_prescription, verify_prescription_signature
+from .timeline_api import patient_timeline
 
 router = DefaultRouter()
 router.register(r'records', MedicalRecordViewSet, basename='medical-record')
@@ -26,6 +27,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('dashboard/stats/', patient_dashboard_stats, name='patient-dashboard-stats'),
     path('my-access-log/', patient_access_log, name='patient-access-log'),
+    path('timeline/', patient_timeline, name='patient-timeline'),
     # Prescription signing endpoints
     path('prescriptions/<int:prescription_id>/sign/', sign_prescription, name='sign-prescription'),
     path('prescriptions/<int:prescription_id>/verify/', verify_prescription_signature, name='verify-prescription'),

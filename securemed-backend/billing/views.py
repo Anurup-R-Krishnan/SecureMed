@@ -1,7 +1,8 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from .models import Invoice
-from .serializers import InvoiceSerializer
+from rest_framework.permissions import IsAuthenticated
+from .models import Invoice, Payment
+from .serializers import InvoiceSerializer, PaymentSerializer
 from authentication.permissions import IsPatient
 
 def get_patient_profile(user):
@@ -18,7 +19,7 @@ def get_invoices(request):
     if not patient:
         return Response({"error": "Patient profile not found."}, status=404)
         
-    invoices = Invoice.objects.filter(patient=patient).select_related('appointment', 'appointment__doctor__user').prefetch_related('items')
+    invoices = Invoice.objects.filter(patient=patient).select_related('appointment', 'appointment__doctor__user').prefetch_related('items', 'payments')
     serializer = InvoiceSerializer(invoices, many=True)
     
     total_billed = sum(item.total_amount for item in invoices)
@@ -39,6 +40,8 @@ def get_invoices(request):
             "nextDueDate": next_due
         }
     })
+
+
 @api_view(['POST'])
 @permission_classes([IsPatient])
 def pay_invoice(request, invoice_id):
@@ -62,8 +65,25 @@ def pay_invoice(request, invoice_id):
         return Response({"message": "Invoice is already paid."}, status=200)
         
     # Process "Payment"
-    # Mocking successful payment
     from django.utils import timezone
+    import uuid
+    
+    payment_method = request.data.get('payment_method', 'card')
+    
+    # Create payment record
+    payment_id = f"PAY-{uuid.uuid4().hex[:8].upper()}"
+    payment = Payment.objects.create(
+        payment_id=payment_id,
+        invoice=invoice,
+        amount=invoice.total_amount - invoice.paid_amount,
+        payment_method=payment_method,
+        status='pending',
+        transaction_id=f"TXN-{uuid.uuid4().hex[:12].upper()}"
+    )
+    
+    # Mark payment as completed (in real app, would wait for payment gateway)
+    payment.status = 'completed'
+    payment.save(update_fields=['status'])
     
     invoice.status = 'paid'
     invoice.paid_amount = invoice.total_amount
@@ -72,7 +92,54 @@ def pay_invoice(request, invoice_id):
     return Response({
         "message": "Payment successful",
         "invoice_id": invoice.invoice_id,
+        "payment_id": payment.payment_id,
         "status": invoice.status,
         "paid_amount": invoice.paid_amount,
         "date": timezone.now()
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirm_payment(request, payment_id):
+    """
+    Pharmacist or admin confirms a payment has been received.
+    """
+    user = request.user
+    if not user.is_staff and user.role not in ['pharmacist', 'admin']:
+        return Response({"error": "Unauthorized"}, status=403)
+    
+    try:
+        payment = Payment.objects.get(payment_id=payment_id)
+    except Payment.DoesNotExist:
+        return Response({"error": "Payment not found."}, status=404)
+    
+    if payment.status == 'completed':
+        return Response({"message": "Payment already confirmed."}, status=200)
+    
+    from django.utils import timezone
+    
+    # Update payment status
+    payment.status = 'completed'
+    payment.processed_by = user
+    payment.save(update_fields=['status', 'processed_by'])
+    
+    # Update invoice
+    invoice = payment.invoice
+    invoice.paid_amount += payment.amount
+    
+    if invoice.paid_amount >= invoice.total_amount:
+        invoice.status = 'paid'
+    elif invoice.paid_amount > 0:
+        invoice.status = 'partially_paid'
+    
+    invoice.save(update_fields=['status', 'paid_amount'])
+    
+    return Response({
+        "message": "Payment confirmed",
+        "payment_id": payment.payment_id,
+        "invoice_status": invoice.status,
+        "confirmed_by": user.email,
+        "confirmed_at": timezone.now()
+    })
+

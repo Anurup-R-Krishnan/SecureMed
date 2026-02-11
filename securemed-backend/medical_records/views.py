@@ -569,6 +569,22 @@ class PharmacyOrderViewSet(viewsets.ModelViewSet):
             event_type='dispensed',
             changed_by=request.user
         )
+        
+        # Create invoice for pharmacy order
+        from .billing_service import create_pharmacy_invoice
+        try:
+            invoice = create_pharmacy_invoice(order)
+            if invoice:
+                return Response({
+                    "status": "fulfilled",
+                    "invoice_id": invoice.invoice_id,
+                    "invoice_created": True
+                })
+        except Exception as e:
+            # Don't fail the fulfillment if invoice creation fails
+            import logging
+            logging.error(f"Failed to create pharmacy invoice: {e}")
+        
         return Response({"status": "fulfilled"})
 
 
