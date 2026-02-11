@@ -55,7 +55,10 @@ def patient_timeline(request):
         # Doctors/admins/providers can view any patient timeline
         # (consistent with list_patients and patient_detail views)
         if user.role not in ['doctor', 'admin', 'provider']:
-            return Response({"error": "Access denied to this patient's timeline."}, status=403)
+            # Allow if they are requesting their own timeline
+            user_patient = get_patient_profile(user)
+            if not user_patient or (str(user_patient.id) != str(patient.id) and user_patient.patient_id != patient.patient_id):
+                return Response({"error": "Access denied to this patient's timeline."}, status=403)
     else:
         # Default to current user
         patient = get_patient_profile(user)
@@ -117,6 +120,32 @@ def patient_timeline(request):
                 'category': 'lab',
                 'status': 'completed' if lab.status == 'completed' else 'pending'
             })
+
+    # 4. Fetch Invoices and Payments
+    if hasattr(patient, 'invoices'):
+        invoices = patient.invoices.all()
+        for inv in invoices:
+            # Invoice Issued Event
+            events.append({
+                'id': f"inv_{inv.id}",
+                'date': f"{inv.issue_date}T09:00:00", # Default time
+                'title': f"Invoice Generated: ${inv.total_amount}",
+                'description': inv.notes or "Medical Service Invoice",
+                'category': 'billing',
+                'status': 'pending' if inv.status != 'paid' else 'completed'
+            })
+            
+            # Payment Event (if paid)
+            if inv.status == 'paid':
+                payment_date = inv.updated_at.isoformat()
+                events.append({
+                    'id': f"pay_{inv.id}",
+                    'date': payment_date,
+                    'title': f"Payment Confirmed: ${inv.paid_amount}",
+                    'description': f"Payment for Invoice #{inv.invoice_id}",
+                    'category': 'billing',
+                    'status': 'completed'
+                })
 
     # Sort by date descending
     events.sort(key=lambda x: x['date'], reverse=True)

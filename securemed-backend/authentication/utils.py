@@ -61,7 +61,8 @@ def generate_deletion_certificate(user):
     )
     
     # Calculate deletion date (30 days from request)
-    deletion_date = user.deletion_requested_at + timedelta(days=30)
+    request_date = user.deletion_requested_at or timezone.now()
+    deletion_date = request_date + timedelta(days=30)
     
     # Build the document content
     story.append(Spacer(1, 0.5 * inch))

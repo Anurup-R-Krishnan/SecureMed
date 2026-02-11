@@ -73,6 +73,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 
 class MedicalRecordSerializer(serializers.ModelSerializer):
     doctor_name = serializers.SerializerMethodField()
+    patient_name = serializers.SerializerMethodField()
+    patient_display_id = serializers.SerializerMethodField()
     record_type_display = serializers.CharField(source='get_record_type_display', read_only=True)
     prescriptions = PrescriptionSerializer(many=True, read_only=True)
     file_url = serializers.SerializerMethodField()
@@ -81,7 +83,8 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
         model = MedicalRecord
         fields = [
             'id', 'record_id', 'record_type', 'record_type_display', 
-            'record_date', 'doctor_name', 'diagnosis', 'file', 'file_url',
+            'record_date', 'doctor_name', 'patient', 'patient_name', 'patient_display_id',
+            'diagnosis', 'file', 'file_url',
             'prescriptions', 'created_at', 'source', 'is_attested', 'notes',
             'private_notes'
         ]
@@ -101,6 +104,16 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
         if obj.source == 'patient':
             return "Patient (Self-Reported)"
         return "Unknown Provider"
+
+    def get_patient_name(self, obj):
+        if obj.patient and obj.patient.user:
+            return obj.patient.user.get_full_name()
+        return "Unknown Patient"
+
+    def get_patient_display_id(self, obj):
+        if obj.patient:
+            return obj.patient.patient_id
+        return None
 
     def get_file_url(self, obj):
         if obj.file:

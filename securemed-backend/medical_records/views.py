@@ -14,7 +14,8 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        """Optimize queryset with select_related to prevent N+1 queries"""
+        """Optimize queryset with select_related to prevent N+1 queries.
+        Supports search and patient_id query params for doctor search."""
         user = self.request.user
         base_queryset = MedicalRecord.objects.select_related(
             'doctor__user',
@@ -24,18 +25,48 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         if hasattr(user, 'patient_profile'):
             return base_queryset.filter(patient=user.patient_profile)
         elif hasattr(user, 'doctor_profile'):
-            # 1. Normal Access: Records where doctor is assigned
+            # Check for search/filter query params
+            search = self.request.query_params.get('search', '').strip()
+            patient_id_param = self.request.query_params.get('patient_id', '').strip()
+            
+            # If doctor is searching by patient name/ID, search across ALL patients
+            # (consistent with list_patients and patient_detail access)
+            if search or patient_id_param:
+                qs = base_queryset
+                
+                if patient_id_param:
+                    # Support numeric PK or display patient_id (P-0008)
+                    if patient_id_param.isdigit():
+                        qs = qs.filter(patient__id=int(patient_id_param))
+                    else:
+                        qs = qs.filter(
+                            Q(patient__patient_id__icontains=patient_id_param)
+                        )
+                
+                if search:
+                    qs = qs.filter(
+                        Q(patient__user__first_name__icontains=search) |
+                        Q(patient__user__last_name__icontains=search) |
+                        Q(patient__patient_id__icontains=search) |
+                        Q(diagnosis__icontains=search) |
+                        Q(doctor__user__first_name__icontains=search) |
+                        Q(doctor__user__last_name__icontains=search) |
+                        Q(record_type__icontains=search) |
+                        Q(notes__icontains=search)
+                    )
+                
+                return qs.distinct()
+            
+            # Default: doctor's own records + emergency access records
             qs = base_queryset.filter(doctor=user.doctor_profile)
             
-            # 2. Emergency Access: Records for patients in active break-glass logs
+            # Emergency Access: Records for patients in active break-glass logs
             from .models import EmergencyAccessLog
-            # Get list of patients this doctor has emergency access to
             emergency_patient_ids = EmergencyAccessLog.objects.filter(
                 accessed_by=user
             ).values_list('patient_id', flat=True)
             
             if emergency_patient_ids:
-                # Combine queries: Assigned OR Emergency Access
                 return base_queryset.filter(
                     Q(doctor=user.doctor_profile) | 
                     Q(patient__id__in=emergency_patient_ids)

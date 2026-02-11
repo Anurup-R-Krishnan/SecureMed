@@ -1541,15 +1541,7 @@ class DownloadDeletionCertificateView(APIView):
         
         # Auto-mark for deletion if not already done
         if not user.deletion_requested_at:
-            # Mark deletion timestamp
-            user.deletion_requested_at = timezone.now()
-            
-            # Immediate lockout (soft delete)
-            user.is_active = False
-            
-            user.save(update_fields=['deletion_requested_at', 'is_active'])
-            
-            # Audit log for auto-marking
+            # Audit log for auto-marking (but don't save yet to avoid breaking current request)
             print(f"\n{'='*70}")
             print("AUTO-MARKED FOR DELETION VIA CERTIFICATE REQUEST")
             print(f"{'='*70}")
@@ -1559,8 +1551,21 @@ class DownloadDeletionCertificateView(APIView):
             print(f"Email: {user.email}")
             print(f"{'='*70}\n")
         
-        # Generate the PDF certificate
+        # Prepare user object for certificate generation (in-memory only)
+        if not user.deletion_requested_at:
+            user.deletion_requested_at = timezone.now()
+            
+        # Generate the PDF certificate (User is still active here)
         pdf_buffer = generate_deletion_certificate(user)
+        
+        # Now apply the deletion request and deactivate persistent state
+        if user.is_active:
+             # Ensure we're setting the timestamp if it wasn't already set in DB
+             if not user.id or not User.objects.get(id=user.id).deletion_requested_at:
+                 user.deletion_requested_at = timezone.now()
+             
+             user.is_active = False
+             user.save(update_fields=['deletion_requested_at', 'is_active'])
         
         # Return as file download
         filename = f"deletion_certificate_{user.id}.pdf"
