@@ -14,8 +14,9 @@ def create_lab_invoice(sender, instance, created, **kwargs):
         
         # Get the Patient profile from the User
         try:
-            patient_profile = instance.patient.patient_profile
-        except AttributeError:
+            from patients.models import Patient
+            patient_profile = Patient.objects.get(user=instance.patient)
+        except (AttributeError, Patient.DoesNotExist):
             # If no patient profile exists, skip invoice creation
             return
         

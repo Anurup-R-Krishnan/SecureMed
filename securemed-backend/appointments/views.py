@@ -287,10 +287,16 @@ class ReferralViewSet(viewsets.ModelViewSet):
         
         patients_data = []
         for ref in referrals:
+            # Handle empty first_name/last_name with fallback
+            first_name = ref.patient.user.first_name or ''
+            last_name = ref.patient.user.last_name or ''
+            full_name = f"{first_name} {last_name}".strip()
+            display_name = full_name or ref.patient.user.email or ref.patient.patient_id or 'Unknown Patient'
+            
             patients_data.append({
                 'id': ref.patient.id,
                 'patient_id': ref.patient.patient_id,
-                'name': f"{ref.patient.user.first_name} {ref.patient.user.last_name}",
+                'name': display_name,
                 'referral_id': ref.referral_id,
                 'referred_by': f"Dr. {ref.referring_doctor.user.get_full_name()}",
                 'reason': ref.reason,

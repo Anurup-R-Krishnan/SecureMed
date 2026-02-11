@@ -132,22 +132,27 @@ class SecureUploadsTest(TestCase):
 
     def test_file_download_endpoint(self):
         """Test file can be downloaded via API"""
-        test_file = SimpleUploadedFile(
-            "download_test.pdf",
-            b"downloadable_content",
-            content_type="application/pdf"
-        )
+        from django.core.files.base import ContentFile
+        from labs.crypto import encrypt_bytes
+        import uuid
+        
+        # Create encrypted file like the viewset does
+        test_content = b"downloadable_content"
+        encrypted = encrypt_bytes(test_content)
+        encrypted_file = ContentFile(encrypted, name=f"lab_{uuid.uuid4().hex}.enc")
         
         result = LabResult.objects.create(
             order=self.order,
             test=self.test,
             result_value='Normal',
-            file_attachment=test_file,
+            file_attachment=encrypted_file,
+            file_attachment_name="download_test.pdf",
+            file_attachment_content_type="application/pdf",
             technician_name='Tech'
         )
         
         self.client.force_authenticate(user=self.doctor_user)
         response = self.client.get(f'/api/labs/results/{result.id}/download/')
         
-        # Should return file or 404 if no file
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+        # Should return file successfully
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

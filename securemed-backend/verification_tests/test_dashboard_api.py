@@ -1,19 +1,11 @@
-import os
-import django
-import sys
-import json
-
-# Setup Django environment BEFORE importing anything that uses settings
-sys.path.append('/home/anuruprkris/Project/SecureMed/securemed-backend')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-django.setup()
-
+import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from patients.models import Patient
 
 User = get_user_model()
 
+@pytest.mark.django_db
 def test_dashboard_stats_endpoint():
     print("Setting up test...")
     client = APIClient()
@@ -25,8 +17,21 @@ def test_dashboard_stats_endpoint():
         print(f"Using existing user: {user.email}")
     except User.DoesNotExist:
         print("Creating test user...")
-        user = User.objects.create_user(email=email, password='SecureMed@123', role='patient')
-        Patient.objects.create(user=user, patient_id="P-TEST")
+        user = User.objects.create_user(
+            username='patient1',
+            email=email,
+            password='SecureMed@123',
+            role='patient'
+        )
+        from datetime import date
+        Patient.objects.create(
+            user=user,
+            patient_id="P-TEST",
+            date_of_birth=date(1990, 1, 1),
+            gender='M',
+            phone='+1234567890',
+            emergency_contact='+0987654321'
+        )
 
     client.force_authenticate(user=user)
     
@@ -47,12 +52,3 @@ def test_dashboard_stats_endpoint():
     else:
         print(f"FAILURE: Status code {response.status_code}")
         print(response.data)
-
-if __name__ == "__main__":
-    import os
-    import django
-    import sys
-    sys.path.append('/home/anuruprkris/Project/SecureMed/securemed-backend')
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-    django.setup()
-    test_dashboard_stats_endpoint()

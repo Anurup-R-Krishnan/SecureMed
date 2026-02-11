@@ -59,6 +59,19 @@ PATIENTS = [
     ("anjali.desai", "anjali.desai@example.com", "Anjali", "Desai", "1988-12-10", "F", "O-", "+919876500006", "ICICI Lombard", "IL-770006", "", "Migraine", "Pune"),
     ("rohan.mehta", "rohan.mehta@example.com", "Rohan", "Mehta", "1972-01-05", "M", "B-", "+919876500007", "Bajaj Allianz", "BA-440007", "Latex", "COPD", "Kolkata"),
     ("kavita.nair", "kavita.n@example.com", "Kavita", "Nair", "2000-08-14", "F", "AB+", "+919876500008", "Fortis Health Shield", "FH-220008", "", "", "Kochi"),
+    # Additional patients for more realistic data
+    ("sanjay.shah", "sanjay.shah@example.com", "Sanjay", "Shah", "1975-06-20", "M", "O+", "+919876500009", "Max Bupa", "MB-550009", "Nuts", "Hypertension, Diabetes Type 2", "Ahmedabad"),
+    ("meera.iyer", "meera.iyer@example.com", "Meera", "Iyer", "1992-04-12", "F", "A+", "+919876500010", "Star Health", "SH-990010", "", "Thyroid", "Bangalore"),
+    ("arjun.rao", "arjun.rao@example.com", "Arjun", "Rao", "1998-09-03", "M", "B+", "+919876500011", "Apollo Health Plus", "AH-110011", "Shellfish", "", "Hyderabad"),
+    ("divya.khanna", "divya.khanna@example.com", "Divya", "Khanna", "1986-11-28", "F", "AB-", "+919876500012", "ICICI Lombard", "IL-770012", "", "Anemia", "Delhi"),
+    ("rakesh.joshi", "rakesh.joshi@example.com", "Rakesh", "Joshi", "1970-02-14", "M", "A-", "+919876500013", "Bajaj Allianz", "BA-440013", "Iodine", "Cardiovascular Disease", "Pune"),
+    ("pooja.menon", "pooja.menon@example.com", "Pooja", "Menon", "1994-07-30", "F", "O-", "+919876500014", "Fortis Health Shield", "FH-220014", "", "", "Kochi"),
+    ("nikhil.saxena", "nikhil.saxena@example.com", "Nikhil", "Saxena", "1980-12-05", "M", "B-", "+919876500015", "HDFC Ergo", "HE-330015", "Bee Stings", "Back Pain, Arthritis", "Mumbai"),
+    ("ritu.malhotra", "ritu.malhotra@example.com", "Ritu", "Malhotra", "1991-08-19", "F", "AB+", "+919876500016", "Max Bupa", "MB-550016", "", "PCOS", "Delhi"),
+    ("varun.kapoor", "varun.kapoor@example.com", "Varun", "Kapoor", "1977-03-22", "M", "O+", "+919876500017", "Star Health", "SH-990017", "Dust", "Asthma", "Bangalore"),
+    ("swati.bhatt", "swati.bhatt@example.com", "Swati", "Bhatt", "1989-05-16", "F", "A+", "+919876500018", "Apollo Health Plus", "AH-110018", "", "", "Ahmedabad"),
+    ("karan.pillai", "karan.pillai@example.com", "Karan", "Pillai", "1983-10-11", "M", "B+", "+919876500019", "ICICI Lombard", "IL-770019", "Soy", "High Cholesterol", "Chennai"),
+    ("shreya.das", "shreya.das@example.com", "Shreya", "Das", "1996-01-27", "F", "AB-", "+919876500020", "Bajaj Allianz", "BA-440020", "", "", "Kolkata"),
 ]
 
 PHARMACISTS = [
@@ -77,6 +90,17 @@ DRUGS = [
     ("Shelcal 500", "Calcium + Vitamin D3", "Torrent", "Tablet", "500 mg", 6.00, 80),
     ("Allegra 120", "Fexofenadine", "Sanofi", "Tablet", "120 mg", 18.00, 30),
     ("Ascoril LS", "Levosalbutamol + Ambroxol", "Glenmark", "Syrup", "100 ml", 120.00, 20),
+    # Additional medications
+    ("Crocin Advance", "Paracetamol", "GSK", "Tablet", "500 mg", 1.50, 150),
+    ("Azithral 500", "Azithromycin", "Alembic", "Tablet", "500 mg", 28.00, 40),
+    ("Cipla Cetirizine", "Cetirizine", "Cipla", "Tablet", "10 mg", 1.80, 120),
+    ("Omez 20", "Omeprazole", "Dr Reddy's", "Capsule", "20 mg", 8.50, 60),
+    ("Combiflam", "Ibuprofen + Paracetamol", "Sanofi", "Tablet", "400mg + 325mg", 3.50, 100),
+    ("Ecosprin 75", "Aspirin", "USV", "Tablet", "75 mg", 1.20, 150),
+    ("Montair LC", "Montelukast + Levocetirizine", "Cipla", "Tablet", "10mg + 5mg", 12.00, 50),
+    ("Betadine Ointment", "Povidone Iodine", "Win-Medicare", "Ointment", "5%", 45.00, 30),
+    ("Neurobion Forte", "Vitamin B Complex", "Merck", "Tablet", "Multi", 5.00, 80),
+    ("Cheston Cold", "Phenylephrine + Paracetamol", "Cipla", "Tablet", "5mg + 500mg", 2.50, 100),
 ]
 
 DIAGNOSES = [
@@ -355,14 +379,26 @@ class Command(BaseCommand):
         self.stdout.write("[-] Seeding appointments...")
         result = []
         counter = 1
-        # Seed 20 random appointments
-        for _ in range(20):
+        # Seed 40 appointments for more realistic data
+        for _ in range(40):
             pat = random.choice(patients)
             doc = random.choice(doctors)
-            days_offset = random.randint(-30, 30)
+            days_offset = random.randint(-60, 60)
             appt_date = date.today() + timedelta(days=days_offset)
             
-            status = 'completed' if days_offset < 0 else 'scheduled'
+            status = 'completed' if days_offset < -5 else ('scheduled' if days_offset > 0 else 'in-progress')
+            
+            reasons = [
+                "Routine Checkup",
+                "Follow-up Visit",
+                "Annual Physical Exam",
+                "Vaccination",
+                "Symptom Consultation",
+                "Chronic Disease Management",
+                "Lab Report Discussion",
+                "Prescription Renewal",
+                "Health Screening"
+            ]
             
             appt, created = Appointment.objects.get_or_create(
                 appointment_id=f"APT-{counter:05d}",
@@ -372,7 +408,8 @@ class Command(BaseCommand):
                     "appointment_date": appt_date,
                     "appointment_time": time(random.randint(9,16), random.choice([0, 30])),
                     "status": status,
-                    "reason": "Routine Checkup",
+                    "reason": random.choice(reasons),
+                    "appointment_type": random.choice(["in-person", "video"]),
                     "created_by": pat.user
                 }
             )
@@ -439,6 +476,37 @@ class Command(BaseCommand):
         from medical_records.models import MedicalRecord
         self.stdout.write("[-] Seeding medical records...")
         result = []
+        
+        # Enhanced diagnoses with more variety
+        enhanced_diagnoses = [
+            "Hypertension - Stage 1",
+            "Type 2 Diabetes Mellitus",
+            "Acute Upper Respiratory Infection",
+            "Seasonal Allergic Rhinitis",
+            "Migraine with Aura",
+            "Gastroesophageal Reflux Disease",
+            "Acute Bronchitis",
+            "Osteoarthritis - Knee",
+            "Generalized Anxiety Disorder",
+            "Urinary Tract Infection",
+            "Vitamin D Deficiency",
+            "Hyperlipidemia",
+            "Iron Deficiency Anemia",
+            "Acute Gastroenteritis",
+            "Mechanical Lower Back Pain",
+        ]
+        
+        detailed_notes = [
+            "Patient presents with typical symptoms. Treatment plan discussed and agreed upon. Follow-up in 2 weeks.",
+            "Routine follow-up visit. Patient compliant with medication. Vitals stable. Continue current treatment.",
+            "Initial consultation. Detailed history taken. Physical examination performed. Treatment initiated.",
+            "Follow-up appointment. Symptoms improving with current medication. Lab results reviewed and normal.",
+            "Patient recovering well. No adverse reactions to medication. Advised lifestyle modifications.",
+            "Comprehensive evaluation completed. All findings discussed with patient. Referral provided if needed.",
+            "Regular checkup. Patient education provided regarding diet and exercise. Medication adjusted as needed.",
+            "Emergency consultation. Immediate treatment provided. Condition stabilized. Follow-up scheduled.",
+        ]
+        
         for appt in appointments:
             if appt.status != 'completed': continue
             
@@ -450,8 +518,8 @@ class Command(BaseCommand):
                     "doctor": appt.doctor,
                     "record_type": "consultation",
                     "record_date": appt.appointment_date,
-                    "diagnosis": random.choice(DIAGNOSES),
-                    "notes": "Patient recovering well.",
+                    "diagnosis": random.choice(enhanced_diagnoses),
+                    "notes": random.choice(detailed_notes),
                     "source": "provider"
                 }
             )
@@ -460,13 +528,15 @@ class Command(BaseCommand):
         return result
 
     def _seed_prescriptions(self, records, doctors):
-        from medical_records.models import Prescription
+        from medical_records.models import Prescription, PharmacyOrder
         self.stdout.write("[-] Seeding prescriptions...")
         count = 0
         for rec in records:
-            if random.choice([True, False]):
+            # Create 1-3 prescriptions per record
+            num_prescriptions = random.randint(1, 3)
+            for _ in range(num_prescriptions):
                 med = random.choice(MEDICATIONS)
-                Prescription.objects.create(
+                prescription = Prescription.objects.create(
                     medical_record=rec,
                     medication_name=med[0],
                     dosage=med[1],
@@ -476,10 +546,19 @@ class Command(BaseCommand):
                     status="signed",
                     is_signed=True,
                     signed_by=rec.doctor.user,
-                    signed_at=timezone.now()
+                    signed_at=timezone.now() - timedelta(days=random.randint(1, 30))
                 )
+                
+                # Create pharmacy order for signed prescriptions
+                if random.choice([True, False]):  # 50% have pharmacy orders
+                    PharmacyOrder.objects.create(
+                        prescription=prescription,
+                        status=random.choice(['pending', 'verified', 'fulfilled']),
+                        pickup_code=f"PX-{uuid.uuid4().hex[:8].upper()}"
+                    )
+                
                 count += 1
-        self.stdout.write(f"   Created {count} prescriptions")
+        self.stdout.write(f"   Created {count} prescriptions with pharmacy orders")
 
     def _seed_vital_signs(self, patients):
         from medical_records.models import VitalSign
@@ -519,10 +598,60 @@ class Command(BaseCommand):
         return result
 
     def _seed_lab_orders(self, patients, doctors, tests):
-        from labs.models import LabOrder
+        from labs.models import LabOrder, LabResult
         self.stdout.write("[-] Seeding lab orders...")
-        # Simple implementation
-        pass
+        counter = 0
+        lab_tech = User.objects.filter(role='lab_technician').first()
+        
+        # Create 15-20 lab orders
+        for _ in range(random.randint(15, 20)):
+            pat = random.choice(patients)
+            doc = random.choice(doctors)
+            order_tests = random.sample(tests, random.randint(1, 3))
+            
+            days_ago = random.randint(1, 30)
+            
+            order = LabOrder.objects.create(
+                patient=pat.user,
+                doctor=doc.user,
+                priority=random.choice(['routine', 'urgent', 'stat']),
+                status=random.choice(['completed', 'processing', 'ordered']),
+                clinical_notes=f"Requested as part of {random.choice(['routine checkup', 'follow-up', 'diagnosis'])}"
+            )
+            order.items.set(order_tests)
+            order.created_at = timezone.now() - timedelta(days=days_ago)
+            order.save()
+            
+            # Add results for completed orders
+            if order.status == 'completed':
+                for test in order_tests:
+                    result_values = {
+                        'CBC-001': ('13.5 g/dL', '12-16 g/dL', 'g/dL', 'Normal'),
+                        'LIP-001': ('180 mg/dL', '<200 mg/dL', 'mg/dL', 'Normal'),
+                        'TSH-001': ('2.5 mIU/L', '0.5-5.0 mIU/L', 'mIU/L', 'Normal'),
+                        'HBA1C-001': ('5.8%', '<6.0%', '%', 'Normal'),
+                        'LFT-001': ('35 U/L', '7-56 U/L', 'U/L', 'Normal'),
+                        'KFT-001': ('1.0 mg/dL', '0.7-1.2 mg/dL', 'mg/dL', 'Normal'),
+                    }
+                    
+                    value, ref, unit, flag = result_values.get(test.code, ('Normal', 'Normal', '', 'Normal'))
+                    
+                    LabResult.objects.create(
+                        order=order,
+                        test=test,
+                        result_value=value,
+                        reference_range=ref,
+                        units=unit,
+                        flag=flag,
+                        technician=lab_tech,
+                        released_to_patient=True,
+                        released_at=timezone.now() - timedelta(days=days_ago-1)
+                    )
+            
+            counter += 1
+        
+        self.stdout.write(f"    Created {counter} lab orders with results")
+
 
     def _seed_conversations_and_messages(self, doctors, patients):
         # Skipped for brevity in this consolidated script, can be added if needed
@@ -533,8 +662,11 @@ class Command(BaseCommand):
         pass
 
     def _seed_invoices(self, patients, appointments):
-        from billing.models import Invoice, InvoiceItem
+        from billing.models import Invoice, InvoiceItem, Payment
         self.stdout.write("[-] Seeding invoices...")
+        invoice_count = 0
+        payment_count = 0
+        
         for appt in appointments:
             if appt.status != 'completed': continue
             
@@ -547,16 +679,17 @@ class Command(BaseCommand):
                 defaults={
                     "invoice_id": f"INV-{uuid.uuid4().hex[:6].upper()}",
                     "patient": appt.patient,
-                    "status": "paid",
+                    "status": random.choice(['paid', 'paid', 'sent']),  # Most are paid
                     "subtotal": fee,
                     "tax_amount": tax,
                     "discount_amount": Decimal("0"),
                     "total_amount": total,
-                    "paid_amount": total,
+                    "paid_amount": total if random.choice([True, False]) else Decimal("0"),
                     "due_date": date.today() + timedelta(days=15)
                 }
             )
             if created:
+                invoice_count += 1
                 InvoiceItem.objects.create(
                     invoice=inv,
                     item_type="consultation",
@@ -565,12 +698,46 @@ class Command(BaseCommand):
                     unit_price=fee,
                     total_price=fee
                 )
+                
+                # Create payment for paid invoices
+                if inv.status == 'paid':
+                    Payment.objects.create(
+                        invoice=inv,
+                        amount=total,
+                        payment_method=random.choice(['cash', 'card', 'upi', 'insurance']),
+                        payment_date=appt.date + timedelta(days=random.randint(0, 3)),
+                        status='completed',
+                        transaction_id=f"TXN-{uuid.uuid4().hex[:12].upper()}",
+                        notes=f"Payment for appointment on {appt.date}"
+                    )
+                    payment_count += 1
+        
+        self.stdout.write(f"   Created {invoice_count} invoices and {payment_count} payments")
 
     def _seed_wellness_tips(self):
         from patients.models import WellnessTip
         self.stdout.write("[-] Seeding wellness tips...")
-        for title, desc, cat in WELLNESS_TIPS:
+        
+        # Enhanced wellness tips with more variety
+        enhanced_tips = [
+            ("Stay Hydrated", "Drink at least 8 glasses of water daily to maintain proper body function and prevent dehydration.", "Nutrition"),
+            ("Exercise Regularly", "Aim for at least 30 minutes of moderate physical activity 5 times a week for optimal health.", "Fitness"),
+            ("Get Adequate Sleep", "Adults should aim for 7-9 hours of quality sleep each night for better mental and physical health.", "Lifestyle"),
+            ("Balanced Diet", "Include a variety of fruits, vegetables, whole grains, and lean proteins in your daily meals.", "Nutrition"),
+            ("Manage Stress", "Practice mindfulness, meditation, or yoga to reduce stress and improve mental well-being.", "Mental Health"),
+            ("Regular Health Checkups", "Schedule annual health screenings and checkups to catch potential issues early.", "Prevention"),
+            ("Limit Screen Time", "Take regular breaks from screens every 20-30 minutes to reduce eye strain and improve posture.", "Lifestyle"),
+            ("Maintain Healthy Weight", "Achieve and maintain a healthy BMI through balanced diet and regular exercise.", "Fitness"),
+            ("Quit Smoking", "Smoking increases risk of numerous diseases. Seek support to quit for better health outcomes.", "Prevention"),
+            ("Limit Alcohol Intake", "If you drink, do so in moderation - up to 1 drink per day for women, 2 for men.", "Lifestyle"),
+            ("Practice Good Hygiene", "Wash hands frequently, especially before meals and after using the restroom.", "Prevention"),
+            ("Stay Socially Connected", "Maintain healthy relationships and social connections for better mental health.", "Mental Health"),
+        ]
+        
+        for title, desc, cat in enhanced_tips:
             WellnessTip.objects.get_or_create(
                 title=title,
                 defaults={"description": desc, "category": cat, "is_active": True}
             )
+        
+        self.stdout.write(f"   Created {len(enhanced_tips)} wellness tips")
