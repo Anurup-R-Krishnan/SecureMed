@@ -47,20 +47,15 @@ def patient_timeline(request):
     
     if target_patient_id:
         # Check permissions (doctors/admins can view valid patients)
-        patient = get_object_or_404(Patient, patient_id=target_patient_id)
-        if hasattr(user, 'doctor_profile') and not user.is_staff:
-            from appointments.models import Appointment, Referral
-            has_appointment = Appointment.objects.filter(
-                doctor=user.doctor_profile,
-                patient=patient
-            ).exists()
-            has_referral = Referral.objects.filter(
-                specialist=user.doctor_profile,
-                patient=patient,
-                access_granted=True
-            ).exists()
-            if not (has_appointment or has_referral):
-                return Response({"error": "Access denied to this patient's timeline."}, status=403)
+        # Support lookup by numeric PK or display patient_id (e.g., 'P-0008')
+        if target_patient_id.isdigit():
+            patient = get_object_or_404(Patient, pk=int(target_patient_id))
+        else:
+            patient = get_object_or_404(Patient, patient_id=target_patient_id)
+        # Doctors/admins/providers can view any patient timeline
+        # (consistent with list_patients and patient_detail views)
+        if user.role not in ['doctor', 'admin', 'provider']:
+            return Response({"error": "Access denied to this patient's timeline."}, status=403)
     else:
         # Default to current user
         patient = get_patient_profile(user)
