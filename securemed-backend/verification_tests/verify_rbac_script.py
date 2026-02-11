@@ -32,7 +32,7 @@ LOGIN_URL = f"{BASE_URL}/login/"
 ADMIN_TEST_URL = f"{BASE_URL}/admin-test/"
 
 TEST_USERNAME = "testdoc"
-TEST_PASSWORD = "password123"
+TEST_PASSWORD = "SecureMed@123"
 TEST_ROLE = "Doctor"
 
 print("\n" + "="*70)
@@ -56,21 +56,21 @@ try:
     if created:
         user.set_password(TEST_PASSWORD)
         user.save()
-        print(f"✅ Created new user: {TEST_USERNAME}")
+        print(f"[OK] Created new user: {TEST_USERNAME}")
     else:
         # Update password to ensure it's correct
         user.set_password(TEST_PASSWORD)
         user.save()
-        print(f"✅ User already exists: {TEST_USERNAME}")
+        print(f"[OK] User already exists: {TEST_USERNAME}")
     
     # Ensure user has Doctor role
     doctor_group, _ = Group.objects.get_or_create(name=TEST_ROLE)
     
     if not user.groups.filter(name=TEST_ROLE).exists():
         user.groups.add(doctor_group)
-        print(f"✅ Assigned '{TEST_ROLE}' role to user")
+        print(f"[OK] Assigned '{TEST_ROLE}' role to user")
     else:
-        print(f"✅ User already has '{TEST_ROLE}' role")
+        print(f"[OK] User already has '{TEST_ROLE}' role")
     
     # Remove any admin roles if present
     admin_group = Group.objects.filter(name='Admin').first()
@@ -81,7 +81,7 @@ try:
     print()
     
 except Exception as e:
-    print(f"❌ Error setting up test user: {str(e)}\n")
+    print(f"[FAIL] Error setting up test user: {str(e)}\n")
     sys.exit(1)
 
 # Step 1: Login with test account
@@ -102,7 +102,7 @@ try:
         
         # Check if MFA is required
         if login_data.get('requires_mfa'):
-            print("⚠️  MFA is required for this account.")
+            print("[WARN] MFA is required for this account.")
             print("   Disabling MFA for test user...")
             user.mfa_enabled = False
             user.save()
@@ -119,32 +119,32 @@ try:
         user_role = user_data.get('role', 'Unknown')
         
         if not access_token:
-            print(f"❌ Login succeeded but no access token received")
+            print(f"[FAIL] Login succeeded but no access token received")
             print(f"   Response: {json.dumps(login_data, indent=2)}\n")
             sys.exit(1)
         
-        print(f"✅ Login successful!")
+        print(f"[OK] Login successful!")
         print(f"   Username: {TEST_USERNAME}")
         print(f"   Role: {user_role}")
         print(f"   Access Token: {access_token[:40]}...\n")
         
     elif login_response.status_code == 401:
-        print(f"❌ Login failed with 401 Unauthorized")
+        print(f"[FAIL] Login failed with 401 Unauthorized")
         print(f"   This means authentication failed.")
         print(f"   Response: {login_response.text}\n")
         sys.exit(1)
         
     else:
-        print(f"❌ Login failed with status {login_response.status_code}")
+        print(f"[FAIL] Login failed with status {login_response.status_code}")
         print(f"   Response: {login_response.text}\n")
         sys.exit(1)
         
 except requests.exceptions.ConnectionError:
-    print("❌ Connection error. Make sure the backend server is running:")
+    print("[FAIL] Connection error. Make sure the backend server is running:")
     print("   python manage.py runserver\n")
     sys.exit(1)
 except Exception as e:
-    print(f"❌ Login error: {str(e)}\n")
+    print(f"[FAIL] Login error: {str(e)}\n")
     sys.exit(1)
 
 # Step 2: Attempt to access admin-only endpoint
@@ -167,7 +167,7 @@ try:
     
     if admin_response.status_code == 403:
         print("="*70)
-        print("✅ TEST PASSED - RBAC IS WORKING CORRECTLY!")
+        print("[PASS] TEST PASSED - RBAC IS WORKING CORRECTLY!")
         print("="*70)
         print("\nThe server correctly returned 403 Forbidden.")
         print("Non-admin users are successfully blocked from admin endpoints.")
@@ -180,7 +180,7 @@ try:
         
     elif admin_response.status_code == 200:
         print("="*70)
-        print("❌ TEST FAILED - RBAC IS NOT WORKING!")
+        print("[FAIL] TEST FAILED - RBAC IS NOT WORKING!")
         print("="*70)
         print("\nThe server returned 200 OK - access was GRANTED!")
         print("This means the RBAC middleware/decorators are NOT enforcing roles.")
@@ -195,7 +195,7 @@ try:
             
     elif admin_response.status_code == 401:
         print("="*70)
-        print("⚠️  TEST INCONCLUSIVE - Authentication Issue")
+        print("[WARN] TEST INCONCLUSIVE - Authentication Issue")
         print("="*70)
         print("\nThe server returned 401 Unauthorized.")
         print("This means the access token was rejected.")
@@ -209,7 +209,7 @@ try:
         
     else:
         print("="*70)
-        print(f"⚠️  UNEXPECTED RESPONSE: {admin_response.status_code}")
+        print(f"[WARN] UNEXPECTED RESPONSE: {admin_response.status_code}")
         print("="*70)
         print(f"\nExpected: 403 Forbidden")
         print(f"Received: {admin_response.status_code}")
@@ -221,7 +221,7 @@ try:
             print(f"\nResponse: {admin_response.text}")
         
 except Exception as e:
-    print(f"❌ Request error: {str(e)}\n")
+    print(f"[FAIL] Request error: {str(e)}\n")
     sys.exit(1)
 
 print("\n" + "="*70)
@@ -229,7 +229,7 @@ print("Test Complete")
 print("="*70 + "\n")
 
 # Cleanup suggestion
-print("💡 Next Steps:")
+print("Next Steps:")
 print("   • To test admin access, run this script with an admin account")
 print("   • To clean up, delete the test user from Django admin")
 print(f"   • Test user credentials: {TEST_USERNAME} / {TEST_PASSWORD}\n")

@@ -136,3 +136,51 @@ class BreakGlassProtocolTest(TestCase):
         
         logs = EmergencyAccessLog.objects.filter(patient=self.patient)
         self.assertEqual(logs.count(), 2)
+
+    def test_emergency_access_grants_actual_data_access(self):
+        """Test that breaking glass actually allows viewing records of unassigned patient"""
+        from medical_records.models import MedicalRecord
+        from django.utils import timezone
+        
+        # 1. Create a medical record for the patient (doctor is NOT the emergency doctor)
+        other_doctor_user = User.objects.create_user('other_doc', 'other@test.com', 'pass')
+        other_doctor = Doctor.objects.create(
+            user=other_doctor_user, 
+            doctor_id='DR_OTHER', 
+            department=self.department,
+            specialization='General Medicine',
+            license_number='DOC_OTHER',
+            qualification='MBBS',
+            experience_years=5,
+            consultation_fee=100.00,
+            phone='+1999999999'
+        )
+        
+        record = MedicalRecord.objects.create(
+            record_id='REC-EMERGENCY-TEST',
+            patient=self.patient,
+            doctor=other_doctor,
+            record_type='consultation',
+            record_date=timezone.now().date(),
+            diagnosis='Hidden Condition',
+            notes='Confidential notes',
+            source='provider'
+        )
+        
+        self.client.force_authenticate(user=self.emergency_doctor_user)
+        
+        # 2. Try to access record BEFORE breaking glass -> Should be 404 (Not Found in queryset)
+        response_before = self.client.get(f'/api/medical-records/records/{record.id}/')
+        self.assertEqual(response_before.status_code, status.HTTP_404_NOT_FOUND)
+        
+        # 3. Break Glass
+        break_glass_data = {
+            'patient_id': self.patient.patient_id,
+            'reason': 'Emergency Access Required'
+        }
+        self.client.post('/api/medical-records/records/break_glass/', break_glass_data)
+        
+        # 4. Try to access record AFTER breaking glass -> Should be 200 OK
+        response_after = self.client.get(f'/api/medical-records/records/{record.id}/')
+        self.assertEqual(response_after.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_after.data['diagnosis'], 'Hidden Condition')

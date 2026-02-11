@@ -1,12 +1,26 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import MedicalRecordViewSet, PrescriptionViewSet, VitalSignViewSet, patient_dashboard_stats, patient_access_log
+from .views import (
+    MedicalRecordViewSet,
+    PrescriptionViewSet,
+    VitalSignViewSet,
+    DrugInteractionViewSet,
+    PharmacyOrderViewSet,
+    MedicationAdherenceLogViewSet,
+    MedicationHistoryEventViewSet,
+    patient_dashboard_stats,
+    patient_access_log
+)
 from .signing import sign_prescription, verify_prescription_signature
 
 router = DefaultRouter()
 router.register(r'records', MedicalRecordViewSet, basename='medical-record')
 router.register(r'prescriptions', PrescriptionViewSet, basename='prescription')
 router.register(r'vitals', VitalSignViewSet, basename='vitals')
+router.register(r'drug-interactions', DrugInteractionViewSet, basename='drug-interactions')
+router.register(r'pharmacy-orders', PharmacyOrderViewSet, basename='pharmacy-orders')
+router.register(r'medication-adherence', MedicationAdherenceLogViewSet, basename='medication-adherence')
+router.register(r'medication-history', MedicationHistoryEventViewSet, basename='medication-history')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -25,7 +25,7 @@ def test_dashboard_stats_endpoint():
         print(f"Using existing user: {user.email}")
     except User.DoesNotExist:
         print("Creating test user...")
-        user = User.objects.create_user(email=email, password='password123', role='patient')
+        user = User.objects.create_user(email=email, password='SecureMed@123', role='patient')
         Patient.objects.create(user=user, patient_id="P-TEST")
 
     client.force_authenticate(user=user)

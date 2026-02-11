@@ -30,11 +30,26 @@ type LabTab = 'worklist' | 'completed' | 'reports' | 'settings';
 interface LabTechnicianPortalProps {
     onLogout: () => void;
     onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | 'lab_technician' | null) => void;
+    currentTab?: LabTab;
+    onTabChange?: (tab: LabTab) => void;
 }
 
-export default function LabTechnicianPortal({ onLogout, onSwitchRole }: LabTechnicianPortalProps) {
-    const [activeTab, setActiveTab] = useState<LabTab>('worklist');
+export default function LabTechnicianPortal({ onLogout, onSwitchRole, currentTab, onTabChange }: LabTechnicianPortalProps) {
+    const [activeTab, setActiveTabState] = useState<LabTab>(currentTab || 'worklist');
     const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    // Sync tab with URL when currentTab prop changes
+    useEffect(() => {
+        if (currentTab && currentTab !== activeTab) {
+            setActiveTabState(currentTab);
+        }
+    }, [currentTab]);
+
+    // Wrapper that updates both local state and notifies parent for URL update
+    const setActiveTab = (tab: LabTab) => {
+        setActiveTabState(tab);
+        onTabChange?.(tab);
+    };
 
     const tabs: { id: LabTab; label: string; icon: React.ReactNode }[] = [
         { id: 'worklist', label: 'Worklist', icon: <ClipboardList className="h-5 w-5" /> },

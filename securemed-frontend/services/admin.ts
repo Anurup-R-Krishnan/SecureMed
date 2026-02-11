@@ -49,13 +49,7 @@ export const adminService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching dashboard stats:', error);
-            // Return placeholder data if API not available
-            return {
-                totalPatients: 0,
-                hospitalOccupancy: '0%',
-                totalRevenue: '₹0',
-                activeDoctors: 0,
-            };
+            throw error;
         }
     },
 
@@ -68,8 +62,7 @@ export const adminService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching hospitals:', error);
-            // Return empty array if API not available
-            return [];
+            throw error;
         }
     },
 
@@ -82,8 +75,7 @@ export const adminService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching staff:', error);
-            // Return empty array if API not available
-            return [];
+            throw error;
         }
     },
 
@@ -96,7 +88,7 @@ export const adminService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching alerts:', error);
-            return [];
+            throw error;
         }
     },
 
@@ -109,7 +101,7 @@ export const adminService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching users:', error);
-            return [];
+            throw error;
         }
     },
 
@@ -128,7 +120,7 @@ export const adminService = {
             return [];
         } catch (error) {
             console.error('Error fetching patients:', error);
-            return [];
+            throw error;
         }
     },
 
@@ -141,9 +133,22 @@ export const adminService = {
             return response.data.logs || [];
         } catch (error) {
             console.error('Error fetching audit logs:', error);
-            return [];
+            throw error;
         }
     },
+
+    async createUser(payload: {
+        username: string;
+        email: string;
+        first_name: string;
+        last_name: string;
+        role: string;
+        password: string;
+        password_confirm: string;
+    }) {
+        const response = await apiClient.post('/auth/users/create/', payload);
+        return response.data;
+    }
 };
 
 export default adminService;

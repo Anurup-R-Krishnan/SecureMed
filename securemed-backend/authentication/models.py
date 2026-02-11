@@ -16,6 +16,7 @@ class User(AbstractUser):
         ('patient', 'Patient'),
         ('doctor', 'Doctor'),
         ('provider', 'Healthcare Provider'),
+        ('pharmacist', 'Pharmacist'),
         ('admin', 'Administrator'),
     ]
     

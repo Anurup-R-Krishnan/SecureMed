@@ -247,7 +247,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return Conversation.objects.filter(participants=self.request.user)
+        return Conversation.objects.filter(
+            participants=self.request.user
+        ).prefetch_related('participants').distinct()
     
     def perform_create(self, serializer):
         # Conversations are typically started by finding a doctor/patient pairing
@@ -290,7 +292,10 @@ class MessageViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = Message.objects.filter(conversation__participants=self.request.user)
+        queryset = Message.objects.filter(
+            conversation__participants=self.request.user
+        ).select_related('sender', 'conversation').order_by('created_at')
+        
         conversation_id = self.request.query_params.get('conversation')
         if conversation_id:
             queryset = queryset.filter(conversation_id=conversation_id)
@@ -298,6 +303,10 @@ class MessageViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         conversation_id = self.request.data.get('conversation')
-        conversation = get_object_or_404(Conversation, id=conversation_id, participants=self.request.user)
+        conversation = get_object_or_404(
+            Conversation, 
+            id=conversation_id, 
+            participants=self.request.user
+        )
         serializer.save(sender=self.request.user, conversation=conversation)
 

@@ -53,7 +53,8 @@ def get_dashboard_stats(request):
         today_appointments = 0
     
     # Calculate hospital occupancy (placeholder - would need beds/admissions model)
-    occupancy = min(65 + (total_patients % 30), 95)  # Simulate occupancy 65-95%
+    # Default to 0 until Bed Management module is implemented
+    occupancy = 0
     
     # Calculate revenue (placeholder - would need billing integration)
     avg_revenue_per_patient = 2500  # In INR
@@ -224,7 +225,7 @@ def get_alerts(request):
 def get_analytics(request):
     """
     Returns aggregated clinical analytics data for the dashboard.
-    Uses REAL database counts instead of mock data.
+    Uses REAL database counts.
     """
     from medical_records.models import MedicalRecord
     from patients.models import Patient
@@ -257,7 +258,7 @@ def get_analytics(request):
     flu_cases_trend = []
     # Fill in gaps? For now just return what we have or map to list
     # The frontend expects months names. 
-    # Let's simple map existing data or mock 0 if empty?
+    # Map existing data or return 0 if empty.
     # To keep it simple and robust:
     for entry in monthly_stats:
          flu_cases_trend.append({
@@ -293,13 +294,13 @@ def get_analytics(request):
     summary = {
         'totalPatients': total_patients,
         'totalVisits': total_visits,
-        'averageOccupancy': 75, # Still hardcoded (need bed management)
+        'averageOccupancy': 0, # Default until Bed Management module is implemented
         'emergencyCases': Appointment.objects.filter(reason__icontains='emergency').count(),
     }
     
     # Department Stats (Real Data - requiring link to Department)
-    # Using Appointment counts per doctor's department if possible, or just mock for now as we don't have Department model loaded in context effectively
-    # Keeping mock for dept_stats to reduce complexity risk, but relying on documented Plan to "Remove random.randint"
+    # Using Appointment counts per doctor's department if possible
+    # We don't have Department model loaded in context effectively yet
     # Let's try to get real appointment counts by doctor specialty at least
     
     from appointments.models import Doctor
@@ -545,19 +546,23 @@ def health_check(request):
 @permission_classes([IsAuthenticated])
 def get_audit_logs(request):
     """
-    Returns the content of privacy_audit.log.
-    GET /api/admin/audit-logs/
+    Returns emergency access logs from database.
+    Admin only. GET /api/admin/audit-logs/
     """
-    log_file_path = os.path.join(settings.BASE_DIR, 'privacy_audit.log')
-    logs = []
-    try:
-        if os.path.exists(log_file_path):
-            with open(log_file_path, 'r') as f:
-                # Read last 100 lines for performance
-                lines = f.readlines()
-                logs = [line.strip() for line in lines[-100:]]
-                logs.reverse() # Newest first
-    except Exception as e:
-        print(f"Error reading audit log: {e}")
-        
-    return Response({'logs': logs})
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+    
+    from medical_records.models import EmergencyAccessLog
+    logs = EmergencyAccessLog.objects.select_related(
+        'doctor', 'patient'
+    ).order_by('-accessed_at')[:100]
+    
+    data = [{
+        'doctor': log.doctor.get_full_name(),
+        'patient': log.patient.get_full_name(),
+        'reason': log.reason,
+        'emergency_type': log.emergency_type,
+        'accessed_at': log.accessed_at.isoformat(),
+    } for log in logs]
+    
+    return Response({'logs': data})

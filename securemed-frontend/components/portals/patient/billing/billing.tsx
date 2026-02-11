@@ -156,11 +156,6 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
         </div>
       </Card>
 
-      {/* Payment Methods - Removed Mock Data */}
-      {/* <div className="p-6 border border-border rounded-lg text-center text-muted-foreground">
-          No payment methods saved.
-      </div> */}
-
       {/* Insurance Info */}
       <Card className="p-6 bg-primary/5 border-l-4 border-l-primary">
         <h3 className="text-lg font-semibold text-foreground mb-4">Insurance Information</h3>

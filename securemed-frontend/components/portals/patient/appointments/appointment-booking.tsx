@@ -35,11 +35,15 @@ type BookingStep = 'doctor' | 'date' | 'time' | 'confirm' | 'success';
 interface EnhancedAppointmentBookingProps {
   patientId?: string; // Kept for API compatibility, though pulled from auth usually
   patientName?: string;
+  initialDoctorId?: string;
+  initialDoctorName?: string;
 }
 
 export default function AppointmentBooking({
   patientId = '',
-  patientName = 'Guest' // Fallback
+  patientName = 'Guest', // Fallback
+  initialDoctorId,
+  initialDoctorName
 }: EnhancedAppointmentBookingProps) {
   const { toast } = useToast();
   const { user } = useAuth(); // Auth Hook
@@ -47,13 +51,33 @@ export default function AppointmentBooking({
   // Use authenticated user details if available
   const effectivePatientName = user?.username || user?.email || patientName;
 
-  const [currentStep, setCurrentStep] = useState<BookingStep>('doctor');
+  const [currentStep, setCurrentStep] = useState<BookingStep>(initialDoctorId ? 'date' : 'doctor'); // Skip to date if doctor provided
   const [isLoading, setIsLoading] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
 
   // Selection state
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+
+  // Set initial doctor if provided
+  useEffect(() => {
+    if (initialDoctorId && initialDoctorName) {
+      // We create a partial doctor object sufficient for display until full list loads
+      // Ideally we find it in the full list, but for immediate feedback:
+      setSelectedDoctor({
+        id: parseInt(initialDoctorId),
+        name: initialDoctorName,
+        specialty: 'Specialist', // Placeholder
+        hospital: 'Main Hospital', // Placeholder
+        description: 'Referral Selection',
+        consultation_fee: 0,
+        image: '',
+        rating: 5.0,
+        specialization: 'Specialist'
+      } as Doctor);
+    }
+  }, [initialDoctorId, initialDoctorName]);
+
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);

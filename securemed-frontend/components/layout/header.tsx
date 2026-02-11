@@ -5,7 +5,9 @@ import { Menu, X, Activity, User, LogOut, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { NotificationCenter } from '@/components/ui/notification-center';
+import { getPortalRouteForRole } from '@/lib/routes';
 
 interface HeaderProps {
   onLoginClick: (role?: 'patient' | 'doctor' | 'admin') => void;
@@ -15,6 +17,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const router = useRouter();
 
   // Handle scroll effect
   useEffect(() => {
@@ -31,7 +34,6 @@ export default function Header({ onLoginClick }: HeaderProps) {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     } else {
-      // If not on home page, could redirect there (optional for now as we are mostly single page)
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -40,8 +42,13 @@ export default function Header({ onLoginClick }: HeaderProps) {
     { label: 'Find a Doctor', action: () => scrollToSection('specialists') },
     { label: 'Why Us', action: () => scrollToSection('features') },
     { label: 'Testimonials', action: () => scrollToSection('testimonials') },
-    // { label: 'Services', action: () => scrollToSection('services') }, // Future
   ];
+
+  const handleGoToDashboard = () => {
+    if (user) {
+      router.push(getPortalRouteForRole(user.role));
+    }
+  };
 
   return (
     <header
@@ -53,9 +60,9 @@ export default function Header({ onLoginClick }: HeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <div
+          <Link
+            href="/"
             className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
             <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
               <Activity className="h-6 w-6 text-primary" />
@@ -63,7 +70,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
             <span className="text-xl font-bold tracking-tight text-foreground">
               Secure<span className="text-primary">Med</span>
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
@@ -91,18 +98,22 @@ export default function Header({ onLoginClick }: HeaderProps) {
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
-                <Button onClick={() => onLoginClick(user?.role as any)}>
+                <Button onClick={handleGoToDashboard}>
                   Dashboard <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Button variant="ghost" onClick={() => onLoginClick('patient')} className="font-semibold">
-                  Log in
-                </Button>
-                <Button onClick={() => onLoginClick('patient')} className="shadow-lg shadow-primary/20">
-                  Book Appointment
-                </Button>
+                <Link href="/login">
+                  <Button variant="ghost" className="font-semibold">
+                    Log in
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button className="shadow-lg shadow-primary/20">
+                    Book Appointment
+                  </Button>
+                </Link>
               </div>
             )}
           </div>
@@ -137,7 +148,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
                     <User className="h-4 w-4 text-primary" />
                     <span className="font-medium">{user?.username}</span>
                   </div>
-                  <Button className="w-full" onClick={() => onLoginClick(user?.role as any)}>
+                  <Button className="w-full" onClick={() => { handleGoToDashboard(); setMobileMenuOpen(false); }}>
                     Go to Dashboard
                   </Button>
                   <Button variant="outline" className="w-full" onClick={logout}>
@@ -146,15 +157,21 @@ export default function Header({ onLoginClick }: HeaderProps) {
                 </>
               ) : (
                 <>
-                  <Button variant="outline" className="w-full justify-start" onClick={() => { onLoginClick('patient'); setMobileMenuOpen(false); }}>
-                    Patient Login
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" onClick={() => { onLoginClick('doctor'); setMobileMenuOpen(false); }}>
-                    Doctor / Staff Login
-                  </Button>
-                  <Button className="w-full" onClick={() => { onLoginClick('patient'); setMobileMenuOpen(false); }}>
-                    Book Appointment Now
-                  </Button>
+                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full justify-start">
+                      Patient Login
+                    </Button>
+                  </Link>
+                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full justify-start mt-2">
+                      Doctor / Staff Login
+                    </Button>
+                  </Link>
+                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full mt-2">
+                      Book Appointment Now
+                    </Button>
+                  </Link>
                 </>
               )}
             </div>

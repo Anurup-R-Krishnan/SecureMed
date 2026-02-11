@@ -6,6 +6,37 @@ import { useToast } from '@/hooks/use-toast';
 import { TermsOfServiceModal } from '@/components/auth/terms-of-service-modal';
 import { API_BASE_URL, API_ORIGIN } from '@/lib/urls';
 import { parseJSON } from '@/lib/auth-utils';
+import { getPortalRouteForRole } from '@/lib/routes';
+
+interface DoctorProfile {
+    doctor_id: string;
+    specialization: string;
+    specialization_display: string;
+    qualification: string;
+    experience_years: number;
+    department_name: string | null;
+    department_code: string | null;
+    consultation_fee: string;
+    rating: string;
+    reviews: number;
+    is_available: boolean;
+}
+
+interface PatientProfile {
+    patient_id: string;
+    date_of_birth: string;
+    gender: string;
+    blood_group: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    insurance_provider: string;
+    insurance_number: string;
+    allergies: string;
+    chronic_conditions: string;
+}
 
 interface User {
     id: number;
@@ -13,6 +44,10 @@ interface User {
     email: string;
     role: string;
     mfa_enabled: boolean;
+    first_name?: string;
+    last_name?: string;
+    doctor_profile?: DoctorProfile;
+    patient_profile?: PatientProfile;
 }
 
 interface Tokens {
@@ -24,6 +59,7 @@ interface AuthContextType {
     user: User | null;
     tokens: Tokens | null;
     isAuthenticated: boolean;
+    isLoading: boolean;
     login: (username: string, password: string) => Promise<LoginResult>;
     verifyMfa: (tempToken: string, code: string, isRecoveryCode?: boolean) => Promise<LoginResult>;
     logout: () => Promise<void>;
@@ -45,6 +81,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [tokens, setTokens] = useState<Tokens | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [pendingPolicyToken, setPendingPolicyToken] = useState<string | null>(null);
     const { toast } = useToast();
     const router = useRouter();
@@ -77,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 localStorage.removeItem('auth_user');
             }
         }
+        setIsLoading(false);
     }, []);
 
     const triggerPolicyCheck = (token: string) => {
@@ -86,15 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handlePolicyAccepted = () => {
         setPendingPolicyToken(null);
 
-        // Redirect based on user role
+        // Redirect based on user role using centralized routes
         if (user) {
-            if (user.role === 'doctor') {
-                router.push('/doctor');
-            } else if (user.role === 'patient') {
-                router.push('/portal');
-            } else if (user.role === 'admin') {
-                window.location.href = `${API_ORIGIN}/admin`;
-            }
+            router.push(getPortalRouteForRole(user.role));
         }
     };
 
@@ -358,6 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         tokens,
         isAuthenticated: !!user && !!tokens,
+        isLoading,
         login,
         verifyMfa,
         logout,

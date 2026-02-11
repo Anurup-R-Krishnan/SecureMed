@@ -1,9 +1,7 @@
-'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Lock, AlertTriangle, Trash2, Calendar, Clock, FileText, Download } from 'lucide-react';
-import axios from 'axios';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import MfaSetup from '@/components/auth/mfa-setup';
@@ -27,7 +25,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { API_BASE_URL } from '@/lib/urls';
 
 interface Consent {
   id: number;
@@ -46,7 +43,7 @@ interface Consent {
   }>;
 }
 
-const CONSENTS_BASE_URL = `${API_BASE_URL}/consents/`;
+const CONSENTS_ENDPOINT = '/consents/';
 
 const DURATION_OPTIONS = [
   { label: '24 Hours', value: '24h', hours: 24 },
@@ -72,22 +69,10 @@ export default function PrivacySettings() {
 
 
 
-  const getAuthHeaders = useCallback(() => {
-    if (tokens?.access) {
-      return {
-        'Authorization': `Bearer ${tokens.access}`,
-        'Content-Type': 'application/json',
-      };
-    }
-    return {};
-  }, [tokens]);
-
   const fetchConsents = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get<Consent[]>(CONSENTS_BASE_URL, {
-        headers: getAuthHeaders(),
-      });
+      const response = await api.get<Consent[]>(CONSENTS_ENDPOINT);
 
       // Ensure we have an array
       if (Array.isArray(response.data)) {
@@ -117,7 +102,7 @@ export default function PrivacySettings() {
     } finally {
       setIsLoading(false);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   useEffect(() => {
     fetchConsents();
@@ -127,9 +112,7 @@ export default function PrivacySettings() {
   useEffect(() => {
     const fetchAccessLogs = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/medical-records/my-access-log/`, {
-          headers: getAuthHeaders(),
-        });
+        const response = await api.get('/medical-records/my-access-log/');
         if (Array.isArray(response.data)) {
           setAccessLogs(response.data);
         }
@@ -137,10 +120,11 @@ export default function PrivacySettings() {
         console.error('Failed to fetch access logs:', error);
       }
     };
+
     if (tokens?.access) {
       fetchAccessLogs();
     }
-  }, [tokens, getAuthHeaders]);
+  }, [tokens]);
 
   const calculateExpiryDate = (duration: string): string => {
     const option = DURATION_OPTIONS.find((opt) => opt.value === duration);
@@ -192,11 +176,7 @@ export default function PrivacySettings() {
     );
 
     try {
-      await axios.patch(
-        `${CONSENTS_BASE_URL}${id}/`,
-        { is_granted: false },
-        { headers: getAuthHeaders() }
-      );
+      await api.patch(`${CONSENTS_ENDPOINT}${id}/`, { is_granted: false });
 
       toast.success(`Access for ${consent.department} revoked`);
     } catch (error) {
@@ -233,13 +213,12 @@ export default function PrivacySettings() {
     setShowDurationDialog(false);
 
     try {
-      await axios.patch(
-        `${CONSENTS_BASE_URL}${selectedConsent.id}/`,
+      await api.patch(
+        `${CONSENTS_ENDPOINT}${selectedConsent.id}/`,
         {
           is_granted: true,
           expires_at: expiresAt
-        },
-        { headers: getAuthHeaders() }
+        }
       );
 
       toast.success(
@@ -460,9 +439,7 @@ export default function PrivacySettings() {
               className="gap-2"
               onClick={async () => {
                 try {
-                  const receiptUrl = `${API_BASE_URL}/auth/download-policy-receipt/`;
-                  const response = await axios.get(receiptUrl, {
-                    headers: getAuthHeaders(),
+                  const response = await api.get('/auth/download-policy-receipt/', {
                     responseType: 'blob'
                   });
 
@@ -532,10 +509,7 @@ export default function PrivacySettings() {
 
                   try {
                     // Single API call: Fetch certificate (auto-marks account for deletion)
-                    const certificateUrl = `${API_BASE_URL}/auth/deletion-certificate/`;
-
-                    const certificateResponse = await axios.get(certificateUrl, {
-                      headers: getAuthHeaders(),
+                    const certificateResponse = await api.get('/auth/deletion-certificate/', {
                       responseType: 'blob'
                     });
 

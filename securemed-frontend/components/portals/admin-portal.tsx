@@ -7,7 +7,8 @@ import StaffManager from '@/components/portals/admin/staff/staff-manager';
 import PatientManager from '@/components/portals/admin/patients/patient-manager';
 import AuditLogViewer from '@/components/portals/admin/security/audit-log-viewer';
 import { Button } from '@/components/ui/button';
-import { adminService, Hospital, StaffMember, DashboardStats } from '@/services/admin';
+import { adminService, Hospital, StaffMember, DashboardStats, SystemAlert } from '@/services/admin';
+import InsuranceVerification from './admin/billing/insurance-verification';
 import {
   BarChart3,
   Users,
@@ -29,34 +30,55 @@ type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' |
 interface AdminPortalProps {
   onLogout: () => void;
   onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
+  currentTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
 }
 
-export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabChange }: AdminPortalProps) {
+  const [activeTab, setActiveTabState] = useState<AdminTab>(currentTab || 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Sync tab with URL when currentTab prop changes
+  useEffect(() => {
+    if (currentTab && currentTab !== activeTab) {
+      setActiveTabState(currentTab);
+    }
+  }, [currentTab]);
+
+  // Wrapper that updates both local state and notifies parent for URL update
+  const setActiveTab = (tab: AdminTab) => {
+    setActiveTabState(tab);
+    onTabChange?.(tab);
+  };
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setLoadError(null);
       try {
-        const [hospitalsData, staffData, statsData, patientsData] = await Promise.all([
+        const [hospitalsData, staffData, statsData, patientsData, alertsData] = await Promise.all([
           adminService.getHospitals(),
           adminService.getStaff(),
           adminService.getDashboardStats(),
           adminService.getPatients(),
+          adminService.getAlerts(),
         ]);
         setHospitals(hospitalsData);
         setStaff(staffData);
         setPatients(patientsData);
         setStats(statsData);
+        setAlerts(alertsData);
       } catch (error) {
         console.error('Error fetching admin data:', error);
+        setLoadError('Failed to load admin data from backend.');
       } finally {
         setIsLoading(false);
       }
@@ -161,6 +183,11 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
         {/* Tab Content */}
         <div className="p-6">
           <div className="max-w-7xl mx-auto">
+            {loadError && (
+              <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {loadError}
+              </div>
+            )}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 {/* Key Metrics */}
@@ -170,7 +197,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                       <div>
                         <p className="text-muted-foreground text-sm">Total Patients</p>
                         <p className="text-3xl font-bold text-foreground mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalPatients?.toLocaleString() || '0')}
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalPatients?.toLocaleString() || '—')}
                         </p>
                       </div>
                       <Users className="h-8 w-8 text-primary opacity-20" />
@@ -181,7 +208,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                       <div>
                         <p className="text-muted-foreground text-sm">Hospital Occupancy</p>
                         <p className="text-3xl font-bold text-primary mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.hospitalOccupancy || '0%')}
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.hospitalOccupancy || '—')}
                         </p>
                       </div>
                       <Activity className="h-8 w-8 text-primary opacity-20" />
@@ -192,7 +219,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                       <div>
                         <p className="text-muted-foreground text-sm">Total Revenue</p>
                         <p className="text-3xl font-bold text-primary mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalRevenue || '₹0')}
+                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalRevenue || '—')}
                         </p>
                       </div>
                       <DollarSign className="h-8 w-8 text-primary opacity-20" />
@@ -215,20 +242,29 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
                 <div className="bg-card p-6 rounded-lg border border-border">
                   <h3 className="text-xl font-bold text-foreground mb-6">System Alerts</h3>
                   <div className="space-y-3">
-                    <div className="flex items-start gap-4 p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-foreground">High Occupancy - Fortis Mumbai</p>
-                        <p className="text-sm text-muted-foreground">Occupancy at 82%, consider adding capacity</p>
+                    {alerts.length > 0 ? (
+                      alerts.map((alert) => (
+                        <div key={alert.id} className={`flex items-start gap-4 p-4 border rounded-lg ${alert.type === 'warning' ? 'border-yellow-200 bg-yellow-50' :
+                          alert.type === 'error' ? 'border-red-200 bg-red-50' :
+                            alert.type === 'success' ? 'border-green-200 bg-green-50' :
+                              'border-blue-200 bg-blue-50'
+                          }`}>
+                          {alert.type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />}
+                          {alert.type === 'error' && <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />}
+                          {alert.type === 'success' && <Activity className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />}
+                          {alert.type === 'info' && <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />}
+                          <div>
+                            <p className="font-semibold text-foreground">{alert.title}</p>
+                            <p className="text-sm text-muted-foreground">{alert.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1 opacity-70">{new Date(alert.timestamp).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No system alerts at this time.
                       </div>
-                    </div>
-                    <div className="flex items-start gap-4 p-4 border border-blue-200 bg-blue-50 rounded-lg">
-                      <Activity className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-foreground">Staff Performance Report Available</p>
-                        <p className="text-sm text-muted-foreground">Monthly staff performance review ready for review</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -243,7 +279,14 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
             )}
 
             {activeTab === 'staff' && (
-              <StaffManager staff={staff} />
+              <StaffManager
+                staff={staff}
+                onCreateUser={async (payload) => {
+                  await adminService.createUser(payload);
+                  const staffData = await adminService.getStaff();
+                  setStaff(staffData);
+                }}
+              />
             )}
 
             {activeTab === 'patients' && (
@@ -251,12 +294,7 @@ export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps
             )}
 
             {activeTab === 'billing' && (
-              <div className="bg-card p-6 rounded-lg border border-border text-center">
-                <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-foreground font-semibold mb-2">Billing Management</p>
-                <p className="text-muted-foreground mb-6">Manage invoices and payments</p>
-                <Button>View Billing Reports</Button>
-              </div>
+              <InsuranceVerification />
             )}
 
             {activeTab === 'audit-logs' && (

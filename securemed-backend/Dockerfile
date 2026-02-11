@@ -1,44 +1,47 @@
+# syntax=docker/dockerfile:1
+# ──────────────────────────────────────────────
 # SecureMed Backend Dockerfile
-# Python 3.11 slim base image for smaller footprint
+# Django 6.0 on Python 3.13-slim
+# ──────────────────────────────────────────────
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV DJANGO_SETTINGS_MODULE=config.settings
+# Environment
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=config.settings
 
-# Set work directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# System deps (PostgreSQL client lib + gcc for psycopg2)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libpq-dev gcc && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Python deps (cached layer)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install gunicorn
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-compile -r requirements.txt
 
-# Copy project files
+# Application code
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --clear || true
+# Directories for static / media
+RUN mkdir -p /app/staticfiles /app/media
 
-# Create non-root user for security
-RUN adduser --disabled-password --gecos '' appuser
-RUN chown -R appuser:appuser /app
+# Entrypoint script (migrations, collectstatic, seed, gunicorn)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Non-root user
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser:appuser /app /app/staticfiles /app/media
 USER appuser
 
-# Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/admin/')" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/')" || exit 1
 
-# Run with Gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "config.wsgi:application"]
+ENTRYPOINT ["/entrypoint.sh"]

@@ -307,7 +307,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'mfa_enabled']
+        fields = ['id', 'username', 'email', 'role', 'mfa_enabled', 'first_name', 'last_name']
         read_only_fields = ['id', 'mfa_enabled']
 
 
@@ -341,7 +341,52 @@ class UserRoleUpdateSerializer(serializers.ModelSerializer):
                 f"Invalid role. Must be one of: {', '.join(allowed_roles)}"
             )
         return value
-    
+
+
+class AdminUserCreateSerializer(serializers.ModelSerializer):
+    """
+    Admin-only user creation serializer.
+    Enforces strong password and role selection.
+    """
+    password = serializers.CharField(
+        write_only=True,
+        min_length=12,
+        style={'input_type': 'password'}
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'password_confirm', 'role', 'first_name', 'last_name']
+
+    def validate_password(self, value):
+        # Reuse strong password validation
+        if len(value) < 12:
+            raise serializers.ValidationError(
+                "Password must be at least 12 characters long."
+            )
+        special_char_pattern = r'[!@#$%^&*(),.?":{}|<>]'
+        if not re.search(special_char_pattern, value):
+            raise serializers.ValidationError(
+                "Password must contain at least one special character."
+            )
+        return value
+
+    def validate(self, data):
+        if data.get('password') != data.get('password_confirm'):
+            raise serializers.ValidationError({'password_confirm': 'Passwords do not match.'})
+        return data
+
+    def create(self, validated_data):
+        validated_data.pop('password_confirm', None)
+        password = validated_data.pop('password')
+        user = User.objects.create_user(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
     def update(self, instance, validated_data):
         """
         Update user role and sync with Django Groups.

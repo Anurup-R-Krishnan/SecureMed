@@ -1,0 +1,430 @@
+EPIC - 01: Identity & Role-Based Access Control (RBAC)
+
+Story 1.1: Secure Authentication
+
+> As a Registered User,
+> I want to log in using Multi-Factor Authentication (MFA),
+> So that my account remains secure even if my password is compromised.
+
+ Implement JWT (JSON Web Token) based login system with refresh tokens.
+ Integrate TOTP (Time-based One-Time Password) for MFA (e.g., Google Authenticator).
+ Enforce strong password policies (min 12 chars, special characters) via regex.
+ Implement account lockout logic after 5 failed login attempts.
+
+Story 1.2: Role Management
+
+> As an Administrator,
+> I want to assign specific roles (Doctor, Nurse, Admin) to users,
+> So that staff members only have access to the data required for their specific job.
+
+ Design database schema to link Users to Roles and Permissions.
+ Create an Admin UI to dynamically assign or revoke roles.
+ Develop backend middleware to block unauthorized API requests based on role.
+ Seed the database with default strict roles for initial setup.
+
+Story 1.3: Session Security
+
+> As a Security Officer,
+> I want the system to automatically log users out after inactivity,
+> So that unattended hospital terminals are not exposed to unauthorized access.
+
+ Implement an idle activity tracker on the frontend (mouse/keyboard monitoring).
+ Create a "Warning Popup" that appears 60 seconds before session expiration.
+ Build a backend job to blacklist tokens immediately upon logout.
+ Secure session cookies with `HttpOnly` and `Secure` flags.
+
+Story 1.4: Registration & Onboarding
+
+> As a New Staff Member,
+> I want to register via a secure invitation link,
+> So that only authorized employees can create accounts in the system.
+
+ Build a registration workflow requiring email verification.
+ Create an "Invite-Only" system where Admins send generation links.
+ Implement CAPTCHA on forms to prevent bot attacks.
+ Log the IP address and timestamp of every registration attempt.
+
+---
+
+EPIC - 02: Regulatory Compliance & Patient Consent
+
+Story 2.1: Consent Dashboard
+
+> As a Patient,
+> I want to granularly toggle access permissions for different departments,
+> So that I have full control over who views my sensitive medical data.
+
+ Create a "Privacy Settings" UI with toggle switches for different consents.
+ Implement backend logic to check `consent_status` before returning records.
+ Design a version-controlled database to track when consent was given.
+ Allow patients to set expiration dates for temporary access.
+
+Story 2.2: Data Anonymization
+
+> As a Compliance Officer,
+> I want the system to mask names in non-clinical views (Pseudonymization),
+> So that we adhere to "Data Minimization" principles under GDPR.
+
+ Develop a utility function to mask PII (e.g., `J D`) in lists.
+ Separate medical data tables from identity tables using a UUID.
+ Implement a "Data Cleaning" script for research exports.
+ Ensure internal logs store User UUIDs instead of real names.
+
+Story 2.3: Right to be Forgotten
+
+> As a Patient,
+> I want to request the deletion of my personal account,
+> So that my identifiable information is removed from the system as per my legal rights.
+
+ Create a "Request Account Deletion" button in settings.
+ Implement "Soft Delete" logic to mark records inactive initially.
+ Build an automated job to scrub PII 30 days after the request.
+ Generate a downloadable "Deletion Certificate" PDF for the user.
+
+Story 2.4: Policy Updates
+
+> As a Legal Admin,
+> I want to force users to re-accept the Terms of Service when they change,
+> So that the hospital ensures everyone is legally bound by the latest privacy rules.
+
+ Display a mandatory "Terms of Service" scroll-box on login.
+ Trigger a "Re-consent" prompt globally when policy version updates.
+ Store a digital timestamp of the acceptance action.
+ Provide a downloadable PDF of the signed policy in the user profile.
+
+---
+
+EPIC - 03: Clinical Patient Management
+
+Story 3.1: Appointment Scheduling
+
+> As a Patient,
+> I want to view available time slots for my assigned doctor,
+> So that I can book an appointment without causing double-booking conflicts.
+
+ Build a calendar UI showing open vs. booked slots.
+ Implement concurrency checks to prevent simultaneous bookings.
+ Create automated email/SMS confirmations.
+ Allow doctors to block out "Unavailable" times (e.g., Surgery).
+
+Story 3.2: Medical History Views
+
+> As a Doctor,
+> I want to view a chronological timeline of a patient's history,
+> So that I can quickly understand their background and previous treatments.
+
+ Develop a "Timeline View" sorting Visits, Labs, and Meds by date.
+ Implement filtering so doctors only see records relevant to them.
+ Create a "Quick Summary" header (Allergies, Blood Type).
+ Allow doctors to add private "Clinical Notes" hidden from the patient.
+
+Story 3.3: Break-Glass Protocol
+
+> As a Doctor,
+> I want to use an "Emergency Override" button to access restricted records,
+> So that I can treat a patient in a critical condition even if I don't have standard access.
+
+ Design a prominent "Emergency Access" button on restricted profiles.
+ Create a mandatory "Justification Popup" requiring a text reason.
+ Trigger an immediate high-priority alert to Security Admins.
+ Visually highlight the session (e.g., Red Border) during emergency mode.
+
+Story 3.4: Patient Assignment
+
+> As a Primary Care Physician,
+> I want to refer a patient to a specialist within the system,
+> So that the specialist is automatically granted temporary access to the patient's file.
+
+ Create a workflow for "Referrals" granting cross-department access.
+ List "My Patients" on the doctor's dashboard.
+ Implement logic to auto-revoke access when the case is closed.
+ Allow Admins to manually override assignments for staffing changes.
+
+---
+
+EPIC - 04: Laboratory & Diagnostic Management
+
+Story 4.1: Test Ordering
+
+> As a Doctor,
+> I want to digitally order specific lab panels (Blood, X-Ray),
+> So that the request is instantly transmitted to the lab with no handwriting errors.
+
+ Create a digital order form with selectable test panels.
+ Generate a unique "Sample ID" barcode to decouple name from sample.
+ Validate orders are linked to a valid patient visit.
+ Track status (Ordered -> Collected -> Processing -> Completed).
+
+Story 4.2: Blinded Processing
+
+> As a Lab Technician,
+> I want to view a worklist containing only Sample IDs (no names),
+> So that I can process tests without bias or privacy violations.
+
+ Build a "Lab Worklist" view showing only Sample IDs.
+ Implement input validation for result values (e.g., range checks).
+ Allow technicians to flag "Critical Values" for immediate alert.
+ Log the technician's ID against the result entry.
+
+Story 4.3: Secure Uploads
+
+> As a Lab Technician,
+> I want to upload PDF or Image results securely,
+> So that diagnostic scans are stored encrypted and attached to the correct record.
+
+ Implement file upload for PDFs and Images (DICOM/JPG).
+ Encrypt files server-side (AES-256) before storage.
+ Scan uploaded files for malware before acceptance.
+ Generate temporary pre-signed URLs for secure viewing.
+
+Story 4.4: Result Notifications
+
+> As a Doctor,
+> I want to receive a notification as soon as a lab result is finalized,
+> So that I can review the data and determine the next steps for treatment.
+
+ Trigger in-app notifications for the ordering physician.
+ Send a generic email to the patient ("New Result Available").
+ Highlight "Abnormal" results in Red on the dashboard.
+ Allow doctors to "Release" results to the patient portal manually.
+
+---
+
+EPIC - 05: Pharmacy & Prescription Management
+
+Story 5.1: E-Prescribing
+
+> As a Doctor,
+> I want to digitally sign and send prescriptions,
+> So that the pharmacy receives a verified order that cannot be tampered with by the patient.
+
+ Build a prescription form with medication auto-complete.
+ Require inputs for Dosage, Frequency, and Duration.
+ Implement a "Re-enter Password" step to digitally sign the order.
+ Lock the prescription from editing once signed.
+
+Story 5.2: Interaction Safety
+
+> As a System,
+> I want to automatically check for Drug-Drug Interactions,
+> So that the doctor is warned if a new medication conflicts with the patient's existing drugs.
+
+ Maintain a database of known drug interactions.
+ Run a check algorithm upon adding a medication.
+ Display a "High Severity" popup for dangerous combinations.
+ Require an explicit "Override Reason" to proceed.
+
+Story 5.3: Pharmacy Fulfillment
+
+> As a Pharmacist,
+> I want to scan a patient's pickup code to verify their prescription,
+> So that I dispense the right medication to the right person.
+
+ Create a Pharmacist View listing incoming orders.
+ Implement a "Verification" step for stock checking.
+ Generate a "Dispense QR Code" for the patient.
+ Update status to "Fulfilled" to prevent re-use.
+
+Story 5.4: Medication History
+
+> As a Patient,
+> I want to view a list of my active and past medications,
+> So that I can keep track of my adherence and refill dates.
+
+ Display "Active" vs "Past" meds on the profile.
+ Allow patients to mark doses as "Taken" (Adherence).
+ Highlight "Refill Needed" when duration is ending.
+ Log all changes (Start/Stop) for the clinical record.
+
+---
+
+EPIC - 06: Security Infrastructure & Audit Trails
+
+Story 6.1: Audit Logging
+
+> As a Compliance Officer,
+> I want the system to log every single data access event,
+> So that we have a forensic trail of who looked at what file and when.
+
+ Create middleware to intercept and log all HTTP requests.
+ Structure logs in JSON (UserID, Endpoint, Timestamp).
+ Differentiate "Read" vs "Write" actions.
+ Scrub sensitive fields (passwords) from logs.
+
+Story 6.2: Encryption at Rest
+
+> As a Database Administrator,
+> I want all patient data to be encrypted in the database,
+> So that the data remains unreadable even if the physical hard drive is stolen.
+
+ Configure Transparent Data Encryption (TDE) on the DB.
+ Encrypt high-value columns (SSN, Diagnosis) at the app level.
+ Manage keys using a secure Key Management Service (KMS).
+ Verify backups are encrypted via script.
+
+Story 6.3: Threat Detection
+
+> As a System Admin,
+> I want to receive alerts for suspicious activities,
+> So that I can block potential hackers before a breach occurs.
+
+ Define trigger events (e.g., 50+ record downloads in 1 min).
+ Integrate Email/SMS alerts for high-priority triggers.
+ Create a "Security Dashboard" showing active sessions.
+ Implement Rate Limiting on API endpoints.
+
+Story 6.4: Log Integrity
+
+> As a System,
+> I want to store logs in a "Write-Once" format,
+> So that bad actors cannot delete the evidence of their unauthorized access.
+
+ Implement WORM (Write-Once-Read-Many) storage strategy.
+ Hash log entries to detect manual tampering.
+ Run nightly integrity checks on log hashes.
+ Restrict DB access so developers cannot touch live logs.
+
+---
+
+EPIC - 07: Telemedicine & Remote Care
+
+Story 7.1: Secure Video Call
+
+> As a Patient,
+> I want to join a video consultation via a secure link,
+> So that I can speak to my doctor remotely without fear of eavesdropping.
+
+ Integrate WebRTC Video SDK (e.g., Twilio/Agora).
+ Implement End-to-End Encryption (E2EE) verification.
+ Generate random, one-time-use Room IDs.
+ Verify browser permissions (Mic/Cam) before joining.
+
+Story 7.2: Virtual Waiting Room
+
+> As a Doctor,
+> I want to control when the patient enters the call,
+> So that I can finish my previous appointment notes before starting the next one.
+
+ Build a "Lobby" screen for waiting patients.
+ Allow doctors to "Admit" patients manually.
+ Display status messages to the waiting patient.
+ Notify the doctor when someone enters the lobby.
+
+Story 7.3: In-Call Tools
+
+> As a Doctor,
+> I want to share my screen securely during the call,
+> So that I can explain X-rays or test results to the patient visually.
+
+ Implement Screen Share functionality.
+ Disable "Record" buttons to ensure privacy compliance.
+ Add a text-chat sidebar for sharing links.
+ Wipe chat history immediately after the call.
+
+Story 7.4: Post-Call Workflow
+
+> As a Doctor,
+> I want the system to redirect me to the notes section after a call,
+> So that I can immediately document the consultation details.
+
+ Redirect doctor to "Clinical Notes" on call end.
+ Log "Call Duration" for billing (metadata only).
+ Ask the patient for a "Connection Quality" rating.
+ Invalidate the meeting link to prevent re-entry.
+
+---
+
+EPIC - 08: Data Intelligence & Interoperability
+
+Story 8.1: Clinical Dashboard
+
+> As a Hospital Administrator,
+> I want to see aggregated statistics (e.g., Flu Cases),
+> So that I can monitor hospital trends without violating individual patient privacy.
+
+ Build a dashboard with aggregated SQL queries.
+ Use a charting library (Chart.js) for visualization.
+ Cache data to prevent database slowdowns.
+ Ensure no PII is included in the aggregate data.
+
+Story 8.2: Data Export (FHIR)
+
+> As a Patient,
+> I want to download my medical history in a standard format (FHIR),
+> So that I can share my records with another hospital or specialist easily.
+
+ Create an API to serialize data to HL7 FHIR JSON.
+ Implement a "Download" button in the patient portal.
+ Validate data against FHIR schemas.
+ Log the export event in the audit trail.
+
+Story 8.3: AI Decision Support
+
+> As a Doctor,
+> I want the system to suggest potential diagnoses based on symptoms,
+> So that I have a "second opinion" to help avoid diagnostic errors.
+
+ Integrate a symptom-checker logic/model.
+ Display suggestions as hints on the note-taking screen.
+ Add a mandatory disclaimer ("AI is for reference only").
+ Allow doctors to "Accept" or "Reject" suggestions.
+
+Story 8.4: Insurance Verification
+
+> As a System,
+> I want to securely exchange data with insurance providers,
+> So that patient claims can be verified instantly without manual paperwork.
+
+ Build a secure API for insurance partners.
+ Require OAuth2 authentication for external connections.
+ Limit data response to only requested codes (Data Minimization).
+ Encrypt payloads with the provider's public key.
+
+EPIC - 09: Quality Assurance, Deployment & Maintenance
+Story 9.1: System & Security Verification
+
+As a Compliance Officer, I want the system to undergo rigorous automated and manual testing, So that we can certify the platform is secure and liable for patient data use.
+
+Write unit tests for the Authentication module to verify JWT validation and Role checks.
+
+Perform End-to-End (E2E) integration testing for the "Doctor Prescription to Pharmacy" workflow.
+
+Conduct a vulnerability assessment (OWASP ZAP scan) to identify risks like SQL Injection and XSS.
+
+Run load tests (e.g., using Locust or JMeter) to ensure the server handles concurrent requests.
+
+Story 9.2: Secure Cloud Availability
+
+As a Hospital Administrator, I want the application deployed to a secure, always-online cloud environment, So that my staff can access patient records reliably 24/7 without downtime.
+
+Containerize the application services (Frontend, Backend, Database) using Docker.
+
+Configure a CI/CD pipeline (e.g., GitHub Actions) to automate testing and deployment.
+
+Provision a secure cloud database with automated backups and encryption-at-rest.
+
+Install SSL/TLS certificates on the load balancer to enforce HTTPS for all traffic.
+
+Story 9.3: Documentation & Staff Training
+
+As a Staff Manager, I want comprehensive manuals and training resources, So that my team can start using the new system effectively with minimal errors.
+
+Create a "Clinical User Guide" PDF for Doctors covering Diagnosis, Prescriptions, and Notes.
+
+Generate technical API documentation (Swagger/OpenAPI) for the IT and integration teams.
+
+Develop a "Patient Portal Help" guide to assist users with appointments and viewing records.
+
+Record a series of short training videos demonstrating key workflows (e.g., Telemedicine).
+
+Story 9.4: System Reliability & Monitoring
+
+As an IT Director, I want real-time monitoring and alerting for the hospital network, So that I am immediately notified of any outages before they affect patient care.
+
+Implement centralized logging to capture application errors and access logs for auditing.
+
+Configure real-time alerts (Email/SMS) for critical failures (e.g., Database down).
+
+Set up an automated "Health Check" endpoint to verify system uptime every minute.
+
+Create a dedicated support ticketing channel for reporting bugs after the launch.

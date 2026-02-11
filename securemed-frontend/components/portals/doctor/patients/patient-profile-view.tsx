@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, AlertTriangle, Pill, MessageSquare, UserPlus } from 'lucide-react';
 import PatientTimeline from './patient-timeline';
+import PatientNotes from './patient-notes';
 import EmergencyAccessModal from '@/components/portals/doctor/shared/emergency-access-modal';
 import { PatientInfoCard } from '@/components/ui/patient-info-card';
 import { Button } from '@/components/ui/button';
@@ -112,6 +113,17 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
               <p className="text-sm text-muted-foreground py-4 text-center">No prescriptions found.</p>
             )}
           </div>
+
+          <PatientNotes patient={{
+            id: patient.id,
+            name: patient.name,
+            age: patient.age,
+            gender: 'Unknown', // Default as these aren't in the slim patient object
+            dateOfBirth: 'Unknown',
+            bloodType: 'Unknown',
+            allergies: [],
+            medicalHistory: []
+          }} />
         </div>
 
         {/* Right Column - Timeline */}

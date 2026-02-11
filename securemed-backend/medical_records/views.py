@@ -1,8 +1,10 @@
 from django.shortcuts import render
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from django.db.models import Q
 from .models import MedicalRecord, MedicalRecordAccess
 from .serializers import MedicalRecordSerializer
 from authentication.permissions import IsPatient
@@ -22,7 +24,25 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         if hasattr(user, 'patient_profile'):
             return base_queryset.filter(patient=user.patient_profile)
         elif hasattr(user, 'doctor_profile'):
-            return base_queryset.filter(doctor=user.doctor_profile)
+            # 1. Normal Access: Records where doctor is assigned
+            qs = base_queryset.filter(doctor=user.doctor_profile)
+            
+            # 2. Emergency Access: Records for patients in active break-glass logs
+            from .models import EmergencyAccessLog
+            # Get list of patients this doctor has emergency access to
+            emergency_patient_ids = EmergencyAccessLog.objects.filter(
+                accessed_by=user
+            ).values_list('patient_id', flat=True)
+            
+            if emergency_patient_ids:
+                # Combine queries: Assigned OR Emergency Access
+                return base_queryset.filter(
+                    Q(doctor=user.doctor_profile) | 
+                    Q(patient__id__in=emergency_patient_ids)
+                ).distinct()
+            
+            return qs
+            
         elif user.is_staff:
             return base_queryset.all()
         return MedicalRecord.objects.none()
@@ -85,41 +105,6 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
             log_medical_record_access(request.user, instance, 'viewed', 'Clinical review', request)
         except Exception:
             pass
-        
-        return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        # Saving happens here
-        record = serializer.save()
-        
-        # AUDIT: Log creation
-        from .audit import log_medical_record_access
-        try:
-             log_medical_record_access(self.request.user, record, 'created', 'New record entry', self.request)
-        except Exception:
-             pass
-
-    def perform_update(self, serializer):
-        record = serializer.save()
-        
-        # AUDIT: Log update
-        from .audit import log_medical_record_access
-        try:
-            log_medical_record_access(self.request.user, record, 'updated', 'Record modification', self.request)
-        except Exception:
-            pass
-
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Get details of a specific medical record.
-        Logs the access for audit trail.
-        """
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        
-        # AUDIT: Log view access
-        from .audit import log_medical_record_access
-        log_medical_record_access(request.user, instance, 'viewed', 'Clinical review', request)
         
         return Response(serializer.data)
 
@@ -267,6 +252,7 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         """
         patient_id = request.data.get('patient_id')
         reason = request.data.get('reason')
+        emergency_type = request.data.get('emergency_type', 'other')
         
         if not patient_id or not reason:
             return Response(
@@ -297,6 +283,7 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
             patient=patient,
             accessed_by=request.user,
             reason=reason,
+            emergency_type=emergency_type,
             ip_address=request.META.get('REMOTE_ADDR'),
             # expires_at = timezone.now() + timedelta(hours=24) 
         )
@@ -304,7 +291,26 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         # Log to system logger for critical alert
         import logging
         logger = logging.getLogger('security')
-        logger.critical(f"BREAK-GLASS EVENT: User {request.user.email} accessed patient {patient.patient_id}. Reason: {reason}")
+        logger.critical(
+            "BREAK-GLASS EVENT: User %s accessed patient %s. Type: %s. Reason: %s",
+            request.user.email,
+            patient.patient_id,
+            emergency_type,
+            reason,
+        )
+
+        from core.notifications import NotificationService
+        NotificationService.send_security_alert(
+            subject="SECURITY ALERT: Break-Glass Access",
+            message=(
+                f"User: {request.user.email}\n"
+                f"Patient: {patient.patient_id}\n"
+                f"Type: {emergency_type}\n"
+                f"Reason: {reason}\n"
+                f"IP: {request.META.get('REMOTE_ADDR')}\n"
+                f"Timestamp: {log.timestamp}"
+            ),
+        )
         
         return Response({
             "status": "access_granted",
@@ -344,6 +350,38 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         if not hasattr(self.request.user, 'doctor_profile'):
             raise PermissionDenied('Only doctors can create prescriptions.')
         doctor_profile = self.request.user.doctor_profile
+
+        # Drug-drug interaction check
+        from .models import Prescription as PrescriptionModel, DrugInteraction
+        new_med = serializer.validated_data.get('medication_name', '').strip()
+        override_reason = serializer.validated_data.get('override_reason', '').strip()
+        interactions = []
+        if new_med:
+            active_rx = PrescriptionModel.objects.filter(
+                medical_record__patient_id=patient_id,
+                status__in=['signed', 'dispensed']
+            )
+            for rx in active_rx:
+                inter = DrugInteraction.objects.filter(
+                    Q(drug_a__iexact=new_med, drug_b__iexact=rx.medication_name) |
+                    Q(drug_a__iexact=rx.medication_name, drug_b__iexact=new_med)
+                ).first()
+                if inter:
+                    interactions.append(inter)
+
+        high_interactions = [i for i in interactions if i.severity in ['high', 'critical']]
+        if high_interactions and not override_reason:
+            raise serializers.ValidationError({
+                'override_reason': 'Override reason required for high severity interaction.',
+                'interactions': [
+                    {
+                        'drug_a': i.drug_a,
+                        'drug_b': i.drug_b,
+                        'severity': i.severity,
+                        'description': i.description
+                    } for i in high_interactions
+                ]
+            })
         
         # Create a Medical Record wrapper for this prescription
         # In a real app, we might group them by visit, but for now 1-to-1 or 1-to-many is fine
@@ -367,6 +405,18 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
              return self.queryset.filter(medical_record__patient=user.patient_profile)
         return self.queryset
 
+    def update(self, request, *args, **kwargs):
+        prescription = self.get_object()
+        if prescription.is_signed:
+            return Response({"error": "Signed prescriptions cannot be edited."}, status=status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        prescription = self.get_object()
+        if prescription.is_signed:
+            return Response({"error": "Signed prescriptions cannot be edited."}, status=status.HTTP_400_BAD_REQUEST)
+        return super().partial_update(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'])
     def sign(self, request, pk=None):
         prescription = self.get_object()
@@ -374,9 +424,27 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         # Verify user is a doctor
         if not hasattr(request.user, 'doctor_profile') and request.user.role != 'doctor':
              return Response({"error": "Only doctors can sign prescriptions."}, status=status.HTTP_403_FORBIDDEN)
+
+        password = request.data.get('password')
+        if not password or not request.user.check_password(password):
+            return Response({"error": "Invalid password."}, status=status.HTTP_400_BAD_REQUEST)
              
         try:
             prescription.sign(request.user)
+            from .models import MedicationHistoryEvent, PharmacyOrder
+            from django.utils import timezone
+            import secrets
+
+            MedicationHistoryEvent.objects.create(
+                prescription=prescription,
+                event_type='started',
+                changed_by=request.user
+            )
+
+            PharmacyOrder.objects.get_or_create(
+                prescription=prescription,
+                defaults={'pickup_code': secrets.token_hex(6).upper()}
+            )
             return Response({
                 "status": "signed", 
                 "message": "Prescription digitally signed and locked.",
@@ -385,6 +453,134 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             })
         except ValueError as e:
              return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        prescription = self.get_object()
+        if not hasattr(request.user, 'doctor_profile') and request.user.role != 'doctor':
+            return Response({"error": "Only doctors can cancel prescriptions."}, status=status.HTTP_403_FORBIDDEN)
+        prescription.status = 'cancelled'
+        prescription.save(update_fields=['status'])
+        from .models import MedicationHistoryEvent
+        MedicationHistoryEvent.objects.create(
+            prescription=prescription,
+            event_type='cancelled',
+            changed_by=request.user
+        )
+        return Response({"status": "cancelled"})
+
+
+class DrugInteractionViewSet(viewsets.ModelViewSet):
+    from .models import DrugInteraction
+    from .serializers import DrugInteractionSerializer
+    queryset = DrugInteraction.objects.all()
+    serializer_class = DrugInteractionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff or self.request.user.role == 'admin':
+            return self.queryset
+        return self.queryset.none()
+
+
+class PharmacyOrderViewSet(viewsets.ModelViewSet):
+    from .models import PharmacyOrder
+    from .serializers import PharmacyOrderSerializer
+    queryset = PharmacyOrder.objects.all()
+    serializer_class = PharmacyOrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff or user.role == 'pharmacist':
+            return self.queryset
+        if hasattr(user, 'doctor_profile'):
+            return self.queryset.filter(prescription__medical_record__doctor=user.doctor_profile)
+        if hasattr(user, 'patient_profile'):
+            return self.queryset.filter(prescription__medical_record__patient=user.patient_profile)
+        return self.queryset.none()
+
+    def create(self, request, *args, **kwargs):
+        return Response({"error": "Pharmacy orders are created when prescriptions are signed."}, status=400)
+
+    @action(detail=True, methods=['post'])
+    def verify(self, request, pk=None):
+        order = self.get_object()
+        if not request.user.is_staff and request.user.role != 'pharmacist':
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        order.status = 'verified'
+        order.verified_by = request.user
+        order.verification_notes = request.data.get('notes', '')
+        order.save(update_fields=['status', 'verified_by', 'verification_notes'])
+        return Response({"status": "verified"})
+
+    @action(detail=True, methods=['post'])
+    def fulfill(self, request, pk=None):
+        order = self.get_object()
+        if not request.user.is_staff and request.user.role != 'pharmacist':
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        pickup_code = request.data.get('pickup_code')
+        if pickup_code and pickup_code != order.pickup_code:
+            return Response({"error": "Invalid pickup code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.status = 'fulfilled'
+        order.fulfilled_by = request.user
+        order.dispensed_at = timezone.now()
+        order.save(update_fields=['status', 'fulfilled_by', 'dispensed_at'])
+
+        # Update prescription status and log history
+        prescription = order.prescription
+        prescription.status = 'dispensed'
+        prescription.save(update_fields=['status'])
+        from .models import MedicationHistoryEvent
+        MedicationHistoryEvent.objects.create(
+            prescription=prescription,
+            event_type='dispensed',
+            changed_by=request.user
+        )
+        return Response({"status": "fulfilled"})
+
+
+class MedicationAdherenceLogViewSet(viewsets.ModelViewSet):
+    from .models import MedicationAdherenceLog
+    from .serializers import MedicationAdherenceLogSerializer
+    queryset = MedicationAdherenceLog.objects.all()
+    serializer_class = MedicationAdherenceLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'patient_profile'):
+            return self.queryset.filter(prescription__medical_record__patient=user.patient_profile)
+        if user.is_staff:
+            return self.queryset
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        prescription = serializer.validated_data.get('prescription')
+        if not hasattr(self.request.user, 'patient_profile'):
+            raise PermissionDenied("Only patients can log adherence.")
+        if prescription.medical_record.patient != self.request.user.patient_profile:
+            raise PermissionDenied("Cannot log adherence for another patient.")
+        serializer.save(taken_by=self.request.user)
+
+
+class MedicationHistoryEventViewSet(viewsets.ReadOnlyModelViewSet):
+    from .models import MedicationHistoryEvent
+    from .serializers import MedicationHistoryEventSerializer
+    queryset = MedicationHistoryEvent.objects.all()
+    serializer_class = MedicationHistoryEventSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'patient_profile'):
+            return self.queryset.filter(prescription__medical_record__patient=user.patient_profile)
+        if hasattr(user, 'doctor_profile'):
+            return self.queryset.filter(prescription__medical_record__doctor=user.doctor_profile)
+        if user.is_staff:
+            return self.queryset
+        return self.queryset.none()
 
 
 class VitalSignViewSet(viewsets.ModelViewSet):
@@ -432,7 +628,9 @@ class VitalSignViewSet(viewsets.ModelViewSet):
 @permission_classes([IsPatient])
 def patient_dashboard_stats(request):
     """
-    Aggregate data for the patient dashboard.
+    Comprehensive dashboard data for patient portal.
+    Returns: health score, vitals, prescriptions, lab results, records, billing, health insights.
+    NO MOCK DATA - all from database.
     """
     user = request.user
     if not hasattr(user, 'patient_profile'):
@@ -441,24 +639,19 @@ def patient_dashboard_stats(request):
     patient = user.patient_profile
     
     try:
-        from .models import VitalSign, Prescription
+        from .models import VitalSign, Prescription, MedicalRecord
         from .serializers import VitalSignSerializer
-
+        from labs.models import LabResult, LabOrder
+        from billing.models import Invoice
+        from patients.models import WellnessTip
+        
         # 1. Vitals History (Last 7 entries for Sparklines)
         vitals_history_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')[:7]
         vitals_history = VitalSignSerializer(vitals_history_qs, many=True).data
-        # Reverse to chronological order for charts
-        # Convert to list to ensure mutable and supports reverse
         if hasattr(vitals_history, 'serializer'):
-             # If it's a ReturnList
-             vitals_history = list(vitals_history)
+            vitals_history = list(vitals_history)
         vitals_history.reverse()
         
-        # Check if queryset exists before calling first() on sliced queryset
-        # Sliced querysets don't support .first() well in all Django versions or might re-query
-        # Better to just take the first from the list we already fetched if available
-        # But we need the model instance for the health score calculation logic below which uses dot notation
-        # So let's re-fetch just the latest one efficiently
         latest_vitals_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')
         latest_vitals = latest_vitals_qs.first()
         
@@ -475,7 +668,6 @@ def patient_dashboard_stats(request):
                 is_verified=True,
                 recorded_at=timezone.now()
             )
-            # Refresh vitals_history to include the new entry
             vitals_history_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')[:7]
             vitals_history = VitalSignSerializer(vitals_history_qs, many=True).data
             if hasattr(vitals_history, 'serializer'):
@@ -488,8 +680,6 @@ def patient_dashboard_stats(request):
         health_score = 100
         if latest_vitals:
             try:
-                # Blood Pressure Deduction
-                # Normal: <120/<80
                 systolic = latest_vitals.systolic_bp if latest_vitals.systolic_bp is not None else 120
                 diastolic = latest_vitals.diastolic_bp if latest_vitals.diastolic_bp is not None else 80
                 
@@ -500,44 +690,132 @@ def patient_dashboard_stats(request):
                      deduction = (diastolic - 80) * 0.5
                      health_score -= deduction
                      
-                # Heart Rate Deduction
-                # Normal: 60-100
                 hr = latest_vitals.heart_rate if latest_vitals.heart_rate is not None else 72
                 if hr < 60:
                      health_score -= (60 - hr)
                 elif hr > 100:
                      health_score -= (hr - 100) * 0.5
                      
-                # BMI Deduction (Weight / Height^2) - Height is missing in VitalSign, using weight > 100kg as arbitrary proxy for now
                 weight = latest_vitals.weight if latest_vitals.weight is not None else 70
                 if weight > 100:
                      health_score -= 5
                      
-                # Cap score 0-100
                 health_score = max(0, min(100, int(health_score)))
             except Exception as e:
                 print(f"Error calculating health score: {e}")
-                health_score = 85  # Baseline for calculation error
-        # vitals always exist now due to auto-creation above
+                health_score = 85
         
-        # 3. Active Prescriptions
-        active_prescriptions_count = Prescription.objects.filter(
-            medical_record__patient=patient, 
+        # 3. Active Prescriptions (FULL DETAILS - NO MOCK DATA)
+        active_prescriptions_qs = Prescription.objects.filter(
+            medical_record__patient=patient,
             status__in=['signed', 'dispensed']
-        ).count()
+        ).select_related('medical_record__doctor__user').order_by('-created_at')[:5]
+        
+        active_prescriptions = []
+        for rx in active_prescriptions_qs:
+            active_prescriptions.append({
+                'id': rx.id,
+                'medication_name': rx.medication_name,
+                'dosage': rx.dosage,
+                'frequency': rx.frequency,
+                'duration': rx.duration,
+                'start_date': rx.created_at.date().isoformat() if rx.created_at else None,
+                'refills_remaining': rx.refills_remaining if hasattr(rx, 'refills_remaining') else 0,
+                'prescribing_doctor': f"Dr. {rx.medical_record.doctor.user.last_name}" if rx.medical_record.doctor else "Unknown",
+                'status': rx.status
+            })
+        
+        # 4. Recent Lab Results (REAL DATA ONLY)
+        recent_lab_results = []
+        recent_lab_orders = LabOrder.objects.filter(
+            patient=user
+        ).prefetch_related('results__test').order_by('-created_at')[:3]
+        
+        for order in recent_lab_orders:
+            for result in order.results.all()[:3]:  # Max 3 results per order
+                recent_lab_results.append({
+                    'id': result.id,
+                    'test_name': result.test.name if result.test else 'Unknown Test',
+                    'result_value': result.result_value,
+                    'reference_range': result.reference_range,
+                    'units': result.units,
+                    'flag': result.flag or 'Normal',
+                    'date': result.processed_at.date().isoformat() if result.processed_at else None
+                })
+        
+        # 5. Recent Medical Records (REAL DATA ONLY)
+        recent_records_qs = MedicalRecord.objects.filter(
+            patient=patient
+        ).select_related('doctor__user').order_by('-record_date')[:3]
+        
+        recent_records = []
+        for record in recent_records_qs:
+            recent_records.append({
+                'id': record.id,
+                'record_type': record.get_record_type_display() if hasattr(record, 'get_record_type_display') else record.record_type,
+                'diagnosis': record.diagnosis,
+                'doctor_name': f"Dr. {record.doctor.user.get_full_name()}" if record.doctor else "Unknown",
+                'date': record.record_date.isoformat() if record.record_date else None,
+                'notes': record.notes[:100] if record.notes else ""
+            })
+        
+        # 6. Billing Summary (REAL DATA ONLY)
+        invoices = Invoice.objects.filter(patient=patient)
+        outstanding_invoices = invoices.filter(status__in=['issued', 'partially_paid', 'overdue'])
+        
+        total_outstanding = sum(
+            (invoice.total_amount - invoice.paid_amount) 
+            for invoice in outstanding_invoices
+        )
+        
+        last_payment = invoices.filter(status='paid').order_by('-updated_at').first()
+        
+        billing_summary = {
+            'outstanding_balance': float(total_outstanding),
+            'recent_invoices_count': invoices.count(),
+            'last_payment_date': last_payment.updated_at.date().isoformat() if last_payment else None
+        }
+        
+        # 7. Health Insights (REAL DATA FROM PATIENT MODEL + WELLNESS TIP)
+        chronic_conditions_list = []
+        if patient.chronic_conditions:
+            chronic_conditions_list = [c.strip() for c in patient.chronic_conditions.split(',') if c.strip()]
+        
+        allergies_list = []
+        if patient.allergies:
+            allergies_list = [a.strip() for a in patient.allergies.split(',') if a.strip()]
+        
+        # Get random active wellness tip
+        wellness_tip_obj = WellnessTip.objects.filter(is_active=True).order_by('?').first()
+        wellness_tip = None
+        if wellness_tip_obj:
+            wellness_tip = {
+                'title': wellness_tip_obj.title,
+                'description': wellness_tip_obj.description,
+                'category': wellness_tip_obj.category
+            }
+        
+        health_insights = {
+            'chronic_conditions': chronic_conditions_list,
+            'allergies': allergies_list,
+            'wellness_tip': wellness_tip
+        }
 
         return Response({
             "health_score": health_score,
             "vitals": vitals_data,
             "vitals_history": vitals_history,
-            "active_prescriptions": active_prescriptions_count,
+            "active_prescriptions": active_prescriptions,
+            "recent_lab_results": recent_lab_results,
+            "recent_records": recent_records,
+            "billing_summary": billing_summary,
+            "health_insights": health_insights,
             "patient_name": f"{user.first_name} {user.last_name}"
         })
     except Exception as e:
         import traceback
         traceback.print_exc()
         print(f"CRITICAL ERROR in patient_dashboard_stats: {str(e)}")
-        # Re-raise to let frontend handle the error properly
         return Response(
             {"error": "Failed to load dashboard data. Please try again."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

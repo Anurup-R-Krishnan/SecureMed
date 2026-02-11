@@ -35,10 +35,28 @@ export default function PatientTimeline({ patientId, className }: PatientTimelin
   useEffect(() => {
     async function fetchTimeline() {
       try {
-        const response = await api.get('/medical-records/timeline/', {
+        const response = await api.get('/patients/timeline/', {
           params: { patient_id: patientId }
         });
-        setEvents(response.data);
+        // Map backend response to frontend format
+        // Backend returns: category (diagnosis|lab|medication|appointment|admin)
+        // Frontend expects: type (lab|prescription|visit|appointment)
+        const categoryToType: Record<string, string> = {
+          diagnosis: 'visit',
+          lab: 'lab',
+          medication: 'prescription',
+          appointment: 'appointment',
+          admin: 'visit',
+        };
+        const mapped = (Array.isArray(response.data) ? response.data : []).map((e: any) => ({
+          id: e.id,
+          date: e.date,
+          type: categoryToType[e.category] || e.type || 'visit',
+          title: e.title,
+          description: e.description,
+          details: e.details,
+        }));
+        setEvents(mapped);
       } catch (error) {
         console.error("Failed to fetch timeline", error);
       } finally {

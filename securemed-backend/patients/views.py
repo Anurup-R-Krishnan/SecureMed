@@ -3,11 +3,35 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Patient
+from .serializers import PatientSerializer
+
 def get_patient_profile(user):
-    # Helper to get patient profile safely
     if hasattr(user, 'patient_profile'):
         return user.patient_profile
     return None
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_patients(request):
+    """List all patients - for doctors and admins"""
+    user = request.user
+    if user.role in ['doctor', 'admin', 'provider']:
+        patients = Patient.objects.select_related('user').all()
+        serializer = PatientSerializer(patients, many=True)
+        return Response(serializer.data)
+    return Response({"error": "Unauthorized"}, status=403)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def patient_detail(request, pk):
+    """Get single patient detail - for doctors and admins"""
+    user = request.user
+    if user.role in ['doctor', 'admin', 'provider']:
+        patient = get_object_or_404(Patient, pk=pk)
+        serializer = PatientSerializer(patient)
+        return Response(serializer.data)
+    return Response({"error": "Unauthorized"}, status=403)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -23,8 +47,15 @@ def patient_timeline(request):
     
     if target_patient_id:
         # Check permissions (doctors/admins can view valid patients)
-        # For now assuming doctors can view any patient or strictly checking relationship
-        patient = get_object_or_404(Patient, patient_id=target_patient_id)
+        # Support lookup by numeric PK or display patient_id (e.g., 'P-0008')
+        if target_patient_id.isdigit():
+            patient = get_object_or_404(Patient, pk=int(target_patient_id))
+        else:
+            patient = get_object_or_404(Patient, patient_id=target_patient_id)
+        # Doctors/admins/providers can view any patient timeline
+        # (consistent with list_patients and patient_detail views)
+        if user.role not in ['doctor', 'admin', 'provider']:
+            return Response({"error": "Access denied to this patient's timeline."}, status=403)
     else:
         # Default to current user
         patient = get_patient_profile(user)
@@ -99,11 +130,9 @@ def profile_details(request):
     Get or update the current user's patient profile.
     """
     user = request.user
-    print(f"DEBUG: profile_details called for user: {user.username} (ID: {user.id})")
     patient = get_patient_profile(user)
     
     if not patient:
-        print(f"DEBUG: Profile not found for {user.username}")
         return Response({"error": "Patient profile not found."}, status=404)
 
     if request.method == 'GET':

@@ -96,12 +96,22 @@ export const appointmentService = {
                 const endHours = minutes >= 30 ? hours + 1 : hours;
                 const endMinutes = minutes >= 30 ? '00' : '30';
 
+                const slotTypeRaw = (slot.slot_type || '').toString().toLowerCase();
+                const slotType: TimeSlot['slotType'] =
+                    slotTypeRaw === 'surgery' ? 'SURGERY' :
+                        slotTypeRaw === 'break' ? 'BREAK' :
+                            slotTypeRaw === 'available' ? 'AVAILABLE' :
+                                'UNAVAILABLE';
+
+                const isBooked = Boolean(slot.is_booked ?? (!slot.available && slotType === 'AVAILABLE'));
+                const isAvailable = Boolean(slot.available ?? (slotType === 'AVAILABLE' && !isBooked));
+
                 return {
                     startTime: `${time}:00`,
                     endTime: `${String(endHours).padStart(2, '0')}:${endMinutes}:00`,
-                    isAvailable: slot.available,
-                    isBooked: !slot.available,
-                    slotType: slot.available ? 'AVAILABLE' : 'UNAVAILABLE'
+                    isAvailable,
+                    isBooked,
+                    slotType
                 };
             });
         } catch (error) {
@@ -164,6 +174,26 @@ export const appointmentService = {
             console.error('Error updating appointment status:', error);
             throw error;
         }
+    },
+
+    acceptAppointment: async (appointmentId: number): Promise<Appointment> => {
+        const response = await api.post(`/appointments/appointments/${appointmentId}/accept/`);
+        return response.data;
+    },
+
+    startConsultation: async (appointmentId: number): Promise<Appointment> => {
+        const response = await api.post(`/appointments/appointments/${appointmentId}/start_consultation/`);
+        return response.data;
+    },
+
+    completeConsultation: async (appointmentId: number, notes?: string): Promise<Appointment> => {
+        const response = await api.post(`/appointments/appointments/${appointmentId}/complete_consultation/`, { notes });
+        return response.data;
+    },
+
+    cancelAppointment: async (appointmentId: number, reason?: string): Promise<Appointment> => {
+        const response = await api.post(`/appointments/appointments/${appointmentId}/cancel/`, { reason });
+        return response.data;
     },
 
     getDoctorSchedule: async (date: string): Promise<DoctorAvailabilitySlot[]> => {
@@ -241,5 +271,17 @@ export const medicalRecordService = {
             console.error('Error fetching prescriptions:', error);
             return [];
         }
+    },
+
+    logMedicationTaken: async (prescriptionId: number): Promise<any> => {
+        const token = getAccessToken();
+        if (!token) throw new Error("No auth token");
+
+        const response = await api.post('/medical-records/medication-adherence/', {
+            prescription: prescriptionId
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return response.data;
     }
 };

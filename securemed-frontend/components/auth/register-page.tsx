@@ -161,7 +161,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
         });
 
         setTimeout(() => {
-          router.push('/');
+          router.push('/login');
         }, 1000);
       } else if (loginResult.error) {
         toast({
