@@ -24,7 +24,25 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         if hasattr(user, 'patient_profile'):
             return base_queryset.filter(patient=user.patient_profile)
         elif hasattr(user, 'doctor_profile'):
-            return base_queryset.filter(doctor=user.doctor_profile)
+            # 1. Normal Access: Records where doctor is assigned
+            qs = base_queryset.filter(doctor=user.doctor_profile)
+            
+            # 2. Emergency Access: Records for patients in active break-glass logs
+            from .models import EmergencyAccessLog
+            # Get list of patients this doctor has emergency access to
+            emergency_patient_ids = EmergencyAccessLog.objects.filter(
+                accessed_by=user
+            ).values_list('patient_id', flat=True)
+            
+            if emergency_patient_ids:
+                # Combine queries: Assigned OR Emergency Access
+                return base_queryset.filter(
+                    Q(doctor=user.doctor_profile) | 
+                    Q(patient__id__in=emergency_patient_ids)
+                ).distinct()
+            
+            return qs
+            
         elif user.is_staff:
             return base_queryset.all()
         return MedicalRecord.objects.none()

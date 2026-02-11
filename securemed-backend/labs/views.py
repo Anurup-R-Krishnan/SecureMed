@@ -43,20 +43,21 @@ class LabOrderViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError({"items": "At least one test is required"})
         
         from django.contrib.auth import get_user_model
+        from patients.models import Patient
         from labs.models import LabTest
         import uuid
         
-        User = get_user_model()
-        
         try:
-            patient = User.objects.get(id=patient_id)
-        except User.DoesNotExist:
+            # Look up the Patient model first
+            patient_model = Patient.objects.get(id=patient_id)
+            patient_user = patient_model.user
+        except Patient.DoesNotExist:
             raise serializers.ValidationError({"patient_id": "Invalid patient ID"})
         
         # Create the order
         order = serializer.save(
             doctor=self.request.user,
-            patient=patient,
+            patient=patient_user,
             sample_id=f"SMPL-{uuid.uuid4().hex[:8].upper()}"
         )
         

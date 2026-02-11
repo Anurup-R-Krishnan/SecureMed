@@ -110,6 +110,36 @@ export default function AppointmentsPage() {
         }
     };
 
+    const handleVideoCall = async (appt: Appointment) => {
+        try {
+            // Import dynamically or use the service we just created
+            const { videoService } = await import('@/services/telemedicine');
+
+            // 1. Check for existing active room
+            let room = await videoService.getActiveRoom(appt.patient);
+
+            // 2. If no room, create one (Doctor role)
+            if (!room) {
+                try {
+                    room = await videoService.createRoom(appt.patient);
+                } catch (createError) {
+                    console.error("Failed to create room:", createError);
+                    toast.error("Failed to create video room.");
+                    return;
+                }
+            }
+
+            if (room) {
+                // 3. Redirect to video room
+                window.location.href = `/telemedicine/room/${room.room_id}`;
+            }
+
+        } catch (error) {
+            console.error('Error starting video call:', error);
+            toast.error('Failed to start video call.');
+        }
+    };
+
     return (
         <>
             <AppointmentManager
@@ -117,6 +147,7 @@ export default function AppointmentsPage() {
                 loading={loading}
                 onOpenReferral={handleOpenReferral}
                 onAcceptAppointment={handleAcceptAppointment}
+                onVideoCall={handleVideoCall}
                 formatTime={formatTime}
                 getStatusBadge={getStatusBadge}
             />

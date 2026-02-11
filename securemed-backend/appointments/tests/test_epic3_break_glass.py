@@ -144,7 +144,17 @@ class BreakGlassProtocolTest(TestCase):
         
         # 1. Create a medical record for the patient (doctor is NOT the emergency doctor)
         other_doctor_user = User.objects.create_user('other_doc', 'other@test.com', 'pass')
-        other_doctor = Doctor.objects.create(user=other_doctor_user, doctor_id='DR_OTHER', department=self.department)
+        other_doctor = Doctor.objects.create(
+            user=other_doctor_user, 
+            doctor_id='DR_OTHER', 
+            department=self.department,
+            specialization='General Medicine',
+            license_number='DOC_OTHER',
+            qualification='MBBS',
+            experience_years=5,
+            consultation_fee=100.00,
+            phone='+1999999999'
+        )
         
         record = MedicalRecord.objects.create(
             record_id='REC-EMERGENCY-TEST',

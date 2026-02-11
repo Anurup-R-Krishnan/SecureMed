@@ -1,23 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import api from '@/lib/api';
 import PatientProfileView from '@/components/portals/doctor/patients/patient-profile-view';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function PatientDetailPage({ params }: { params: { id: string } }) {
+export default function PatientDetailPage() {
     const router = useRouter();
+    const params = useParams();
+    const patientId = params?.id as string;
     const { isAuthenticated } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [patient, setPatient] = useState<any>(null);
-    const patientId = params.id;
 
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated || !patientId) return;
 
         const fetchPatientData = async () => {
             setLoading(true);
@@ -91,3 +92,4 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
         />
     );
 }
+

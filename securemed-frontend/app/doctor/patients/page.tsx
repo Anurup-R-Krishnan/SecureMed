@@ -102,7 +102,13 @@ export default function PatientsPage() {
                         lastVisit: p.lastVisit,
                         condition: p.condition,
                     }))}
-                    onSelectPatient={(p) => router.push(`/doctor/patients/${p.id}`)}
+                    onSelectPatient={(p) => {
+                        if (p.id !== undefined && p.id !== null) {
+                            router.push(`/doctor/patients/${p.id}`);
+                        } else {
+                            console.error('Patient ID is missing:', p);
+                        }
+                    }}
                 />
             )}
         </div>
