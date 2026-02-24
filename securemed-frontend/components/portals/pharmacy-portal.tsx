@@ -164,305 +164,276 @@ export default function PharmacyPortal({ onLogout, currentTab: currentTabProp, o
   }, [scanning, videoStream, scanOrderId]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div>
-              <h1 className="text-2xl font-black">Pharmacy Console</h1>
-              <p className="text-sm text-muted-foreground">Verify and fulfill prescriptions</p>
-            </div>
-            <div className="flex bg-muted p-1 rounded-lg">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'dashboard' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'orders' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                Orders
-              </button>
-              <button
-                onClick={() => setActiveTab('inventory')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'inventory' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                Inventory
-              </button>
-            </div>
-          </div>
-          <Button variant="outline" onClick={onLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
-      </header>
-
-      {activeTab === 'inventory' ? (
-        <main className="max-w-7xl mx-auto px-6 py-8">
-          <PharmacyInventory />
-        </main>
-      ) : activeTab === 'dashboard' ? (
-        <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Pharmacy Dashboard</h2>
-            <p className="text-muted-foreground">Overview of pharmacy operations</p>
+            <h2 className="text-2xl font-bold tracking-tight capitalize">{activeTab}</h2>
+            <p className="text-muted-foreground">Verify and fulfill prescriptions</p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Orders</p>
-                  <p className="text-3xl font-bold mt-1">{stats.total}</p>
-                </div>
-                <List className="h-10 w-10 text-blue-500" />
-              </div>
-            </Card>
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-3xl font-bold text-amber-500 mt-1">{stats.pending}</p>
-                </div>
-                <Pill className="h-10 w-10 text-amber-500" />
-              </div>
-            </Card>
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Verified</p>
-                  <p className="text-3xl font-bold text-blue-500 mt-1">{stats.verified}</p>
-                </div>
-                <ShieldCheck className="h-10 w-10 text-blue-500" />
-              </div>
-            </Card>
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Fulfilled</p>
-                  <p className="text-3xl font-bold text-green-500 mt-1">{stats.fulfilled}</p>
-                </div>
-                <CheckCircle className="h-10 w-10 text-green-500" />
-              </div>
-            </Card>
-          </div>
+        {activeTab === 'inventory' ? (
+          <main className="max-w-7xl mx-auto px-6 py-8">
+            <PharmacyInventory />
+          </main>
+        ) : activeTab === 'dashboard' ? (
+          <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Pharmacy Dashboard</h2>
+              <p className="text-muted-foreground">Overview of pharmacy operations</p>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-4">Recent Orders</h3>
-              <div className="space-y-3">
-                {orders.slice(0, 5).map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium">{order.prescription_details.medication_name}</p>
-                      <p className="text-sm text-muted-foreground">{order.patient_details.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Code: {order.pickup_code}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        order.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                        order.status === 'verified' ? 'bg-blue-100 text-blue-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Orders</p>
+                    <p className="text-3xl font-bold mt-1">{stats.total}</p>
                   </div>
-                ))}
-                {orders.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">No orders yet</p>
-                )}
-              </div>
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={() => setActiveTab('orders')}
-              >
-                View All Orders
-              </Button>
-            </Card>
+                  <List className="h-10 w-10 text-blue-500" />
+                </div>
+              </Card>
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending</p>
+                    <p className="text-3xl font-bold text-amber-500 mt-1">{stats.pending}</p>
+                  </div>
+                  <Pill className="h-10 w-10 text-amber-500" />
+                </div>
+              </Card>
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Verified</p>
+                    <p className="text-3xl font-bold text-blue-500 mt-1">{stats.verified}</p>
+                  </div>
+                  <ShieldCheck className="h-10 w-10 text-blue-500" />
+                </div>
+              </Card>
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fulfilled</p>
+                    <p className="text-3xl font-bold text-green-500 mt-1">{stats.fulfilled}</p>
+                  </div>
+                  <CheckCircle className="h-10 w-10 text-green-500" />
+                </div>
+              </Card>
+            </div>
 
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <Button 
-                  className="w-full justify-start" 
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="p-6">
+                <h3 className="font-semibold text-lg mb-4">Recent Orders</h3>
+                <div className="space-y-3">
+                  {orders.slice(0, 5).map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium">{order.prescription_details.medication_name}</p>
+                        <p className="text-sm text-muted-foreground">{order.patient_details.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Code: {order.pickup_code}</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${order.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                          order.status === 'verified' ? 'bg-blue-100 text-blue-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>
+                          {order.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {orders.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No orders yet</p>
+                  )}
+                </div>
+                <Button
                   variant="outline"
+                  className="w-full mt-4"
                   onClick={() => setActiveTab('orders')}
                 >
-                  <Pill className="h-4 w-4 mr-2" />
-                  Process Orders
+                  View All Orders
                 </Button>
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={() => setActiveTab('inventory')}
-                >
-                  <List className="h-4 w-4 mr-2" />
-                  Manage Inventory
-                </Button>
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={fetchOrders}
-                >
-                  <ShieldCheck className="h-4 w-4 mr-2" />
-                  Refresh Data
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </main>
-      ) : (
-        <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Orders</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                </div>
-                <List className="h-8 w-8 text-blue-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold text-amber-500">{stats.pending}</p>
-                </div>
-                <Pill className="h-8 w-8 text-amber-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Verified</p>
-                  <p className="text-2xl font-bold text-blue-500">{stats.verified}</p>
-                </div>
-                <ShieldCheck className="h-8 w-8 text-blue-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Fulfilled</p>
-                  <p className="text-2xl font-bold text-green-500">{stats.fulfilled}</p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
-              </div>
-            </Card>
-          </div>
+              </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by pickup code, patient, or medication..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Button variant="outline" onClick={fetchOrders}>Refresh</Button>
+              <Card className="p-6">
+                <h3 className="font-semibold text-lg mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => setActiveTab('orders')}
+                  >
+                    <Pill className="h-4 w-4 mr-2" />
+                    Process Orders
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => setActiveTab('inventory')}
+                  >
+                    <List className="h-4 w-4 mr-2" />
+                    Manage Inventory
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={fetchOrders}
+                  >
+                    <ShieldCheck className="h-4 w-4 mr-2" />
+                    Refresh Data
+                  </Button>
+                </div>
+              </Card>
             </div>
-          </Card>
-
-          {loading ? (
-            <div className="text-center py-12 text-muted-foreground">Loading pharmacy orders...</div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">No pharmacy orders found.</div>
-          ) : (
-            <div className="space-y-4">
-              {filtered.map((order) => (
-                <Card key={order.id} className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Pickup Code</p>
-                      <p className="text-xl font-black tracking-widest">{order.pickup_code}</p>
-                      <p className="text-sm text-muted-foreground">Patient</p>
-                      <p className="font-medium">{order.patient_details.name} ({order.patient_details.patient_id})</p>
-                      <p className="text-sm text-muted-foreground mt-2">Medication</p>
-                      <p className="font-semibold">{order.prescription_details.medication_name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.prescription_details.dosage} · {order.prescription_details.frequency} · {order.prescription_details.duration}
-                      </p>
-                    </div>
-
-                    <div className="min-w-[260px] space-y-3">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Status</p>
-                        <p className="font-semibold">{order.status}</p>
-                      </div>
-                      <div>
-                        <Input
-                          placeholder="Verification notes (optional)"
-                          value={verifyNotes[order.id] || ''}
-                          onChange={(e) => setVerifyNotes({ ...verifyNotes, [order.id]: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => handleVerify(order.id)}
-                          disabled={workingId === order.id || order.status !== 'pending'}
-                        >
-                          <ShieldCheck className="h-4 w-4 mr-2" />
-                          Verify
-                        </Button>
-                        <Button
-                          onClick={() => handleFulfill(order.id)}
-                          disabled={workingId === order.id || order.status !== 'verified'}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Fulfill
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Scan/enter pickup code"
-                          value={pickupCode[order.id] || ''}
-                          onChange={(e) => setPickupCode({ ...pickupCode, [order.id]: e.target.value })}
-                        />
-                        <Button variant="outline" onClick={() => startScan(order.id)}>
-                          <QrCode className="h-4 w-4 mr-2" />
-                          Scan
-                        </Button>
-                      </div>
-                    </div>
+          </main>
+        ) : (
+          <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Orders</p>
+                    <p className="text-2xl font-bold">{stats.total}</p>
                   </div>
-                </Card>
-              ))}
+                  <List className="h-8 w-8 text-blue-500" />
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending</p>
+                    <p className="text-2xl font-bold text-amber-500">{stats.pending}</p>
+                  </div>
+                  <Pill className="h-8 w-8 text-amber-500" />
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Verified</p>
+                    <p className="text-2xl font-bold text-blue-500">{stats.verified}</p>
+                  </div>
+                  <ShieldCheck className="h-8 w-8 text-blue-500" />
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fulfilled</p>
+                    <p className="text-2xl font-bold text-green-500">{stats.fulfilled}</p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-500" />
+                </div>
+              </Card>
             </div>
-          )}
-        </main>
-      )}
 
-      <Dialog open={scanOrderId !== null} onOpenChange={closeScanner}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Scan Pickup QR Code</DialogTitle>
-            <DialogDescription>Point the camera at the QR code on the patient’s pickup slip.</DialogDescription>
-          </DialogHeader>
-          <div className="aspect-video w-full rounded-lg border border-border bg-black/90 flex items-center justify-center">
-            {scanError ? (
-              <div className="text-center text-sm text-destructive flex flex-col items-center gap-2">
-                <CameraOff className="h-6 w-6" />
-                {scanError}
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by pickup code, patient, or medication..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Button variant="outline" onClick={fetchOrders}>Refresh</Button>
               </div>
+            </Card>
+
+            {loading ? (
+              <div className="text-center py-12 text-muted-foreground">Loading pharmacy orders...</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">No pharmacy orders found.</div>
             ) : (
-              <video id="qr-video" className="h-full w-full object-cover rounded-lg" />
+              <div className="space-y-4">
+                {filtered.map((order) => (
+                  <Card key={order.id} className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Pickup Code</p>
+                        <p className="text-xl font-black tracking-widest">{order.pickup_code}</p>
+                        <p className="text-sm text-muted-foreground">Patient</p>
+                        <p className="font-medium">{order.patient_details.name} ({order.patient_details.patient_id})</p>
+                        <p className="text-sm text-muted-foreground mt-2">Medication</p>
+                        <p className="font-semibold">{order.prescription_details.medication_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.prescription_details.dosage} · {order.prescription_details.frequency} · {order.prescription_details.duration}
+                        </p>
+                      </div>
+
+                      <div className="min-w-[260px] space-y-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Status</p>
+                          <p className="font-semibold">{order.status}</p>
+                        </div>
+                        <div>
+                          <Input
+                            placeholder="Verification notes (optional)"
+                            value={verifyNotes[order.id] || ''}
+                            onChange={(e) => setVerifyNotes({ ...verifyNotes, [order.id]: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleVerify(order.id)}
+                            disabled={workingId === order.id || order.status !== 'pending'}
+                          >
+                            <ShieldCheck className="h-4 w-4 mr-2" />
+                            Verify
+                          </Button>
+                          <Button
+                            onClick={() => handleFulfill(order.id)}
+                            disabled={workingId === order.id || order.status !== 'verified'}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Fulfill
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Scan/enter pickup code"
+                            value={pickupCode[order.id] || ''}
+                            onChange={(e) => setPickupCode({ ...pickupCode, [order.id]: e.target.value })}
+                          />
+                          <Button variant="outline" onClick={() => startScan(order.id)}>
+                            <QrCode className="h-4 w-4 mr-2" />
+                            Scan
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeScanner}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+          </main>
+        )}
+
+        <Dialog open={scanOrderId !== null} onOpenChange={closeScanner}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Scan Pickup QR Code</DialogTitle>
+              <DialogDescription>Point the camera at the QR code on the patient’s pickup slip.</DialogDescription>
+            </DialogHeader>
+            <div className="aspect-video w-full rounded-lg border border-border bg-black/90 flex items-center justify-center">
+              {scanError ? (
+                <div className="text-center text-sm text-destructive flex flex-col items-center gap-2">
+                  <CameraOff className="h-6 w-6" />
+                  {scanError}
+                </div>
+              ) : (
+                <video id="qr-video" className="h-full w-full object-cover rounded-lg" />
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={closeScanner}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }

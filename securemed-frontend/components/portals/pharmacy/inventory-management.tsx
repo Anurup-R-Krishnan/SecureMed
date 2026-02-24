@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Package, TrendingDown, Calendar, Plus, AlertTriangle, LogOut } from 'lucide-react';
+import { AlertCircle, Package, TrendingDown, Calendar, Plus, AlertTriangle, LogOut, Search } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import api from '@/lib/api';
 
@@ -180,65 +180,97 @@ export default function PharmacyInventory() {
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="drugs" className="space-y-4">
+          <TabsContent value="drugs" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="flex gap-4">
-              <Input placeholder="Search drugs..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1" />
-              <Button onClick={() => setShowAddDrug(true)}><Plus className="w-4 h-4 mr-2" />Add Drug</Button>
-              <Button variant="outline" onClick={() => setShowTransaction(true)}><Package className="w-4 h-4 mr-2" />Transaction</Button>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search drugs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-background" />
+              </div>
+              <Button onClick={() => setShowAddDrug(true)} className="rounded-xl shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" />Add Drug</Button>
+              <Button variant="outline" onClick={() => setShowTransaction(true)} className="rounded-xl"><Package className="w-4 h-4 mr-2" />Transaction</Button>
             </div>
 
-            <div className="grid gap-4">
-              {filteredDrugs.map(drug => (
-                <Card key={drug.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{drug.name}</h3>
-                        <Badge variant="outline">{drug.drug_code}</Badge>
-                        {drug.needs_reorder && <Badge variant="destructive">Low Stock</Badge>}
-                      </div>
-                      <p className="text-sm text-gray-600">{drug.generic_name}</p>
-                      <div className="mt-2 grid grid-cols-4 gap-4 text-sm">
-                        <div><span className="text-gray-600">Manufacturer:</span><p className="font-medium">{drug.manufacturer}</p></div>
-                        <div><span className="text-gray-600">Form:</span><p className="font-medium">{drug.dosage_form}</p></div>
-                        <div><span className="text-gray-600">Strength:</span><p className="font-medium">{drug.strength}</p></div>
-                        <div><span className="text-gray-600">Price:</span><p className="font-medium">₹{drug.unit_price}</p></div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">{drug.stock_quantity}</div>
-                      <div className="text-sm text-gray-600">In Stock</div>
-                      <div className="text-xs text-gray-500 mt-1">Reorder at: {drug.reorder_level}</div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+            <div className="rounded-[24px] border border-border/60 overflow-hidden shadow-sm bg-card">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border/60">
+                  <tr>
+                    <th className="px-6 py-4">Drug Details</th>
+                    <th className="px-6 py-4">Manufacturer</th>
+                    <th className="px-6 py-4">Form & Strength</th>
+                    <th className="px-6 py-4 text-right">Price</th>
+                    <th className="px-6 py-4 text-right">Stock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {filteredDrugs.map(drug => (
+                    <tr key={drug.id} className="hover:bg-muted/30 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-foreground group-hover:text-primary transition-colors">{drug.name}</div>
+                        <div className="text-xs text-muted-foreground">{drug.generic_name}</div>
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant="outline" className="text-[10px] h-5 px-1.5 rounded-md">{drug.drug_code}</Badge>
+                          {drug.needs_reorder && <Badge variant="destructive" className="text-[10px] h-5 px-1.5 rounded-md">Low Stock</Badge>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-medium">{drug.manufacturer}</td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium capitalize">{drug.dosage_form}</div>
+                        <div className="text-xs text-muted-foreground">{drug.strength}</div>
+                      </td>
+                      <td className="px-6 py-4 text-right font-mono">₹{drug.unit_price}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="font-bold text-lg">{drug.stock_quantity}</div>
+                        <div className="text-[10px] text-muted-foreground">Reorder at {drug.reorder_level}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </TabsContent>
 
-          <TabsContent value="batches" className="space-y-4">
-            <Button onClick={() => setShowAddBatch(true)}><Plus className="w-4 h-4 mr-2" />Add Batch</Button>
-            <div className="grid gap-4">
-              {batches.map(batch => (
-                <Card key={batch.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{batch.drug_name}</h3>
-                        <Badge variant="outline">{batch.batch_number}</Badge>
-                        {batch.is_expired && <Badge variant="destructive">Expired</Badge>}
-                        {!batch.is_expired && batch.days_to_expiry <= 90 && <Badge variant="secondary">Expiring Soon</Badge>}
-                      </div>
-                      <div className="mt-2 grid grid-cols-4 gap-4 text-sm">
-                        <div><span className="text-gray-600">Supplier:</span><p className="font-medium">{batch.supplier}</p></div>
-                        <div><span className="text-gray-600">Quantity:</span><p className="font-medium">{batch.quantity}</p></div>
-                        <div><span className="text-gray-600">Expiry:</span><p className="font-medium">{batch.expiry_date}</p></div>
-                        <div><span className="text-gray-600">Days to Expiry:</span><p className="font-medium">{batch.days_to_expiry}</p></div>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+          <TabsContent value="batches" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="flex justify-end">
+              <Button onClick={() => setShowAddBatch(true)} className="rounded-xl shadow-lg shadow-primary/20"><Plus className="w-4 h-4 mr-2" />Add Batch</Button>
+            </div>
+
+            <div className="rounded-[24px] border border-border/60 overflow-hidden shadow-sm bg-card">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border/60">
+                  <tr>
+                    <th className="px-6 py-4">Batch Info</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Supplier</th>
+                    <th className="px-6 py-4">Expiry</th>
+                    <th className="px-6 py-4 text-right">Quantity</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {batches.map(batch => (
+                    <tr key={batch.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-bold">{batch.drug_name}</div>
+                        <div className="text-xs font-mono text-muted-foreground">{batch.batch_number}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {batch.is_expired ? (
+                          <Badge variant="destructive" className="rounded-full">Expired</Badge>
+                        ) : batch.days_to_expiry <= 90 ? (
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 rounded-full">Expiring Soon</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 rounded-full">Valid</Badge>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 font-medium">{batch.supplier}</td>
+                      <td className="px-6 py-4">
+                        <div>{batch.expiry_date}</div>
+                        <div className="text-xs text-muted-foreground">{batch.days_to_expiry} days left</div>
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-lg">{batch.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </TabsContent>
 

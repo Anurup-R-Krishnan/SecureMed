@@ -87,14 +87,27 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
     } : null;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-700 ease-out pb-12">
 
             {/* Header Section */}
-            <div className="mb-2">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                    Welcome back, {dashboardStats?.patient_name?.split(' ')[0] || 'Patient'}
-                </h1>
-                <p className="text-muted-foreground text-sm">Here&apos;s your health overview for today.</p>
+            <div className="flex flex-col md:flex-row justify-between items-end bg-gradient-to-r from-card to-muted/20 p-8 rounded-[32px] border border-border/60 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+
+                <div className="relative z-10">
+                    <h1 className="text-3xl font-black tracking-tight text-foreground mb-2">
+                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, <br />
+                        <span className="text-primary">{dashboardStats?.patient_name?.split(' ')[0] || 'Patient'}</span>
+                    </h1>
+                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
+                        Your Personal Health Command Center
+                    </p>
+                </div>
+
+                <div className="relative z-10 mt-6 md:mt-0 flex gap-3">
+                    <div className="px-4 py-2 bg-background/50 backdrop-blur rounded-full border border-border/50 text-xs font-bold text-muted-foreground shadow-sm">
+                        Last Login: Today
+                    </div>
+                </div>
             </div>
 
             {/* Row 1: Health Score + Vitals */}

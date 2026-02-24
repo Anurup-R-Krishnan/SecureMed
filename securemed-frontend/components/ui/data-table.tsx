@@ -45,15 +45,15 @@ export function DataTable<TData, TValue>({
     })
 
     return (
-        <div>
-            <div className="rounded-md border">
+        <div className="space-y-4">
+            <div className="rounded-[20px] border border-border/60 overflow-hidden shadow-sm bg-card">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/40">
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
+                            <TableRow key={headerGroup.id} className="border-b border-border/60 hover:bg-transparent">
                                 {headerGroup.headers.map((header) => {
                                     return (
-                                        <TableHead key={header.id}>
+                                        <TableHead key={header.id} className="h-12 px-6 text-xs font-bold uppercase tracking-widest text-muted-foreground/80">
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -72,9 +72,10 @@ export function DataTable<TData, TValue>({
                                 <TableRow
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
+                                    className="border-b border-border/40 hover:bg-muted/30 transition-colors"
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell key={cell.id} className="px-6 py-4">
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </TableCell>
                                     ))}
@@ -82,8 +83,8 @@ export function DataTable<TData, TValue>({
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No results.
+                                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                                    No results found.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -96,6 +97,7 @@ export function DataTable<TData, TValue>({
                     size="sm"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
+                    className="rounded-xl"
                 >
                     Previous
                 </Button>
@@ -104,6 +106,7 @@ export function DataTable<TData, TValue>({
                     size="sm"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
+                    className="rounded-xl"
                 >
                     Next
                 </Button>

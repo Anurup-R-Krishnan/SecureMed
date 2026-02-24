@@ -74,6 +74,7 @@ interface LoginResult {
     error?: string;
     requires_policy_acceptance?: boolean;
     tokens?: Tokens;
+    user?: User;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -180,7 +181,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return {
                 status: 'SUCCESS',
                 requires_policy_acceptance: data?.requires_policy_acceptance,
-                tokens: newTokens
+                tokens: newTokens,
+                user: data.user
             };
         } catch (error) {
             console.error('Login error:', error);
@@ -238,7 +240,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return {
                 status: 'SUCCESS',
                 requires_policy_acceptance: data?.requires_policy_acceptance,
-                tokens: newTokens
+                tokens: newTokens,
+                user: data.user
             };
         } catch (error) {
             console.error('MFA verification error:', error);

@@ -69,42 +69,42 @@ export function NotificationCenter() {
                             <p className="text-sm">No notifications</p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-border">
+                        <div className="space-y-1 p-2">
                             {notifications.map((notification) => (
                                 <div
                                     key={notification.id}
-                                    className={`p-4 hover:bg-muted/50 transition-colors ${!notification.read ? 'bg-muted/30' : ''}`}
+                                    className={`p-3 rounded-xl transition-all duration-200 border border-transparent ${!notification.read ? 'bg-primary/5 border-primary/10' : 'hover:bg-muted/50 hover:border-border/40'}`}
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className="flex-1 space-y-1">
-                                            <p className={`text-sm font-medium leading-none ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                            <p className={`text-sm font-bold leading-none ${!notification.read ? 'text-primary' : 'text-foreground/80'}`}>
                                                 {notification.title}
                                             </p>
-                                            <p className="text-xs text-muted-foreground line-clamp-2">
+                                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                                 {notification.message}
                                             </p>
-                                            <p className="text-[10px] text-muted-foreground/70 pt-1">
+                                            <p className="text-[10px] text-muted-foreground/50 pt-1 font-mono uppercase tracking-wider">
                                                 {notification.timestamp}
                                             </p>
                                         </div>
-                                        {/* Actions */}
+                                        {/* Actions - Always visible on hover */}
                                         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             {!notification.read && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-6 w-6 text-primary"
-                                                    onClick={() => markAsRead(notification.id)}
+                                                    className="h-6 w-6 text-primary hover:bg-primary/10 rounded-full"
+                                                    onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
                                                     title="Mark as read"
                                                 >
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                                    <span className="h-2 w-2 rounded-full bg-primary" />
                                                 </Button>
                                             )}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                                onClick={() => deleteNotification(notification.id)}
+                                                className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
+                                                onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
                                                 title="Delete"
                                             >
                                                 <Trash2 className="h-3 w-3" />

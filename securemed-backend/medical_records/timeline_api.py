@@ -202,8 +202,10 @@ def patient_timeline(request):
         })
     
     # 5. APPOINTMENTS
+    
     from appointments.models import Appointment
-    appointments = Appointment.objects.filter(patient=patient.user).select_related('doctor__user')
+    # Fixed: Appointment model uses Patient FK, not User FK
+    appointments = Appointment.objects.filter(patient=patient).select_related('doctor__user')
     
     for appointment in appointments:
         timeline_events.append({

@@ -2,6 +2,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from .models import Invoice, InvoiceItem
+import uuid
 
 @receiver(post_save, sender='labs.LabOrder')
 def create_lab_invoice(sender, instance, created, **kwargs):
@@ -20,12 +21,23 @@ def create_lab_invoice(sender, instance, created, **kwargs):
             # If no patient profile exists, skip invoice creation
             return
         
+        # Check if invoice already exists for this lab order
+        existing_invoice = Invoice.objects.filter(
+            patient=patient_profile,
+            appointment=instance.appointment,
+            items__description__icontains=f"Lab Order #{instance.id}"
+        ).first()
+        
+        if existing_invoice:
+            return
+        
         # Calculate cost (This could be dynamic based on tests)
         # Placeholder: $50 base + $10 per test
         test_count = instance.items.count()
         amount = 50.00 + (10.00 * test_count)
         
         invoice = Invoice.objects.create(
+            invoice_id=f"INV-LAB-{uuid.uuid4().hex[:8].upper()}",
             patient=patient_profile,
             appointment=instance.appointment,
             status='issued',
@@ -61,6 +73,7 @@ def create_pharmacy_invoice(sender, instance, created, **kwargs):
         
         if amount > 0:
             invoice = Invoice.objects.create(
+                invoice_id=f"INV-RX-{uuid.uuid4().hex[:8].upper()}",
                 patient=instance.patient,
                 appointment=instance.appointment,
                 status='issued',

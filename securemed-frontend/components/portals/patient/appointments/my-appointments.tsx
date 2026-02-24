@@ -31,11 +31,37 @@ export default function MyAppointments() {
     const handleCancel = async (apt: Appointment) => {
         if (!confirm(`Cancel appointment with ${apt.doctor_name} on ${apt.appointment_date}?`)) return;
         setCancellingId(apt.id);
+
+        // Optimistic update
+        const previousAppointments = [...appointments];
+        setAppointments(prev => prev.map(a => a.id === apt.id ? { ...a, status: 'cancelled' } : a));
+
         try {
             await appointmentService.cancelAppointment(apt.id, 'Cancelled by patient');
-            toast({ title: 'Appointment Cancelled', description: `Your appointment with ${apt.doctor_name} has been cancelled.` });
-            fetchAppointments();
+
+            toast({
+                title: 'Appointment Cancelled',
+                description: `Your appointment with ${apt.doctor_name} has been cancelled.`,
+                action: (
+                    <div
+                        className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive"
+                        onClick={async () => {
+                            try {
+                                await appointmentService.updateAppointmentStatus(apt.id, 'scheduled');
+                                setAppointments(previousAppointments); // Revert optimistic
+                                toast({ title: 'Undo Successful', description: 'Appointment restored.' });
+                            } catch (err) {
+                                toast({ title: 'Undo Failed', description: 'Could not restore appointment.', variant: 'destructive' });
+                            }
+                        }}
+                    >
+                        Undo
+                    </div>
+                ),
+            });
+            fetchAppointments(); // Refresh to ensure sync
         } catch (error: any) {
+            setAppointments(previousAppointments); // Revert on error
             toast({ title: 'Error', description: error?.response?.data?.error || 'Failed to cancel appointment.', variant: 'destructive' });
         } finally {
             setCancellingId(null);

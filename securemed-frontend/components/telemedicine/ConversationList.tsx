@@ -28,17 +28,17 @@ export function ConversationList({
     };
 
     return (
-        <div className="flex flex-col h-full border-r border-gray-200 bg-white">
-            <div className="p-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800">Messages</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col h-full">
+            <div className="flex-1">
                 {conversations.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
-                        No conversations yet.
+                    <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-3">
+                            <MessageSquare className="h-5 w-5 opacity-50" />
+                        </div>
+                        <p className="text-sm font-medium">No messages yet</p>
                     </div>
                 ) : (
-                    <ul className="divide-y divide-gray-100">
+                    <ul className="space-y-1">
                         {conversations.map((conversation) => {
                             const otherParticipant = getOtherParticipant(conversation);
                             const isSelected = selectedConversationId === conversation.id;
@@ -48,26 +48,35 @@ export function ConversationList({
                                     key={conversation.id}
                                     onClick={() => onSelectConversation(conversation.id)}
                                     className={cn(
-                                        "p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200",
-                                        isSelected ? "bg-blue-50 border-l-4 border-blue-500" : "border-l-4 border-transparent"
+                                        "p-3 mx-2 cursor-pointer rounded-xl transition-all duration-200 group relative overflow-hidden",
+                                        isSelected
+                                            ? "bg-primary/10 text-primary shadow-sm"
+                                            : "hover:bg-muted/50 text-foreground"
                                     )}
                                 >
-                                    <div className="flex items-start space-x-3">
-                                        <div className="flex-shrink-0">
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                                <UserIcon size={20} />
+                                    {isSelected && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-primary rounded-r-full" />}
+
+                                    <div className="flex items-start space-x-3 pl-2">
+                                        <div className="flex-shrink-0 relative">
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                                                isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-muted/80"
+                                            )}>
+                                                <UserIcon size={18} />
                                             </div>
+                                            {/* Online Indicator (Mock) */}
+                                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-baseline">
-                                                <h3 className="text-sm font-medium text-gray-900 truncate">
+                                        <div className="flex-1 min-w-0 pt-0.5">
+                                            <div className="flex justify-between items-baseline mb-0.5">
+                                                <h3 className={cn("text-sm font-bold truncate", isSelected ? "text-primary" : "text-foreground")}>
                                                     {otherParticipant?.name || otherParticipant?.username || 'Unknown User'}
                                                 </h3>
-                                                <span className="text-xs text-gray-400 flex-shrink-0">
+                                                <span className="text-[10px] font-medium opacity-60 flex-shrink-0 uppercase tracking-wide">
                                                     {conversation.last_message ? formatDate(conversation.last_message.created_at) : formatDate(conversation.updated_at)}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-gray-500 truncate">
+                                            <p className={cn("text-xs truncate font-medium", isSelected ? "text-primary/70" : "text-muted-foreground")}>
                                                 {conversation.last_message ? conversation.last_message.content : 'Start a conversation'}
                                             </p>
                                         </div>

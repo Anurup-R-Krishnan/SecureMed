@@ -1,379 +1,158 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, Eye, EyeOff, X, Shield } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
-import { useToast } from '@/hooks/use-toast';
-import { API_ORIGIN } from '@/lib/urls';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ArrowRight, Lock, Mail, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { PulseSpinner } from '@/components/ui/spinner';
 import { getPortalRouteForRole } from '@/lib/routes';
 
 interface LoginModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+    isOpen: boolean;
+    onClose: () => void;
 }
 
-type LoginStep = 'STEP_CREDENTIALS' | 'STEP_MFA';
+export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+    const router = useRouter();
+    const { login } = useAuth();
 
-export default function LoginModal({
-  isOpen,
-  onClose,
-}: LoginModalProps) {
-  const [step, setStep] = useState<LoginStep>('STEP_CREDENTIALS');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [recoveryCode, setRecoveryCode] = useState('');
-  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
-  const [tempToken, setTempToken] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  const { login, verifyMfa, triggerPolicyCheck, user, isAuthenticated } = useAuth();
-  const { toast } = useToast();
-  const router = useRouter();
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email || !password) return;
 
-  // Redirect after successful authentication
-  useEffect(() => {
-    if (isAuthenticated && user && isOpen) {
-      router.push(getPortalRouteForRole(user.role));
-    }
-  }, [isAuthenticated, user, isOpen, router]);
+        setIsLoading(true);
+        setError(null);
 
-  if (!isOpen) return null;
+        try {
+            const result = await login(email, password);
 
-  const handleLoginSuccess = () => {
-    toast({
-      title: 'Welcome back!',
-      description: 'You have been successfully logged in.',
-    });
-    handleClose();
-  };
-
-  const handleCredentialsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const result = await login(username, password);
-
-      if (result.error) {
-        toast({
-          title: 'Login Failed',
-          description: result.error,
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (result.status === 'MFA_REQUIRED' && result.tempToken) {
-        // Switch to MFA step
-        setTempToken(result.tempToken);
-        setStep('STEP_MFA');
-        toast({
-          title: 'MFA Required',
-          description: 'Please enter your 6-digit authentication code.',
-        });
-      } else if (result.status === 'SUCCESS') {
-        // Check for policy acceptance
-        if (result.requires_policy_acceptance && result.tokens) {
-          console.log("Delegating Policy Check to Global Context");
-          triggerPolicyCheck(result.tokens.access);
-          // Close modal without redirecting, Context handles the rest
-          handleClose();
-          return;
+            if (result.status === 'SUCCESS' && result.user) {
+                // Successful login
+                // Redirect logic is often handled by the page, but we can do it here too
+                router.replace(getPortalRouteForRole(result.user.role));
+            } else {
+                setError(result.error || 'Invalid credentials. Please try again.');
+            }
+        } catch (err: any) {
+            console.error("Login failed", err);
+            setError("An unexpected error occurred. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
+    };
 
-        // Login successful
-        handleLoginSuccess();
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
-    } finally {
-      // Only reset if we didn't delegate (delegation calls handleClose which resets)
-      // Actually handleClose resets isLoading, so we don't need to do it here if checking logic flow?
-      // But if we returned early, we need to ensure isLoading is false? 
-      // handleClose sets isLoading(false).
-      // So if we didn't return early, we set it false here.
-      // But since we navigate away on success, component might unmount.
-      if (isOpen) setIsLoading(false);
-    }
-  };
+    const handleRegisterClick = () => {
+        onClose();
+        router.push('/register');
+    };
 
-  const handleMfaSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden bg-background/80 backdrop-blur-2xl border-border/50 rounded-[32px] shadow-2xl gap-0">
+                <div className="relative p-8 pb-0">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
-    try {
-      // Use recovery code if toggled, otherwise use OTP
-      const code = useRecoveryCode ? recoveryCode : otpCode;
-      const result = await verifyMfa(tempToken, code, useRecoveryCode);
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="bg-primary/10 p-2.5 rounded-xl ring-1 ring-primary/20">
+                            <ShieldCheck className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-2xl font-black tracking-tight text-foreground">
+                                SecureMed
+                            </DialogTitle>
+                            <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                                Access Portal
+                            </DialogDescription>
+                        </div>
+                    </div>
 
-      if (result.error) {
-        toast({
-          title: 'MFA Verification Failed',
-          description: result.error,
-          variant: 'destructive',
-
-        });
-        return;
-      }
-
-      // Check for policy acceptance
-      if (result.requires_policy_acceptance && result.tokens) {
-        console.log("Delegating Policy Check to Global Context");
-        triggerPolicyCheck(result.tokens.access);
-        handleClose();
-        return;
-      }
-
-      if (result.status === 'SUCCESS') {
-        handleLoginSuccess();
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
-    } finally {
-      if (isOpen) setIsLoading(false);
-    }
-  };
-
-  const handleClose = () => {
-    // Reset all state
-    setStep('STEP_CREDENTIALS');
-    setUsername('');
-    setPassword('');
-    setOtpCode('');
-    setRecoveryCode('');
-    setUseRecoveryCode(false);
-    setTempToken('');
-    setShowPassword(false);
-    setIsLoading(false);
-    onClose();
-  };
-
-
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="relative bg-gradient-to-r from-primary to-accent p-8">
-          <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 p-2 hover:bg-black/10 rounded-lg transition-colors"
-            disabled={isLoading}
-          >
-            <X className="h-5 w-5 text-primary-foreground" />
-          </button>
-          <div className="flex items-center gap-3 mb-2">
-            {step === 'STEP_CREDENTIALS' ? (
-              <Lock className="h-6 w-6 text-primary-foreground" />
-            ) : (
-              <Shield className="h-6 w-6 text-primary-foreground" />
-            )}
-            <h2 className="text-2xl font-bold text-primary-foreground">
-              {step === 'STEP_CREDENTIALS' ? 'Sign In' : 'Two-Factor Authentication'}
-            </h2>
-          </div>
-          <p className="text-primary-foreground/80">
-            {step === 'STEP_CREDENTIALS'
-              ? 'Welcome to Fortis Healthcare'
-              : 'Enter your authentication code'}
-          </p>
-        </div>
-
-        {step === 'STEP_CREDENTIALS' ? (
-          <>
-
-
-            {/* Credentials Form */}
-            <form onSubmit={handleCredentialsSubmit} className="p-8 space-y-5">
-              {/* Username Input */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Username
-                </label>
-                <div className="relative flex items-center">
-                  <Mail className="absolute left-3 h-5 w-5 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="your_username"
-                    className="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              {/* Password Input */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Password
-                </label>
-                <div className="relative flex items-center">
-                  <Lock className="absolute left-3 h-5 w-5 text-muted-foreground pointer-events-none" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    required
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-muted-foreground hover:text-foreground"
-                    disabled={isLoading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
+                    {error && (
+                        <div className="mb-6 p-3 rounded-xl bg-destructive/10 border border-destructive/20 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                            <p className="text-sm font-medium text-destructive">{error}</p>
+                        </div>
                     )}
-                  </button>
+
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email Address</Label>
+                            <div className="relative group">
+                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="doctor@hospital.org"
+                                    className="pl-10 h-12 rounded-xl bg-muted/30 border-transparent focus:border-primary/30 focus:bg-background transition-all"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="password">Password</Label>
+                                <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" type="button">
+                                    Forgot password?
+                                </Button>
+                            </div>
+                            <div className="relative">
+                                <PasswordInput
+                                    id="password"
+                                    placeholder="••••••••"
+                                    className="h-12 rounded-xl bg-muted/30 border-transparent focus:border-primary/30 focus:bg-background transition-all"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    showIcon={true}
+                                />
+                            </div>
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="w-full h-12 rounded-xl font-bold text-md shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all mt-4"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Authenticating...
+                                </>
+                            ) : (
+                                <>
+                                    Sign In securely
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </>
+                            )}
+                        </Button>
+                    </form>
                 </div>
-              </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded" disabled={isLoading} />
-                  <span className="text-muted-foreground">Remember me</span>
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-primary hover:underline font-medium"
-                  onClick={handleClose}
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
-              {/* Login Button */}
-              <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </form>
-          </>
-        ) : (
-          /* MFA Form */
-          <form onSubmit={handleMfaSubmit} className="p-8 space-y-5">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {useRecoveryCode
-                  ? 'Enter one of your 8-character recovery codes'
-                  : 'Enter the 6-digit code from your authenticator app'
-                }
-              </p>
-            </div>
-
-            {/* OTP or Recovery Code Input */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                {useRecoveryCode ? 'Recovery Code' : 'Authentication Code'}
-              </label>
-              {useRecoveryCode ? (
-                <input
-                  type="text"
-                  value={recoveryCode}
-                  onChange={(e) => setRecoveryCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
-                  placeholder="ABC12345"
-                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                  required
-                  maxLength={8}
-                  disabled={isLoading}
-                  autoFocus
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="000000"
-                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-2xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                  required
-                  maxLength={6}
-                  disabled={isLoading}
-                  autoFocus
-                />
-              )}
-            </div>
-
-            {/* Toggle Recovery Code Link */}
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setUseRecoveryCode(!useRecoveryCode);
-                  setOtpCode('');
-                  setRecoveryCode('');
-                }}
-                className="text-sm text-primary hover:underline"
-                disabled={isLoading}
-              >
-                {useRecoveryCode ? 'Use authenticator code instead' : 'Use recovery code instead'}
-              </button>
-            </div>
-
-            {/* Verify Button */}
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              disabled={isLoading || (useRecoveryCode ? recoveryCode.length !== 8 : otpCode.length !== 6)}
-            >
-              {isLoading ? 'Verifying...' : 'Verify Code'}
-            </Button>
-
-            {/* Back Button */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setStep('STEP_CREDENTIALS');
-                setOtpCode('');
-                setRecoveryCode('');
-                setUseRecoveryCode(false);
-                setTempToken('');
-              }}
-              disabled={isLoading}
-            >
-              Back to Login
-            </Button>
-          </form>
-        )}
-
-        {/* Footer */}
-        {step === 'STEP_CREDENTIALS' && (
-          <div className="px-8 py-4 bg-muted/30 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account? <Link href="/register" className="text-primary font-medium hover:underline" onClick={handleClose}>Sign up</Link>
-          </div>
-        )}
-      </div>
-    </div >
-  );
+                <div className="p-6 bg-muted/30 mt-8 border-t border-border/50 text-center">
+                    <p className="text-sm text-muted-foreground">
+                        Don't have an account?{' '}
+                        <button
+                            onClick={handleRegisterClick}
+                            className="font-bold text-primary hover:underline hover:text-primary/80 transition-colors"
+                        >
+                            Register
+                        </button>
+                    </p>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 }

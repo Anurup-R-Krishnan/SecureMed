@@ -40,16 +40,25 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
     fetchRecords();
   }, []);
 
+  /* Pagination / Infinite Scroll State */
+  const [displayCount, setDisplayCount] = useState(5);
   const filteredRecords = medicalRecords.filter(record => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.doctor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.record_type_display?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesFilter = filterType === 'all' || record.record_type === filterType;
-    
+
     return matchesSearch && matchesFilter;
   });
+
+  const visibleRecords = filteredRecords.slice(0, displayCount);
+  const hasMore = displayCount < filteredRecords.length;
+
+  const loadMore = () => {
+    setDisplayCount(prev => prev + 5);
+  };
 
   const recordTypes = [...new Set(medicalRecords.map(r => r.record_type))];
   const activePrescriptions = prescriptions.filter((rx) => ['signed', 'dispensed'].includes(rx.status));
@@ -158,13 +167,12 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        rx.status === 'active' || rx.status === 'signed' 
-                          ? 'bg-green-100 text-green-700' 
-                          : rx.status === 'cancelled' 
-                          ? 'bg-red-100 text-red-700' 
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${rx.status === 'active' || rx.status === 'signed'
+                        ? 'bg-green-100 text-green-700'
+                        : rx.status === 'cancelled'
+                          ? 'bg-red-100 text-red-700'
                           : 'bg-gray-100 text-gray-700'
-                      }`}>
+                        }`}>
                         {rx.status}
                       </span>
                     </td>
@@ -246,13 +254,13 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredRecords.map((record) => (
+            {visibleRecords.map((record) => (
               <div key={record.id} className="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
                     <Stethoscope className="h-5 w-5 text-primary" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
@@ -260,9 +268,9 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                         <p className="text-sm text-muted-foreground mt-1">{record.diagnosis}</p>
                       </div>
                       {record.file && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => window.open(record.file, '_blank')}
                           className="flex-shrink-0"
                         >
@@ -310,6 +318,14 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                 </div>
               </div>
             ))}
+
+            {hasMore && (
+              <div className="pt-4 text-center">
+                <Button variant="ghost" onClick={loadMore} className="text-muted-foreground hover:text-primary">
+                  Load More Records...
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Card>

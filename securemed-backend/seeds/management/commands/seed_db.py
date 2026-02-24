@@ -386,7 +386,7 @@ class Command(BaseCommand):
             days_offset = random.randint(-60, 60)
             appt_date = date.today() + timedelta(days=days_offset)
             
-            status = 'completed' if days_offset < -5 else ('scheduled' if days_offset > 0 else 'in-progress')
+            status = 'completed' if days_offset < -5 else ('scheduled' if days_offset > 0 else 'in_progress')
             
             reasons = [
                 "Routine Checkup",
@@ -409,7 +409,6 @@ class Command(BaseCommand):
                     "appointment_time": time(random.randint(9,16), random.choice([0, 30])),
                     "status": status,
                     "reason": random.choice(reasons),
-                    "appointment_type": random.choice(["in-person", "video"]),
                     "created_by": pat.user
                 }
             )
@@ -670,47 +669,51 @@ class Command(BaseCommand):
         for appt in appointments:
             if appt.status != 'completed': continue
             
+            # Check if invoice already exists for this appointment
+            existing_invoice = Invoice.objects.filter(appointment=appt).first()
+            if existing_invoice:
+                continue
+            
             fee = appt.doctor.consultation_fee
             tax = fee * Decimal("0.18")
             total = fee + tax
 
-            inv, created = Invoice.objects.get_or_create(
+            inv = Invoice.objects.create(
+                invoice_id=f"INV-{uuid.uuid4().hex[:6].upper()}",
                 appointment=appt,
-                defaults={
-                    "invoice_id": f"INV-{uuid.uuid4().hex[:6].upper()}",
-                    "patient": appt.patient,
-                    "status": random.choice(['paid', 'paid', 'sent']),  # Most are paid
-                    "subtotal": fee,
-                    "tax_amount": tax,
-                    "discount_amount": Decimal("0"),
-                    "total_amount": total,
-                    "paid_amount": total if random.choice([True, False]) else Decimal("0"),
-                    "due_date": date.today() + timedelta(days=15)
-                }
+                patient=appt.patient,
+                status=random.choice(['paid', 'paid', 'issued']),  # Most are paid
+                subtotal=fee,
+                tax_amount=tax,
+                discount_amount=Decimal("0"),
+                total_amount=total,
+                paid_amount=total if random.choice([True, False]) else Decimal("0"),
+                due_date=date.today() + timedelta(days=15)
             )
-            if created:
-                invoice_count += 1
-                InvoiceItem.objects.create(
+            
+            invoice_count += 1
+            InvoiceItem.objects.create(
+                invoice=inv,
+                item_type="consultation",
+                description="Consultation Fee",
+                quantity=1,
+                unit_price=fee,
+                total_price=fee
+            )
+            
+            # Create payment for paid invoices
+            if inv.status == 'paid':
+                Payment.objects.create(
+                    payment_id=f"PAY-{uuid.uuid4().hex[:8].upper()}",
                     invoice=inv,
-                    item_type="consultation",
-                    description="Consultation Fee",
-                    quantity=1,
-                    unit_price=fee,
-                    total_price=fee
+                    amount=total,
+                    payment_method=random.choice(['cash', 'card', 'upi', 'insurance']),
+                    payment_date=timezone.now() - timedelta(days=random.randint(0, 3)),
+                    status='completed',
+                    transaction_id=f"TXN-{uuid.uuid4().hex[:12].upper()}",
+                    notes=f"Payment for appointment on {appt.appointment_date}"
                 )
-                
-                # Create payment for paid invoices
-                if inv.status == 'paid':
-                    Payment.objects.create(
-                        invoice=inv,
-                        amount=total,
-                        payment_method=random.choice(['cash', 'card', 'upi', 'insurance']),
-                        payment_date=appt.date + timedelta(days=random.randint(0, 3)),
-                        status='completed',
-                        transaction_id=f"TXN-{uuid.uuid4().hex[:12].upper()}",
-                        notes=f"Payment for appointment on {appt.date}"
-                    )
-                    payment_count += 1
+                payment_count += 1
         
         self.stdout.write(f"   Created {invoice_count} invoices and {payment_count} payments")
 
