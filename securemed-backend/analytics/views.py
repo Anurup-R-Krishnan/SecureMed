@@ -29,7 +29,6 @@ def get_dashboard_stats(request):
     from patients.models import Patient
     from appointments.models import Appointment, Doctor
     
-    # Get real counts from database
     try:
         total_patients = Patient.objects.count()
     except Exception:
