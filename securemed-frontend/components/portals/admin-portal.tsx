@@ -42,7 +42,7 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
     if (currentTab && currentTab !== activeTab) {
       setActiveTabState(currentTab);
     }
-  }, [currentTab]);
+  }, [currentTab, activeTab]);
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);

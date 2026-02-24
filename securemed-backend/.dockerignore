@@ -1,0 +1,52 @@
+# Version control
+.git/
+.gitignore
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing / coverage
+.coverage
+coverage/
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Generated files
+*.log
+*.pid
+db.sqlite3
+db.sqlite3-journal
+
+# Media uploads (mounted as volume)
+media/
+
+# Static collected (rebuilt in container)
+staticfiles/
+
+# Docs
+docs/

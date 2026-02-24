@@ -42,7 +42,7 @@ export default function LabTechnicianPortal({ onLogout, onSwitchRole, currentTab
         if (currentTab && currentTab !== activeTab) {
             setActiveTabState(currentTab);
         }
-    }, [currentTab]);
+    }, [currentTab, activeTab]);
 
     return (
         <div className="space-y-6">

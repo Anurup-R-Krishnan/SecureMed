@@ -29,32 +29,12 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
   }, [searchTerm]);
 
   const fetchRecords = async (search?: string) => {
-    setLoading(true);
-    try {
-      const params: any = {};
-      if (patientId) params.patient_id = patientId;
-      if (search) params.search = search;
-
-      const [recordsRes, prescriptionsRes] = await Promise.all([
-        api.get('/medical-records/records/', { params }),
-        api.get('/medical-records/prescriptions/', { params: patientId ? { patient_id: patientId } : {} })
-      ]);
-
-      const recordsData = Array.isArray(recordsRes.data) ? recordsRes.data : (recordsRes.data.results || []);
-      const prescriptionsData = Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : (prescriptionsRes.data.results || []);
-
-      setMedicalRecords(recordsData);
-      setPrescriptions(prescriptionsData);
-    } catch (error) {
-      console.error("Failed to fetch data", error);
-    } finally {
-      setLoading(false);
-    }
+    // ... function contents
   };
 
   useEffect(() => {
     fetchRecords(debouncedSearch);
-  }, [patientId, debouncedSearch]);
+  }, [patientId, debouncedSearch, fetchRecords]);
 
   const filteredRecords = medicalRecords.filter(record => {
     const matchesFilter = filterType === 'all' || record.record_type === filterType;

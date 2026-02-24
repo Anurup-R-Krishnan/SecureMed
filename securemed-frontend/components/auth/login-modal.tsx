@@ -143,7 +143,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
                 <div className="p-6 bg-muted/30 mt-8 border-t border-border/50 text-center">
                     <p className="text-sm text-muted-foreground">
-                        Don't have an account?{' '}
+                        Don&apos;t have an account?{' '}
                         <button
                             onClick={handleRegisterClick}
                             className="font-bold text-primary hover:underline hover:text-primary/80 transition-colors"
