@@ -42,34 +42,38 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-    'core',
-    'authentication',
-    'consents',
-    'patients',
-    'departments',
-    'appointments',
-    'medical_records',
-    'billing',
-    'telemedicine',
-    'analytics',
-    'labs',
-    'pharmacy',
-    'seeds',
+    # Accounts
+    'apps.accounts.users',
+    'apps.accounts.patients',
+    'apps.accounts.compliance',
+    # Clinical
+    'apps.clinical.records',
+    'apps.clinical.pharmacy',
+    'apps.clinical.diagnostics',
+    'apps.clinical.telemedicine',
+    # Scheduling
+    'apps.scheduling.appointments',
+    'apps.scheduling.availability',
+    # Finance
+    'apps.finance.billing',
+    # Platform
+    'apps.platform.core',
+    'apps.platform.analytics',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'core.security_middleware.SecurityHeadersMiddleware',
+    'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'authentication.middleware.RoleMiddleware',
-    'core.security_middleware.RateLimitMiddleware',
-    'core.security_middleware.RequestLoggingMiddleware',
-    'authentication.middleware_logging.PrivacyLoggingMiddleware',
+    'apps.accounts.users.middleware.RoleMiddleware',
+    'apps.platform.core.security_middleware.RateLimitMiddleware',
+    'apps.platform.core.security_middleware.RequestLoggingMiddleware',
+    'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -177,9 +181,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'core.pagination.StandardResultsSetPagination',
+    'DEFAULT_PAGINATION_CLASS': 'apps.platform.core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
-    'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
 }
 
 # Custom User Model
@@ -264,7 +268,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'authentication.middleware_logging': {
+        'apps.accounts.users.middleware_logging': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,

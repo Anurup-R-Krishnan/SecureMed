@@ -10,10 +10,10 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from django.contrib.auth import get_user_model
-from patients.models import Patient
-from departments.models import Doctor
-from labs.models import LabTest
-from pharmacy.models import Drug, DrugStock
+from apps.accounts.patients.models import Patient
+from apps.scheduling.availability.models import Doctor
+from apps.clinical.diagnostics.models import LabTest
+from apps.clinical.pharmacy.models import Drug, DrugStock
 from decimal import Decimal
 
 User = get_user_model()

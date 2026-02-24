@@ -1,0 +1,9 @@
+-r base.txt
+
+# Testing
+pytest>=8.0.0
+pytest-django>=4.8.0
+pytest-cov>=4.1.0
+
+# Debugging
+django-debug-toolbar>=4.2.0

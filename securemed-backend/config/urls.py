@@ -17,8 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
-from authentication import views as auth_views
-from core.health_views import HealthCheckView, ReadinessCheckView, LivenessCheckView
+from apps.accounts.users import views as auth_views
+from apps.platform.core.health_views import HealthCheckView, ReadinessCheckView, LivenessCheckView
 
 def api_root(request):
     return JsonResponse({
@@ -35,24 +35,25 @@ def api_root(request):
         }
     })
 api_patterns = [
-    path('auth/', include('authentication.urls')),
-    path('consents/', include('consents.urls')),
+    path('auth/', include('apps.accounts.users.urls')),
+    path('consents/', include('apps.accounts.compliance.urls')),
     
     path('doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
     path('patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),
     path('admin/test-dashboard/', auth_views.admin_dashboard_test, name='admin_test'),
 
-    path('appointments/', include('appointments.urls')),
-    path('medical-records/', include('medical_records.urls')),
-    path('telemedicine/', include('telemedicine.urls')),
-    path('admin/', include('analytics.urls')),
-    path('doctor/', include('analytics.doctor_urls')),
-    path('patient/', include('analytics.patient_urls')),
-    path('labs/', include('labs.urls')),
-    path('pharmacy/', include('pharmacy.urls')),
-    path('patients/', include('patients.urls')),
-    path('billing/', include('billing.urls')),
+    path('appointments/', include('apps.scheduling.appointments.urls')),
+    path('medical-records/', include('apps.clinical.records.urls')),
+    path('telemedicine/', include('apps.clinical.telemedicine.urls')),
+    path('admin/', include('apps.platform.analytics.urls')),
+    path('doctor/', include('apps.platform.analytics.doctor_urls')),
+    path('patient/', include('apps.platform.analytics.patient_urls')),
+    path('labs/', include('apps.clinical.diagnostics.urls')),
+    path('pharmacy/', include('apps.clinical.pharmacy.urls')),
+    path('patients/', include('apps.accounts.patients.urls')),
+    path('billing/', include('apps.finance.billing.urls')),
 ]
+
 
 urlpatterns = [
     path('', api_root, name='api-root'),
