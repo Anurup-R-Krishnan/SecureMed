@@ -24,6 +24,7 @@ export default function InfectionTrackingPortal() {
     const [stats, setStats] = useState<GraphStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [warnings, setWarnings] = useState<string[]>([]);
     const [selectedTrace, setSelectedTrace] = useState<InfectionTrace | null>(null);
 
     /* ── data fetch ── */
@@ -31,18 +32,47 @@ export default function InfectionTrackingPortal() {
         const fetchAll = async () => {
             setLoading(true);
             setError(null);
+            setWarnings([]);
             try {
-                const [graphRes, tracesRes, statsRes] = await Promise.all([
+                const [graphRes, tracesRes, statsRes] = await Promise.allSettled([
                     infectionTrackingService.getGraphVisualization(300),
                     infectionTrackingService.getTraces(),
                     infectionTrackingService.getGraphStats(),
                 ]);
-                setGraphData(graphRes);
-                setTraces(tracesRes);
-                setStats(statsRes);
-            } catch (err: any) {
-                console.error('Failed to load infection data:', err);
-                setError(err?.response?.data?.detail || err.message || 'Failed to load data');
+
+                const sectionWarnings: string[] = [];
+
+                if (graphRes.status === 'fulfilled') {
+                    const data = graphRes.value;
+                    const safeGraph: GraphVisualization = {
+                        nodes: Array.isArray(data?.nodes) ? data.nodes : [],
+                        links: Array.isArray(data?.links) ? data.links : [],
+                    };
+                    setGraphData(safeGraph);
+                } else {
+                    setGraphData({ nodes: [], links: [] });
+                    sectionWarnings.push('Graph visualization is currently unavailable.');
+                }
+
+                if (tracesRes.status === 'fulfilled') {
+                    setTraces(Array.isArray(tracesRes.value) ? tracesRes.value : []);
+                } else {
+                    setTraces([]);
+                    sectionWarnings.push('Transmission traces could not be loaded.');
+                }
+
+                if (statsRes.status === 'fulfilled') {
+                    setStats(statsRes.value);
+                } else {
+                    setStats(null);
+                    sectionWarnings.push('Graph stats could not be loaded.');
+                }
+
+                if (sectionWarnings.length === 3) {
+                    setError('Unable to load infection tracking data right now.');
+                } else if (sectionWarnings.length > 0) {
+                    setWarnings(sectionWarnings);
+                }
             } finally {
                 setLoading(false);
             }
@@ -74,6 +104,12 @@ export default function InfectionTrackingPortal() {
 
     return (
         <div className="space-y-6">
+            {warnings.length > 0 && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
+                    {warnings.join(' ')}
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card p-6 rounded-2xl border border-border/60 shadow-sm">
                 <div className="flex items-center gap-4">

@@ -317,8 +317,8 @@ class HospitalGraphService:
             end_date = datetime.now().date()
 
         query = f"""
-        MATCH (a:Patient {{patient_id: $patient_a}}),
-              (b:Patient {{patient_id: $patient_b}})
+        MATCH (a:Patient {{patient_id: $patient_a}})
+        MATCH (b:Patient {{patient_id: $patient_b}})
         MATCH path = shortestPath((a)-[*..{max_hops}]-(b))
         WHERE ALL(r IN relationships(path)
                   WHERE r.date >= date($start_date)
@@ -364,8 +364,8 @@ class HospitalGraphService:
             end_date = datetime.now().date()
 
         query = f"""
-        MATCH (a:Patient {{patient_id: $patient_a}}),
-              (b:Patient {{patient_id: $patient_b}})
+        MATCH (a:Patient {{patient_id: $patient_a}})
+        MATCH (b:Patient {{patient_id: $patient_b}})
         MATCH path = (a)-[*..{max_hops}]-(b)
         WHERE ALL(r IN relationships(path)
                   WHERE r.date >= date($start_date)

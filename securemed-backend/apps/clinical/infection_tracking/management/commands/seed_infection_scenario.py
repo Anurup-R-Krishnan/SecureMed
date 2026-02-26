@@ -10,6 +10,7 @@ Usage:
 """
 from datetime import date, time, timedelta, datetime
 from django.core.management.base import BaseCommand
+from django.core.management import call_command
 from django.db import transaction
 from django.utils import timezone
 
@@ -126,10 +127,33 @@ INFECTION_REPORTS = [
 class Command(BaseCommand):
     help = 'Seed a realistic infection scenario with patients, doctors, appointments, and infection reports.'
 
+    def _ensure_hospital_prerequisites(self):
+        """
+        Ensure departments/rooms/equipment required by this scenario exist.
+        If not, bootstrap them via setup_hospital.
+        """
+        required_departments = {d['dept'] for d in DOCTORS}
+        required_rooms = {room_id for _, _, room_id, *_ in _build_schedule(date.today())}
+        required_rooms.add('MED-WARD-01')
+
+        missing_dept = Department.objects.filter(code__in=required_departments).count() != len(required_departments)
+        missing_room = Room.objects.filter(room_id__in=required_rooms).count() != len(required_rooms)
+        missing_vent = not Equipment.objects.filter(equipment_type='ventilator').exists()
+
+        if missing_dept or missing_room or missing_vent:
+            self.stdout.write(
+                self.style.WARNING(
+                    'Hospital prerequisites missing (departments/rooms/equipment). '
+                    'Running setup_hospital automatically...'
+                )
+            )
+            call_command('setup_hospital')
+
     @transaction.atomic
     def handle(self, *args, **options):
         graph = HospitalGraphService.get_instance()
         today = date.today()
+        self._ensure_hospital_prerequisites()
 
         # --- 1. Create patients ---
         self.stdout.write('Creating patients...')
@@ -347,5 +371,4 @@ class Command(BaseCommand):
             f'{len(appointments)} appointments, {len(reports)} infection reports, '
             f'{traces_created} transmission traces detected.'
         ))
-
 

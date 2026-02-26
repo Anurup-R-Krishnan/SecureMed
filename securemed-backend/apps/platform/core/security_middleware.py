@@ -63,14 +63,32 @@ class RateLimitMiddleware(MiddlewareMixin):
     }
     
     DEFAULT_RATE_LIMIT = (100, 60)  # 100 requests per minute for other endpoints
+    AUTH_ENDPOINTS_WITH_OWN_LIMITS = {
+        '/api/auth/login/',
+        '/api/auth/register/',
+        '/api/auth/password-reset/',
+        '/api/auth/mfa/verify/',
+        '/api/auth/mfa/login/',
+    }
+    RATE_LIMIT_METHODS = {'POST', 'PUT', 'PATCH', 'DELETE'}
     
     def process_request(self, request):
         if request.path.startswith('/api/'):
+            # Auth endpoints already use view-level ratelimit decorators.
+            # Skipping here prevents stacked throttling that causes early 429s.
+            if request.path in self.AUTH_ENDPOINTS_WITH_OWN_LIMITS:
+                return None
+
+            # Only throttle write-like methods. Read requests are handled
+            # separately by permission checks and query constraints.
+            if request.method.upper() not in self.RATE_LIMIT_METHODS:
+                return None
+
             ip_address = self.get_client_ip(request)
             user_id = getattr(request.user, 'id', None) if hasattr(request, 'user') and request.user.is_authenticated else None
             
             # Create cache key
-            cache_key = f"rate_limit:{request.path}:{ip_address}:{user_id}"
+            cache_key = f"rate_limit:{request.method}:{request.path}:{ip_address}:{user_id}"
             
             # Get rate limit for this endpoint
             max_requests, window = self.RATE_LIMITS.get(
@@ -78,18 +96,24 @@ class RateLimitMiddleware(MiddlewareMixin):
                 self.DEFAULT_RATE_LIMIT
             )
             
-            # Get current request count
-            request_count = cache.get(cache_key, 0)
-            
-            if request_count >= max_requests:
+            # Fixed-window bucket state
+            now = int(time.time())
+            bucket = cache.get(cache_key)
+            if not bucket or bucket.get('reset_at', 0) <= now:
+                bucket = {'count': 0, 'reset_at': now + window}
+
+            if bucket['count'] >= max_requests:
+                retry_after = max(1, bucket['reset_at'] - now)
                 return JsonResponse({
                     'error': 'Rate limit exceeded',
-                    'detail': f'Too many requests. Please try again later.',
-                    'retry_after': window
+                    'detail': 'Too many requests. Please try again later.',
+                    'retry_after': retry_after
                 }, status=429)
             
             # Increment counter
-            cache.set(cache_key, request_count + 1, window)
+            bucket['count'] += 1
+            ttl = max(1, bucket['reset_at'] - now)
+            cache.set(cache_key, bucket, ttl)
         
         return None
     

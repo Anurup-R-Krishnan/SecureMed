@@ -26,15 +26,18 @@ export default function ForceGraph({ data, highlightTrace }: ForceGraphProps) {
     /* ── layout + draw ── */
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas || !data.nodes.length) return;
+        const nodes = Array.isArray(data?.nodes) ? data.nodes : [];
+        const links = Array.isArray(data?.links) ? data.links : [];
+        if (!canvas || !nodes.length) return;
 
         const width = canvas.clientWidth;
         const height = canvas.clientHeight;
+        if (!width || !height) return;
         const dpr = window.devicePixelRatio || 1;
         canvas.width = width * dpr;
         canvas.height = height * dpr;
 
-        const { simNodes, simLinks } = buildSimulation(data.nodes, data.links, width, height);
+        const { simNodes, simLinks } = buildSimulation(nodes, links, width, height);
         runSimulation(simNodes, simLinks, width, height, 200);
 
         simNodesRef.current = simNodes;
@@ -145,6 +148,11 @@ export default function ForceGraph({ data, highlightTrace }: ForceGraphProps) {
             {/* canvas */}
             <div className="relative" style={{ height: 500 }}>
                 <canvas ref={canvasRef} className="w-full h-full" onMouseMove={handleMouseMove} />
+                {(!Array.isArray(data?.nodes) || data.nodes.length === 0) && (
+                    <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+                        No graph data available.
+                    </div>
+                )}
                 {hoveredNode && (
                     <div
                         className="absolute pointer-events-none bg-popover border border-border rounded-lg px-3 py-2 shadow-xl text-sm z-10"
