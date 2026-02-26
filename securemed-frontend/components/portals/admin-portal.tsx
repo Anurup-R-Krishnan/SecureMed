@@ -53,34 +53,35 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Fetch data on mount
+  // Lazy-load tab data only when needed to reduce network + render pressure.
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchTabData = async () => {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [hospitalsData, staffData, statsData, patientsData, alertsData] = await Promise.all([
-          adminService.getHospitals(),
-          adminService.getStaff(),
-          adminService.getDashboardStats(),
-          adminService.getPatients(),
-          adminService.getAlerts(),
-        ]);
-        setHospitals(hospitalsData);
-        setStaff(staffData);
-        setPatients(patientsData);
-        setStats(statsData);
-        setAlerts(alertsData);
+        if (activeTab === 'dashboard') {
+          const [statsData, alertsData] = await Promise.all([
+            adminService.getDashboardStats(),
+            adminService.getAlerts(),
+          ]);
+          setStats(statsData);
+          setAlerts(alertsData);
+        } else if (activeTab === 'hospitals') {
+          setHospitals(await adminService.getHospitals());
+        } else if (activeTab === 'staff') {
+          setStaff(await adminService.getStaff());
+        } else if (activeTab === 'patients') {
+          setPatients(await adminService.getPatients());
+        }
       } catch (error) {
         console.error('Error fetching admin data:', error);
         setLoadError('Failed to load admin data from backend.');
-        // Don't separate error state per fetch for now, global error
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
-  }, []);
+    fetchTabData();
+  }, [activeTab]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -205,7 +206,7 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
       )}
       {activeTab === 'patients' && <PatientManager patients={patients} />}
       {activeTab === 'billing' && <InsuranceVerification />}
-      {activeTab === 'infection-tracking' && <InfectionTrackingPortal />}
+      {activeTab === 'infection-tracking' && <InfectionTrackingPortal isActive={activeTab === 'infection-tracking'} />}
       {activeTab === 'audit-logs' && <AuditLogViewer />}
     </div>
   );

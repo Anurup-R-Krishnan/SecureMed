@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Infection Tracking Portal — main orchestrator.
- * Fetches graph data, traces, and stats, then composes the sub-components.
- */
-
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, AlertTriangle, RefreshCw, Biohazard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +13,11 @@ import ForceGraph from './force-graph';
 import TraceTable from './trace-table';
 import GraphLegend from './graph-legend';
 
-export default function InfectionTrackingPortal() {
+type InfectionTrackingPortalProps = {
+    isActive?: boolean;
+};
+
+export default function InfectionTrackingPortal({ isActive = true }: InfectionTrackingPortalProps) {
     const [graphData, setGraphData] = useState<GraphVisualization | null>(null);
     const [traces, setTraces] = useState<InfectionTrace[]>([]);
     const [stats, setStats] = useState<GraphStats | null>(null);
@@ -26,29 +25,38 @@ export default function InfectionTrackingPortal() {
     const [error, setError] = useState<string | null>(null);
     const [warnings, setWarnings] = useState<string[]>([]);
     const [selectedTrace, setSelectedTrace] = useState<InfectionTrace | null>(null);
+    const [refreshToken, setRefreshToken] = useState(0);
 
-    /* ── data fetch ── */
+    const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
+
     useEffect(() => {
+        if (!isActive) return;
+
+        const controller = new AbortController();
+        let cancelled = false;
+
         const fetchAll = async () => {
             setLoading(true);
             setError(null);
             setWarnings([]);
+
             try {
                 const [graphRes, tracesRes, statsRes] = await Promise.allSettled([
-                    infectionTrackingService.getGraphVisualization(300),
-                    infectionTrackingService.getTraces(),
-                    infectionTrackingService.getGraphStats(),
+                    infectionTrackingService.getGraphVisualization(180, { signal: controller.signal }),
+                    infectionTrackingService.getTraces({ signal: controller.signal }),
+                    infectionTrackingService.getGraphStats({ signal: controller.signal }),
                 ]);
+
+                if (cancelled) return;
 
                 const sectionWarnings: string[] = [];
 
                 if (graphRes.status === 'fulfilled') {
                     const data = graphRes.value;
-                    const safeGraph: GraphVisualization = {
+                    setGraphData({
                         nodes: Array.isArray(data?.nodes) ? data.nodes : [],
                         links: Array.isArray(data?.links) ? data.links : [],
-                    };
-                    setGraphData(safeGraph);
+                    });
                 } else {
                     setGraphData({ nodes: [], links: [] });
                     sectionWarnings.push('Graph visualization is currently unavailable.');
@@ -74,13 +82,22 @@ export default function InfectionTrackingPortal() {
                     setWarnings(sectionWarnings);
                 }
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
-        fetchAll();
-    }, []);
 
-    /* ── loading state ── */
+        fetchAll();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
+    }, [isActive, refreshToken]);
+
+    if (!isActive) {
+        return null;
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
@@ -89,14 +106,14 @@ export default function InfectionTrackingPortal() {
         );
     }
 
-    /* ── error state ── */
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
                 <AlertTriangle className="h-10 w-10 text-destructive" />
                 <p className="text-destructive font-medium">{error}</p>
-                <Button variant="outline" onClick={() => window.location.reload()}>
-                    <RefreshCw className="h-4 w-4 mr-2" /> Retry
+                <Button variant="outline" onClick={refresh}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry
                 </Button>
             </div>
         );
@@ -110,7 +127,6 @@ export default function InfectionTrackingPortal() {
                 </div>
             )}
 
-            {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card p-6 rounded-2xl border border-border/60 shadow-sm">
                 <div className="flex items-center gap-4">
                     <div className="bg-red-500/10 p-3 rounded-xl ring-1 ring-red-500/20">
@@ -133,10 +149,10 @@ export default function InfectionTrackingPortal() {
                 )}
             </div>
 
-            {/* Graph */}
-            {graphData && <ForceGraph data={graphData} highlightTrace={selectedTrace} />}
+            {graphData && (
+                <ForceGraph data={graphData} highlightTrace={selectedTrace} isActive={isActive} />
+            )}
 
-            {/* Traces + Legend */}
             <div className="grid lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                     <TraceTable traces={traces} selectedTrace={selectedTrace} onSelectTrace={setSelectedTrace} />
@@ -146,8 +162,6 @@ export default function InfectionTrackingPortal() {
         </div>
     );
 }
-
-/* ── tiny presentational helper ── */
 
 function StatBadge({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
     return (

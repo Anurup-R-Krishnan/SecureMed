@@ -1,135 +1,355 @@
 'use client';
 
-/**
- * Canvas-based force-directed graph renderer.
- * Receives graph data, runs the layout simulation, and draws the result.
- * Highlights nodes belonging to a selected transmission path.
- */
-
-import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Activity } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Activity, Loader2 } from 'lucide-react';
 import type { GraphVisualization, InfectionTrace } from '@/services/infection-tracking';
 import { NODE_COLORS, REL_COLORS } from './constants';
-import { buildSimulation, runSimulation, type SimNode, type SimLink } from './force-simulation';
 
-interface ForceGraphProps {
+type PositionedNode = {
+    id: string;
+    label: string;
+    type: 'Patient' | 'Doctor' | 'Room' | 'Equipment' | 'Department';
+    x: number;
+    y: number;
+    radius: number;
+};
+
+type DrawLink = {
+    sourceNode: PositionedNode;
+    targetNode: PositionedNode;
+    relationship: string;
+};
+
+type WorkerResponse = {
+    nodes: PositionedNode[];
+};
+
+type ForceGraphProps = {
     data: GraphVisualization;
     highlightTrace: InfectionTrace | null;
+    isActive: boolean;
+};
+
+const GRAPH_HEIGHT = 500;
+const HIT_CELL_SIZE = 56;
+const MAX_DPR = 1.5;
+
+function getCanvasSize(canvas: HTMLCanvasElement): { width: number; height: number } {
+    return {
+        width: Math.max(1, Math.floor(canvas.clientWidth)),
+        height: Math.max(1, Math.floor(canvas.clientHeight)),
+    };
 }
 
-export default function ForceGraph({ data, highlightTrace }: ForceGraphProps) {
+function buildGridIndex(nodes: PositionedNode[], cellSize: number): Map<string, PositionedNode[]> {
+    const grid = new Map<string, PositionedNode[]>();
+    for (const node of nodes) {
+        const gx = Math.floor(node.x / cellSize);
+        const gy = Math.floor(node.y / cellSize);
+        const key = `${gx}:${gy}`;
+        const bucket = grid.get(key);
+        if (bucket) {
+            bucket.push(node);
+        } else {
+            grid.set(key, [node]);
+        }
+    }
+    return grid;
+}
+
+function findHoveredNode(
+    x: number,
+    y: number,
+    grid: Map<string, PositionedNode[]>,
+    cellSize: number,
+): PositionedNode | null {
+    const gx = Math.floor(x / cellSize);
+    const gy = Math.floor(y / cellSize);
+
+    for (let ix = gx - 1; ix <= gx + 1; ix++) {
+        for (let iy = gy - 1; iy <= gy + 1; iy++) {
+            const bucket = grid.get(`${ix}:${iy}`);
+            if (!bucket) continue;
+            for (const node of bucket) {
+                const dx = node.x - x;
+                const dy = node.y - y;
+                if (dx * dx + dy * dy <= node.radius * node.radius) {
+                    return node;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function buildHighlightSet(trace: InfectionTrace | null): Set<string> {
+    const highlighted = new Set<string>();
+    const path = trace?.transmission_path?.path;
+    if (!Array.isArray(path)) return highlighted;
+    for (const step of path) {
+        if (step?.id) highlighted.add(step.id);
+    }
+    return highlighted;
+}
+
+export default function ForceGraph({ data, highlightTrace, isActive }: ForceGraphProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const simNodesRef = useRef<SimNode[]>([]);
-    const simLinksRef = useRef<SimLink[]>([]);
-    const [hoveredNode, setHoveredNode] = useState<SimNode | null>(null);
+    const workerRef = useRef<Worker | null>(null);
+    const pendingWorkerIdRef = useRef(0);
+    const latestHighlightRef = useRef<InfectionTrace | null>(highlightTrace);
+    const frameRef = useRef<number | null>(null);
+    const hoverFrameRef = useRef<number | null>(null);
+    const pointerRef = useRef<{ x: number; y: number } | null>(null);
 
-    /* ── layout + draw ── */
+    const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({
+        width: 0,
+        height: 0,
+    });
+    const [isSimulating, setIsSimulating] = useState(false);
+    const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+
+    const nodesRef = useRef<PositionedNode[]>([]);
+    const linksRef = useRef<DrawLink[]>([]);
+    const gridRef = useRef<Map<string, PositionedNode[]>>(new Map());
+    const nodeByIdRef = useRef<Map<string, PositionedNode>>(new Map());
+
     useEffect(() => {
-        const canvas = canvasRef.current;
-        const nodes = Array.isArray(data?.nodes) ? data.nodes : [];
-        const links = Array.isArray(data?.links) ? data.links : [];
-        if (!canvas || !nodes.length) return;
+        latestHighlightRef.current = highlightTrace;
+    }, [highlightTrace]);
 
+    useEffect(() => {
+        if (!isActive) return;
+        if (typeof window === 'undefined' || workerRef.current) return;
+        workerRef.current = new Worker(
+            new URL('./force-simulation.worker.ts', import.meta.url),
+            { type: 'module' },
+        );
+        return () => {
+            workerRef.current?.terminate();
+            workerRef.current = null;
+        };
+    }, [isActive]);
+
+    useEffect(() => {
+        if (!isActive) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const updateSize = () => setCanvasSize(getCanvasSize(canvas));
+        updateSize();
+
+        const observer = new ResizeObserver(updateSize);
+        observer.observe(canvas);
+        return () => observer.disconnect();
+    }, [isActive]);
+
+    const draw = useCallback((trace: InfectionTrace | null) => {
+        const canvas = canvasRef.current;
+        if (!canvas || !isActive) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const width = canvas.clientWidth;
         const height = canvas.clientHeight;
-        if (!width || !height) return;
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
+        ctx.clearRect(0, 0, width, height);
 
-        const { simNodes, simLinks } = buildSimulation(nodes, links, width, height);
-        runSimulation(simNodes, simLinks, width, height, 200);
+        const nodes = nodesRef.current;
+        const links = linksRef.current;
+        if (!nodes.length) return;
 
-        simNodesRef.current = simNodes;
-        simLinksRef.current = simLinks;
+        const highlightedIds = buildHighlightSet(trace);
 
-        draw(canvas, simNodes, simLinks, highlightTrace);
-    }, [data, highlightTrace]);
+        for (const link of links) {
+            const isHighlighted =
+                highlightedIds.has(link.sourceNode.id) && highlightedIds.has(link.targetNode.id);
+            ctx.beginPath();
+            ctx.moveTo(link.sourceNode.x, link.sourceNode.y);
+            ctx.lineTo(link.targetNode.x, link.targetNode.y);
+            ctx.strokeStyle = isHighlighted ? '#ef4444' : REL_COLORS[link.relationship] || '#33333330';
+            ctx.lineWidth = isHighlighted ? 3 : 1;
+            ctx.stroke();
+        }
 
-    /* ── draw to canvas ── */
-    const draw = useCallback(
-        (canvas: HTMLCanvasElement, nodes: SimNode[], links: SimLink[], trace: InfectionTrace | null) => {
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
+        const renderLabels = nodes.length <= 180;
+        for (const node of nodes) {
+            const isHighlighted = highlightedIds.has(node.id);
+            const color = NODE_COLORS[node.type] || '#999999';
 
-            const dpr = window.devicePixelRatio || 1;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            const w = canvas.clientWidth;
-            const h = canvas.clientHeight;
-            ctx.clearRect(0, 0, w, h);
-
-            // highlighted IDs from the selected trace
-            const hlIds = new Set<string>();
-            if (trace?.transmission_path?.path) {
-                for (const step of trace.transmission_path.path) {
-                    if (step.id) hlIds.add(step.id);
-                }
+            if (isHighlighted) {
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 16;
             }
 
-            // links
-            for (const link of links) {
-                const isHL = hlIds.has(link.sourceNode.id) && hlIds.has(link.targetNode.id);
-                ctx.beginPath();
-                ctx.moveTo(link.sourceNode.x, link.sourceNode.y);
-                ctx.lineTo(link.targetNode.x, link.targetNode.y);
-                ctx.strokeStyle = isHL ? '#ef4444' : (REL_COLORS[link.relationship] || '#33333330');
-                ctx.lineWidth = isHL ? 3 : 1;
-                ctx.stroke();
-            }
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+            ctx.fillStyle = isHighlighted ? '#ef4444' : color;
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
 
-            // nodes
-            for (const node of nodes) {
-                const isHL = hlIds.has(node.id);
-                const color = NODE_COLORS[node.type] || '#999';
+            ctx.strokeStyle = isHighlighted ? '#fca5a5' : '#ffffff';
+            ctx.lineWidth = isHighlighted ? 2 : 1.5;
+            ctx.stroke();
 
-                if (isHL) {
-                    ctx.shadowColor = '#ef4444';
-                    ctx.shadowBlur = 16;
-                }
-
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-                ctx.fillStyle = isHL ? '#ef4444' : color;
-                ctx.fill();
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-
-                ctx.strokeStyle = isHL ? '#fca5a5' : '#ffffff';
-                ctx.lineWidth = isHL ? 2 : 1.5;
-                ctx.stroke();
-
-                // label
+            if (renderLabels) {
                 const raw = node.label || node.id;
-                const label = raw.length > 12 ? raw.slice(0, 10) + '…' : raw;
+                const label = raw.length > 12 ? `${raw.slice(0, 10)}...` : raw;
                 ctx.font = `bold ${node.radius > 12 ? 10 : 8}px Inter, system-ui, sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = '#ffffff';
                 ctx.fillText(label, node.x, node.y + 3);
             }
-        },
-        [],
-    );
+        }
+    }, [isActive]);
 
-    /* ── hover ── */
-    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const scheduleDraw = useCallback((trace: InfectionTrace | null) => {
+        if (!isActive) return;
+        if (frameRef.current) {
+            cancelAnimationFrame(frameRef.current);
+        }
+        frameRef.current = requestAnimationFrame(() => {
+            frameRef.current = null;
+            draw(trace);
+        });
+    }, [draw, isActive]);
+
+    useEffect(() => {
+        if (!isActive) return;
+
+        const nodes = Array.isArray(data?.nodes) ? data.nodes : [];
+        const links = Array.isArray(data?.links) ? data.links : [];
+        if (!nodes.length) {
+            nodesRef.current = [];
+            linksRef.current = [];
+            gridRef.current = new Map();
+            nodeByIdRef.current = new Map();
+            setHoveredNodeId(null);
+            scheduleDraw(null);
+            return;
+        }
+
+        const worker = workerRef.current;
+        const canvas = canvasRef.current;
+        const { width, height } = canvasSize;
+        if (!worker || !canvas || !width || !height) return;
+
+        const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+
+        setIsSimulating(true);
+        const requestId = pendingWorkerIdRef.current + 1;
+        pendingWorkerIdRef.current = requestId;
+
+        worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+            if (requestId !== pendingWorkerIdRef.current) return;
+
+            const positionedNodes = event.data?.nodes ?? [];
+            const nodeById = new Map(positionedNodes.map((node) => [node.id, node]));
+
+            const drawLinks: DrawLink[] = [];
+            for (const link of links) {
+                const sourceNode = nodeById.get(link.source);
+                const targetNode = nodeById.get(link.target);
+                if (!sourceNode || !targetNode) continue;
+                drawLinks.push({
+                    sourceNode,
+                    targetNode,
+                    relationship: link.relationship,
+                });
+            }
+
+            nodesRef.current = positionedNodes;
+            linksRef.current = drawLinks;
+            nodeByIdRef.current = nodeById;
+            gridRef.current = buildGridIndex(positionedNodes, HIT_CELL_SIZE);
+            setHoveredNodeId(null);
+            setIsSimulating(false);
+            scheduleDraw(latestHighlightRef.current);
+        };
+
+        worker.onerror = () => {
+            if (requestId !== pendingWorkerIdRef.current) return;
+            setIsSimulating(false);
+        };
+
+        worker.postMessage({
+            nodes,
+            links,
+            width,
+            height,
+            iterations: 120,
+        });
+    }, [data, isActive, canvasSize, scheduleDraw]);
+
+    useEffect(() => {
+        if (!isActive) return;
+        scheduleDraw(highlightTrace);
+    }, [highlightTrace, isActive, scheduleDraw]);
+
+    useEffect(() => {
+        if (isActive) return;
+        setHoveredNodeId(null);
+        pointerRef.current = null;
+        setIsSimulating(false);
+        if (hoverFrameRef.current) {
+            cancelAnimationFrame(hoverFrameRef.current);
+            hoverFrameRef.current = null;
+        }
+        if (frameRef.current) {
+            cancelAnimationFrame(frameRef.current);
+            frameRef.current = null;
+        }
+    }, [isActive]);
+
+    useEffect(() => {
+        return () => {
+            if (hoverFrameRef.current) cancelAnimationFrame(hoverFrameRef.current);
+            if (frameRef.current) cancelAnimationFrame(frameRef.current);
+        };
+    }, []);
+
+    const hoveredNode = useMemo(() => {
+        if (!hoveredNodeId) return null;
+        return nodeByIdRef.current.get(hoveredNodeId) ?? null;
+    }, [hoveredNodeId]);
+
+    const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!isActive) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        pointerRef.current = {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+        };
 
-        const found = simNodesRef.current.find((n) => {
-            const dx = n.x - mx;
-            const dy = n.y - my;
-            return dx * dx + dy * dy <= n.radius * n.radius;
+        if (hoverFrameRef.current !== null) return;
+        hoverFrameRef.current = requestAnimationFrame(() => {
+            hoverFrameRef.current = null;
+            const pointer = pointerRef.current;
+            if (!pointer) return;
+            const found = findHoveredNode(pointer.x, pointer.y, gridRef.current, HIT_CELL_SIZE);
+            const nextId = found?.id ?? null;
+            setHoveredNodeId((prev) => (prev === nextId ? prev : nextId));
+            canvas.style.cursor = nextId ? 'pointer' : 'default';
         });
-        setHoveredNode(found || null);
-        canvas.style.cursor = found ? 'pointer' : 'default';
+    }, [isActive]);
+
+    const handleMouseLeave = useCallback(() => {
+        pointerRef.current = null;
+        setHoveredNodeId(null);
+        const canvas = canvasRef.current;
+        if (canvas) canvas.style.cursor = 'default';
     }, []);
+
+    const hasNoGraphData = !Array.isArray(data?.nodes) || data.nodes.length === 0;
 
     return (
         <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden relative">
-            {/* header */}
             <div className="px-6 py-4 border-b border-border/40 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Activity className="h-5 w-5 text-primary" />
@@ -145,10 +365,22 @@ export default function ForceGraph({ data, highlightTrace }: ForceGraphProps) {
                 </div>
             </div>
 
-            {/* canvas */}
-            <div className="relative" style={{ height: 500 }}>
-                <canvas ref={canvasRef} className="w-full h-full" onMouseMove={handleMouseMove} />
-                {(!Array.isArray(data?.nodes) || data.nodes.length === 0) && (
+            <div className="relative" style={{ height: GRAPH_HEIGHT }}>
+                <canvas
+                    ref={canvasRef}
+                    className="w-full h-full"
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                />
+                {isSimulating && (
+                    <div className="absolute inset-0 grid place-items-center bg-background/40 backdrop-blur-[1px]">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Computing graph layout...
+                        </div>
+                    </div>
+                )}
+                {hasNoGraphData && !isSimulating && (
                     <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
                         No graph data available.
                     </div>
@@ -159,7 +391,9 @@ export default function ForceGraph({ data, highlightTrace }: ForceGraphProps) {
                         style={{ left: hoveredNode.x + 20, top: hoveredNode.y - 10 }}
                     >
                         <p className="font-bold text-foreground">{hoveredNode.label || hoveredNode.id}</p>
-                        <p className="text-muted-foreground text-xs">{hoveredNode.type} · {hoveredNode.id}</p>
+                        <p className="text-muted-foreground text-xs">
+                            {hoveredNode.type} - {hoveredNode.id}
+                        </p>
                     </div>
                 )}
             </div>

@@ -91,19 +91,29 @@ export interface HighRiskRoom {
     score: number;
 }
 
+interface RequestOptions {
+    signal?: AbortSignal;
+}
+
 export const infectionTrackingService = {
-    async getGraphVisualization(limit = 200): Promise<GraphVisualization> {
-        const response = await apiClient.get(`/infection-tracking/graph/visualization/?limit=${limit}`);
+    async getGraphVisualization(limit = 200, options?: RequestOptions): Promise<GraphVisualization> {
+        const response = await apiClient.get(`/infection-tracking/graph/visualization/?limit=${limit}`, {
+            signal: options?.signal,
+        });
         return response.data;
     },
 
-    async getGraphStats(): Promise<GraphStats> {
-        const response = await apiClient.get('/infection-tracking/graph/stats/');
+    async getGraphStats(options?: RequestOptions): Promise<GraphStats> {
+        const response = await apiClient.get('/infection-tracking/graph/stats/', {
+            signal: options?.signal,
+        });
         return response.data;
     },
 
-    async getTraces(): Promise<InfectionTrace[]> {
-        const response = await apiClient.get('/infection-tracking/traces/');
+    async getTraces(options?: RequestOptions): Promise<InfectionTrace[]> {
+        const response = await apiClient.get('/infection-tracking/traces/', {
+            signal: options?.signal,
+        });
         return response.data.results || response.data;
     },
 
