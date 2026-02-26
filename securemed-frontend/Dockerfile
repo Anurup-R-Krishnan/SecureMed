@@ -1,48 +1,41 @@
-# ── Stage 1: Install dependencies ─────────────────────────────────
 FROM oven/bun:1 AS deps
 
 WORKDIR /app
-
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN bun install
 
+# ── production build ──────────────────────────────────────────────────────────
+FROM deps AS builder
 
-# ── Stage 2: Build ────────────────────────────────────────────────
-FROM oven/bun:1 AS builder
-
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
 ARG BACKEND_URL
 ENV BACKEND_URL=$BACKEND_URL
-ENV NEXT_TELEMETRY_DISABLED=1
-
 RUN bun run build
 
-
-# ── Stage 3: Production runner ────────────────────────────────────
-FROM node:22-alpine AS runner
+# ── production runtime ────────────────────────────────────────────────────────
+FROM oven/bun:1 AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+    adduser  --system --uid 1001 nextjs
 
-# Copy standalone output from Next.js build
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/public        ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static     ./.next/static
 
 USER nextjs
-
 EXPOSE 3000
+CMD ["bun", "run", "server.js"]
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+# ── dev (default) ─────────────────────────────────────────────────────────────
+FROM deps AS dev
 
-CMD ["node", "server.js"]
+WORKDIR /app
+COPY . .
+ARG BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL
+EXPOSE 3000
+CMD ["bun", "run", "dev"]

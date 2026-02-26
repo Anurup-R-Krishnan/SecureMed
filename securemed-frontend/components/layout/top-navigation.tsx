@@ -57,6 +57,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
         { name: 'Staff', href: '/admin/staff' },
         { name: 'Patients', href: '/admin/patients' },
         { name: 'Billing', href: '/admin/billing' },
+        { name: 'Infections', href: '/admin/infection-tracking' },
         { name: 'Audit Logs', href: '/admin/audit-logs' },
     ];
 

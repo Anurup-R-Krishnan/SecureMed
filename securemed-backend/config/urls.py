@@ -52,6 +52,7 @@ api_patterns = [
     path('pharmacy/', include('apps.clinical.pharmacy.urls')),
     path('patients/', include('apps.accounts.patients.urls')),
     path('billing/', include('apps.finance.billing.urls')),
+    path('infection-tracking/', include('apps.clinical.infection_tracking.urls')),
 ]
 
 

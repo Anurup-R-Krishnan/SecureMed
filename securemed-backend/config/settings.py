@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     # Platform
     'apps.platform.core',
     'apps.platform.analytics',
+    # Clinical — Infection Tracking
+    'apps.clinical.infection_tracking',
 ]
 
 MIDDLEWARE = [
@@ -308,3 +310,8 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Neo4j Graph Database Configuration
+NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
+NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
+NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'securemed_graph')

@@ -6,6 +6,7 @@ import HospitalManager from '@/components/portals/admin/hospitals/hospital-manag
 import StaffManager from '@/components/portals/admin/staff/staff-manager';
 import PatientManager from '@/components/portals/admin/patients/patient-manager';
 import AuditLogViewer from '@/components/portals/admin/security/audit-log-viewer';
+import InfectionTrackingPortal from '@/components/portals/admin/infection-tracking/infection-tracking-portal';
 import { Button } from '@/components/ui/button';
 import { adminService, Hospital, StaffMember, DashboardStats, SystemAlert } from '@/services/admin';
 import InsuranceVerification from './admin/billing/insurance-verification';
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react';
 import { NotificationCenter } from '@/components/ui/notification-center';
 
-type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing' | 'audit-logs';
+type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing' | 'infection-tracking' | 'audit-logs';
 
 interface AdminPortalProps {
   onLogout: () => void;
@@ -204,6 +205,7 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
       )}
       {activeTab === 'patients' && <PatientManager patients={patients} />}
       {activeTab === 'billing' && <InsuranceVerification />}
+      {activeTab === 'infection-tracking' && <InfectionTrackingPortal />}
       {activeTab === 'audit-logs' && <AuditLogViewer />}
     </div>
   );
