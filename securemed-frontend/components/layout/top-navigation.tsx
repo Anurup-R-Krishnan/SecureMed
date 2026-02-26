@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     Bell,
     Search,
@@ -31,8 +31,14 @@ interface TopNavigationProps {
 
 export function TopNavigation({ userType }: TopNavigationProps) {
     const pathname = usePathname();
+    const router = useRouter();
     const { user, logout } = useAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    const handleLogout = async () => {
+        await logout();
+        router.push('/login');
+    };
 
     // Define navigation items based on user type
     const doctorNav = [
@@ -189,7 +195,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                                 <span>Settings</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={logout}>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={handleLogout}>
                                 <LogOut className="mr-2 h-4 w-4" />
                                 <span>Log out</span>
                             </DropdownMenuItem>
@@ -231,7 +237,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                                 className="justify-start gap-2"
                                 onClick={() => {
                                     setMobileMenuOpen(false);
-                                    logout();
+                                    handleLogout();
                                 }}
                             >
                                 <LogOut className="h-4 w-4" />

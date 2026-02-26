@@ -553,15 +553,16 @@ def get_audit_logs(request):
     
     from apps.clinical.records.models import EmergencyAccessLog
     logs = EmergencyAccessLog.objects.select_related(
-        'doctor', 'patient'
-    ).order_by('-accessed_at')[:100]
-    
-    data = [{
-        'doctor': log.doctor.get_full_name(),
-        'patient': log.patient.get_full_name(),
-        'reason': log.reason,
-        'emergency_type': log.emergency_type,
-        'accessed_at': log.accessed_at.isoformat(),
-    } for log in logs]
-    
+        'accessed_by', 'patient', 'patient__user'
+    ).order_by('-timestamp')[:100]
+
+    data = []
+    for log in logs:
+        actor = log.accessed_by.get_full_name() or log.accessed_by.email or str(log.accessed_by_id)
+        patient_name = getattr(log.patient.user, 'get_full_name', lambda: '')() or log.patient.patient_id
+        data.append(
+            f"[{log.timestamp.isoformat()}] {actor} accessed {patient_name} "
+            f"({log.patient.patient_id}) | {log.emergency_type} | {log.reason}"
+        )
+
     return Response({'logs': data})

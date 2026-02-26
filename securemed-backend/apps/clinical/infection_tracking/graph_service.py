@@ -18,6 +18,7 @@ Graph schema:
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from datetime import date as py_date, time as py_time
 
 from django.conf import settings
 from neo4j import GraphDatabase
@@ -495,33 +496,35 @@ class HospitalGraphService:
         return rooms
 
     def get_graph_stats(self):
-        """Return overall graph statistics: node counts, relationship counts."""
-        query = """
-        CALL {
-            MATCH (p:Patient) RETURN 'patients' AS label, count(p) AS cnt
-            UNION ALL
-            MATCH (d:Doctor) RETURN 'doctors' AS label, count(d) AS cnt
-            UNION ALL
-            MATCH (r:Room) RETURN 'rooms' AS label, count(r) AS cnt
-            UNION ALL
-            MATCH (e:Equipment) RETURN 'equipment' AS label, count(e) AS cnt
-            UNION ALL
-            MATCH ()-[r:VISITED]->() RETURN 'visits' AS label, count(r) AS cnt
-            UNION ALL
-            MATCH ()-[r:SAW]->() RETURN 'consultations' AS label, count(r) AS cnt
-            UNION ALL
-            MATCH ()-[r:WORKED_IN]->() RETURN 'doctor_room_sessions' AS label, count(r) AS cnt
-            UNION ALL
-            MATCH ()-[r:USED_EQUIPMENT]->() RETURN 'equipment_usages' AS label, count(r) AS cnt
-        }
-        RETURN label, cnt
-        """
-        stats = {}
+        """Return graph stats in the shape expected by the frontend."""
+        node_counts = {}
+        rel_counts = {}
+
         with self._session() as session:
-            result = session.run(query)
-            for record in result:
-                stats[record['label']] = record['cnt']
-        return stats
+            node_result = session.run("""
+                MATCH (n)
+                UNWIND labels(n) AS label
+                RETURN label, count(*) AS cnt
+            """)
+            for record in node_result:
+                node_counts[record['label']] = record['cnt']
+
+            rel_result = session.run("""
+                MATCH ()-[r]->()
+                RETURN type(r) AS rel_type, count(*) AS cnt
+            """)
+            for record in rel_result:
+                rel_counts[record['rel_type']] = record['cnt']
+
+        total_nodes = sum(node_counts.values())
+        total_relationships = sum(rel_counts.values())
+
+        return {
+            'nodes': node_counts,
+            'relationships': rel_counts,
+            'total_nodes': total_nodes,
+            'total_relationships': total_relationships,
+        }
 
     def get_graph_visualization_data(self, limit=200):
         """
@@ -557,9 +560,11 @@ class HospitalGraphService:
             result = session.run(query, {'limit': limit})
             record = result.single()
             if record:
+                nodes = [self._json_safe_value(node) for node in (record['nodes'] or [])]
+                links = [self._json_safe_value(link) for link in (record['links'] or [])]
                 return {
-                    'nodes': record['nodes'],
-                    'links': record['links'],
+                    'nodes': nodes,
+                    'links': links,
                 }
         return {'nodes': [], 'links': []}
 
@@ -635,6 +640,24 @@ class HospitalGraphService:
     # ──────────────────────────────────────────────────────────────────
     # Internal helpers
     # ──────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _json_safe_value(value):
+        """Recursively convert Neo4j temporal values into JSON-safe primitives."""
+        if isinstance(value, dict):
+            return {k: HospitalGraphService._json_safe_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [HospitalGraphService._json_safe_value(v) for v in value]
+        if isinstance(value, tuple):
+            return [HospitalGraphService._json_safe_value(v) for v in value]
+        if isinstance(value, (datetime, py_date, py_time)):
+            return value.isoformat()
+        if hasattr(value, 'iso_format'):
+            try:
+                return value.iso_format()
+            except Exception:
+                return str(value)
+        return value
 
     @staticmethod
     def _serialize_path(node_types, node_props, rel_types, rel_props, path_length):

@@ -49,6 +49,14 @@ DOCTORS = [
     {'first': 'Neha',   'last': 'Bhatt',    'spec': 'neurology',    'dept': 'NEUR', 'license': 'MCI-50789', 'exp': 10, 'fee': 1100},
 ]
 
+DEPARTMENT_DEFAULTS = {
+    'MED': 'General Medicine',
+    'CARD': 'Cardiology',
+    'PED': 'Pediatrics',
+    'ORTH': 'Orthopedics',
+    'NEUR': 'Neurology',
+}
+
 
 # Appointment schedule — creates the cross-patient/room/doctor web
 # The key overlap: patients 0,1,2 share rooms with doctor 0 within 48hrs
@@ -148,6 +156,31 @@ class Command(BaseCommand):
                 )
             )
             call_command('setup_hospital')
+
+        # Ensure required doctor departments exist by code, regardless of
+        # existing department records that may have mismatched codes.
+        for code, name in DEPARTMENT_DEFAULTS.items():
+            dept = Department.objects.filter(code=code).first()
+            if dept:
+                continue
+
+            dept_by_name = Department.objects.filter(name=name).first()
+            if dept_by_name:
+                # Reconcile legacy/mismatched codes if target code is free.
+                if not Department.objects.filter(code=code).exists():
+                    dept_by_name.code = code
+                    dept_by_name.save(update_fields=['code'])
+                continue
+
+            Department.objects.create(
+                code=code,
+                name=name,
+                floor=2,
+                building='Main Building',
+                phone='0000000000',
+                email=f'{code.lower()}@securemed.hospital',
+                description=f'Auto-created for infection scenario ({name})',
+            )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -371,4 +404,3 @@ class Command(BaseCommand):
             f'{len(appointments)} appointments, {len(reports)} infection reports, '
             f'{traces_created} transmission traces detected.'
         ))
-
