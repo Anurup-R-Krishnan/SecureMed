@@ -3,6 +3,7 @@
 import React from 'react';
 import { TopNavigation } from '@/components/layout/top-navigation';
 import { CommandPalette } from '@/components/ui/command-palette';
+import AiTriageWidget from '@/components/portals/patient/ai-triage-widget';
 
 export default function PatientLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -14,6 +15,7 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
             </main>
 
             <CommandPalette />
+            <AiTriageWidget />
         </div>
     );
 }
