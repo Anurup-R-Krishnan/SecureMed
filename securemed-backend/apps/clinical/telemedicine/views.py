@@ -2,11 +2,104 @@
 Telemedicine API views for video room management.
 """
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.conf import settings
+
+try:
+    from google import genai as google_genai
+    from google.genai import types as genai_types
+    _genai_client = google_genai.Client(api_key=settings.GOOGLE_GEMINI_API_KEY) if settings.GOOGLE_GEMINI_API_KEY else None
+    GEMINI_AVAILABLE = bool(_genai_client)
+except Exception:
+    _genai_client = None
+    GEMINI_AVAILABLE = False
+
+TRIAGE_SYSTEM_PROMPT = (
+    "You are an AI Clinical Triage Assistant. Ask exactly ONE question at a time to gather symptoms. "
+    "Ask follow-up questions until you have enough information to confidently guess the medical issue, "
+    "but you MUST NOT ask more than 6 questions total. Once confident or at the 6-question limit, "
+    "STOP asking questions and output ONLY a final summary in this strict Markdown format:\n"
+    "**Possible Issue:** [Guess]\n"
+    "**Priority Level:** [Low/Medium/High]\n"
+    "**Explanation:** [1-2 sentences]\n"
+    "**Recommended Next Step:** [Action]"
+)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_triage_chat(request):
+    """
+    AI-powered pre-consultation triage chat.
+    POST /api/telemedicine/api/triage/chat/
+    Body: {"message": "...", "history": [...]}
+    """
+    if not GEMINI_AVAILABLE:
+        return Response(
+            {"error": "AI service is not configured. Please set GOOGLE_GEMINI_API_KEY."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    message = request.data.get('message', '').strip()
+    history = request.data.get('history', [])
+
+    if not message:
+        return Response({"error": "'message' is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Build contents list: prior history + current user message
+        contents = []
+        for turn in history:
+            role = turn.get('role', 'user')
+            text = turn.get('parts', [{}])[0].get('text', '') if 'parts' in turn else turn.get('content', '')
+            contents.append({'role': role, 'parts': [{'text': text}]})
+        contents.append({'role': 'user', 'parts': [{'text': message}]})
+
+        # Models to try in order (fallback chain)
+        models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']
+        last_err = None
+        reply_text = None
+        for model_name in models_to_try:
+            try:
+                response = _genai_client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=TRIAGE_SYSTEM_PROMPT,
+                    ),
+                )
+                reply_text = response.text
+                break
+            except Exception as me:
+                last_err = me
+                if '429' not in str(me) and 'quota' not in str(me).lower() and '404' not in str(me):
+                    raise  # Non-quota error, don't retry other models
+                continue  # Try next model
+
+        if reply_text is None:
+            err_str = str(last_err)
+            return Response(
+                {"error": "AI service is temporarily unavailable due to rate limits. Please try again in a few minutes."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        is_final = "**Possible Issue:**" in reply_text
+        return Response({"reply": reply_text, "is_final": is_final}, status=status.HTTP_200_OK)
+    except Exception as e:
+        err_str = str(e)
+        if '429' in err_str or 'quota' in err_str.lower():
+            return Response(
+                {"error": "AI service is temporarily unavailable due to rate limits. Please try again in a few minutes."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        return Response(
+            {"error": f"AI service error: {err_str}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 from .models import VideoRoom, RoomParticipant
 from .serializers import VideoRoomSerializer, RoomParticipantSerializer
