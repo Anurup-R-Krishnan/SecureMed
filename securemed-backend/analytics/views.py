@@ -492,7 +492,11 @@ def fhir_export(request):
                 },
                 'subject': {'reference': f'Patient/{patient.patient_id}'},
                 'recordedDate': rec.record_date.isoformat(),
-                'note': [{'text': rec.notes}] if rec.notes else []
+                'note': [{'text': rec.notes}] if rec.notes else [],
+                'extension': [{
+                    'url': 'http://securemed.ai/fhir/StructureDefinition/clarity-summary',
+                    'valueString': json.dumps(rec.clarity_summary) if rec.clarity_summary else None
+                }]
             }
         })
         

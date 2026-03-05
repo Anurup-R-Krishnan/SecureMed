@@ -13,4 +13,4 @@ django-redis>=5.4.0
 pillow>=10.1.0
 requests>=2.31.0
 django-ratelimit>=4.1.0
-echo "reportlab>=4.0.0" >> requirements.txt
+reportlab>=4.0.0
