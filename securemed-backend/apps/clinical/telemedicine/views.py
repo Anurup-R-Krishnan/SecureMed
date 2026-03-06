@@ -1,6 +1,17 @@
 """
 Telemedicine API views for video room management.
 """
+import time
+import socket as _socket
+
+# httpx (used by google-genai) tries IPv6 first; Docker containers typically
+# have no IPv6 route, causing immediate ENETUNREACH before any IPv4 fallback.
+# Force IPv4-only resolution for all outbound connections in this process.
+_orig_getaddrinfo = _socket.getaddrinfo
+def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return _orig_getaddrinfo(host, port, _socket.AF_INET, type, proto, flags)
+_socket.getaddrinfo = _ipv4_only_getaddrinfo
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -12,9 +23,18 @@ from django.conf import settings
 try:
     from google import genai as google_genai
     from google.genai import types as genai_types
-    _genai_client = google_genai.Client(api_key=settings.GOOGLE_GEMINI_API_KEY) if settings.GOOGLE_GEMINI_API_KEY else None
+    _genai_client = (
+        google_genai.Client(
+            api_key=settings.GOOGLE_GEMINI_API_KEY,
+            http_options=genai_types.HttpOptions(timeout=90_000),  # 90 s in ms — gunicorn timeout is 120 s
+        )
+        if settings.GOOGLE_GEMINI_API_KEY
+        else None
+    )
     GEMINI_AVAILABLE = bool(_genai_client)
-except Exception:
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).error(f"[GEMINI INIT] failed: {_e}")
     _genai_client = None
     GEMINI_AVAILABLE = False
 
@@ -59,11 +79,16 @@ def ai_triage_chat(request):
             contents.append({'role': role, 'parts': [{'text': text}]})
         contents.append({'role': 'user', 'parts': [{'text': message}]})
 
-        # Models to try in order (fallback chain)
-        models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']
+        # Models to try in order — pick fastest available models for this key
+        models_to_try = [
+            'gemini-2.5-flash-lite',   # fastest / lightest
+            'gemini-2.5-flash',        # fallback
+        ]
         last_err = None
         reply_text = None
-        for model_name in models_to_try:
+        for i, model_name in enumerate(models_to_try):
+            if i > 0:
+                time.sleep(1)  # brief pause between retries to respect rate limits
             try:
                 response = _genai_client.models.generate_content(
                     model=model_name,
@@ -76,24 +101,41 @@ def ai_triage_chat(request):
                 break
             except Exception as me:
                 last_err = me
-                if '429' not in str(me) and 'quota' not in str(me).lower() and '404' not in str(me):
-                    raise  # Non-quota error, don't retry other models
-                continue  # Try next model
+                err_lower = str(me).lower()
+                is_retryable = (
+                    '429' in str(me)
+                    or 'quota' in err_lower
+                    or 'timed out' in err_lower
+                    or 'timeout' in err_lower
+                    or '404' in str(me)
+                    or 'not found' in err_lower
+                    or 'not_found' in err_lower
+                )
+                if not is_retryable:
+                    raise  # Hard error — don't retry
+                continue  # Rate-limit or timeout — try next model
 
         if reply_text is None:
-            err_str = str(last_err)
+            last_err_str = str(last_err) if last_err else 'unknown'
+            last_err_lower = last_err_str.lower()
+            if '429' in last_err_str or 'quota' in last_err_lower:
+                return Response(
+                    {"error": "The AI service has hit its free-tier daily quota. Quota resets at midnight Pacific Time (≈ 1:30 PM IST). Please try again later."},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
             return Response(
-                {"error": "AI service is temporarily unavailable due to rate limits. Please try again in a few minutes."},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                {"error": f"AI service error: {last_err_str[:300]}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         is_final = "**Possible Issue:**" in reply_text
         return Response({"reply": reply_text, "is_final": is_final}, status=status.HTTP_200_OK)
     except Exception as e:
         err_str = str(e)
-        if '429' in err_str or 'quota' in err_str.lower():
+        err_lower = err_str.lower()
+        if '429' in err_str or 'quota' in err_lower or 'timed out' in err_lower or 'timeout' in err_lower:
             return Response(
-                {"error": "AI service is temporarily unavailable due to rate limits. Please try again in a few minutes."},
+                {"error": "The AI service has hit its free-tier daily quota. Quota resets at midnight Pacific Time (≈ 1:30 PM IST). Please try again later."},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
         return Response(
@@ -403,3 +445,122 @@ class MessageViewSet(viewsets.ModelViewSet):
         )
         serializer.save(sender=self.request.user, conversation=conversation)
 
+
+# ============================================
+# Triage Handover Views
+# ============================================
+
+from django.contrib.auth import get_user_model
+from .models import TriageRequest
+
+_User = get_user_model()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_triage_request(request):
+    """
+    Patient submits a triage handover to a doctor.
+
+    POST /api/telemedicine/triage/submit/
+    Body: { "doctor_id": <int>, "ai_summary": "<text>" }
+    """
+    doctor_id = request.data.get('doctor_id')
+    ai_summary = request.data.get('ai_summary', '').strip()
+
+    if not doctor_id:
+        return Response({'error': 'doctor_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not ai_summary:
+        return Response({'error': 'ai_summary is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    doctor = get_object_or_404(_User, id=doctor_id, role='doctor')
+
+    triage = TriageRequest.objects.create(
+        patient=request.user,
+        doctor=doctor,
+        ai_summary=ai_summary,
+        status='PENDING',
+    )
+
+    return Response({
+        'message': 'Triage request submitted successfully.',
+        'triage_id': triage.id,
+        'doctor': doctor.get_full_name() or doctor.username,
+        'status': triage.status,
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def doctor_triage_inbox(request):
+    """
+    Doctor retrieves all PENDING triage requests addressed to them.
+
+    GET /api/telemedicine/triage/inbox/
+    """
+    if getattr(request.user, 'role', None) != 'doctor':
+        return Response({'error': 'Only doctors can view the triage inbox.'}, status=status.HTTP_403_FORBIDDEN)
+
+    requests_qs = TriageRequest.objects.filter(
+        doctor=request.user,
+        status='PENDING',
+    ).select_related('patient')
+
+    data = [
+        {
+            'triage_id': t.id,
+            'patient_name': t.patient.get_full_name() or t.patient.username,
+            'ai_summary': t.ai_summary,
+            'created_at': t.created_at.isoformat(),
+        }
+        for t in requests_qs
+    ]
+
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_triage_request(request):
+    """
+    Doctor approves (or declines) a triage request.
+
+    POST /api/telemedicine/triage/approve/
+    Body: { "triage_id": <int>, "action": "APPROVED" | "DECLINED" }
+    """
+    if getattr(request.user, 'role', None) != 'doctor':
+        return Response({'error': 'Only doctors can act on triage requests.'}, status=status.HTTP_403_FORBIDDEN)
+
+    triage_id = request.data.get('triage_id')
+    action_value = request.data.get('action', 'APPROVED').upper()
+
+    if not triage_id:
+        return Response({'error': 'triage_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if action_value not in ('APPROVED', 'DECLINED'):
+        return Response({'error': 'action must be APPROVED or DECLINED.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    triage = get_object_or_404(TriageRequest, id=triage_id, doctor=request.user)
+    triage.status = action_value
+    triage.save(update_fields=['status'])
+
+    return Response({
+        'message': f'Triage request {action_value.lower()} successfully.',
+        'triage_id': triage.id,
+        'status': triage.status,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def triage_status_check(request, triage_id):
+    """
+    Patient polls for the approval status of their triage request.
+
+    GET /api/telemedicine/triage/status/<triage_id>/
+    Returns: { "triage_id": int, "status": "PENDING" | "APPROVED" | "DECLINED" }
+    """
+    triage = get_object_or_404(TriageRequest, id=triage_id, patient=request.user)
+    return Response({
+        'triage_id': triage.id,
+        'status': triage.status,
+    }, status=status.HTTP_200_OK)

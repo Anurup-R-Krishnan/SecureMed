@@ -3,7 +3,12 @@ URL routing for telemedicine API.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import VideoRoomViewSet, ConversationViewSet, MessageViewSet, ai_triage_chat
+from .views import (
+    VideoRoomViewSet, ConversationViewSet, MessageViewSet,
+    ai_triage_chat,
+    submit_triage_request, doctor_triage_inbox, approve_triage_request,
+    triage_status_check,
+)
 
 router = DefaultRouter()
 router.register(r'rooms', VideoRoomViewSet, basename='video-room')
@@ -13,4 +18,8 @@ router.register(r'messages', MessageViewSet, basename='message')
 urlpatterns = [
     path('', include(router.urls)),
     path('api/triage/chat/', ai_triage_chat, name='ai-triage-chat'),
+    path('triage/submit/', submit_triage_request, name='triage-submit'),
+    path('triage/inbox/', doctor_triage_inbox, name='triage-inbox'),
+    path('triage/approve/', approve_triage_request, name='triage-approve'),
+    path('triage/status/<int:triage_id>/', triage_status_check, name='triage-status'),
 ]
