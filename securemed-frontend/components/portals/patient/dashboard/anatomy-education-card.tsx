@@ -2,17 +2,9 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, BookOpen, Stethoscope } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { AnatomySelectionPayload } from '@/components/features/anatomy/region-map';
 import {
     AnatomyRegionExplainer,
@@ -27,23 +19,6 @@ const BodyExplorer3D = dynamic(
     () => import('@/components/features/anatomy/body-explorer-3d'),
     { ssr: false }
 );
-
-// ── Severity color map ───────────────────────────────────────────────────────
-
-const SEVERITY_STYLES: Record<string, string> = {
-    low: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
-    medium: 'bg-amber-500/15 text-amber-300 border-amber-500/20',
-    high: 'bg-red-500/15 text-red-300 border-red-500/20 animate-pulse',
-};
-
-// ── Animated card wrapper ────────────────────────────────────────────────────
-
-const fadeIn = {
-    initial: { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -8 },
-    transition: { duration: 0.25, ease: 'easeOut' as const },
-};
 
 export default function AnatomyEducationCard() {
     const [selection, setSelection] = useState<AnatomySelectionPayload>({
@@ -73,67 +48,29 @@ export default function AnatomyEducationCard() {
         let mounted = true;
         setLoading(true);
         fetchConditionCatalog('top20', 'patient')
-            .then((data) => {
-                if (!mounted) return;
-                setConditions(data);
-                setError(null);
-            })
-            .catch((e: any) => {
-                if (!mounted) return;
-                setError(e?.response?.data?.error || 'Unable to load condition education.');
-            })
-            .finally(() => {
-                if (!mounted) return;
-                setLoading(false);
-            });
+            .then((data) => { if (mounted) { setConditions(data); setError(null); } })
+            .catch((e: any) => { if (mounted) setError(e?.response?.data?.error || 'Unable to load condition education.'); })
+            .finally(() => { if (mounted) setLoading(false); });
         return () => { mounted = false; };
     }, []);
 
     useEffect(() => {
-        if (!activeRegion) {
-            setExplainer(null);
-            return;
-        }
+        if (!activeRegion) { setExplainer(null); return; }
         let mounted = true;
         fetchRegionExplainer(activeRegion, 'patient')
-            .then((data) => {
-                if (!mounted) return;
-                setExplainer(data);
-                setError(null);
-            })
-            .catch((e: any) => {
-                if (!mounted) return;
-                setExplainer(null);
-                setError(e?.response?.data?.error || 'Unable to load anatomy explainer.');
-            });
+            .then((data) => { if (mounted) { setExplainer(data); setError(null); } })
+            .catch((e: any) => { if (mounted) { setExplainer(null); setError(e?.response?.data?.error || 'Unable to load anatomy explainer.'); } });
         return () => { mounted = false; };
     }, [activeRegion]);
 
     useEffect(() => {
-        if (!activeConditionId) {
-            setVisualization(null);
-            setVisualRegion(null);
-            return;
-        }
+        if (!activeConditionId) { setVisualization(null); setVisualRegion(null); return; }
         let mounted = true;
         setLoading(true);
         fetchConditionVisualization(activeConditionId, 'patient')
-            .then((data) => {
-                if (!mounted) return;
-                setVisualization(data);
-                setVisualRegion(data.regions[0] ?? null);
-                setError(null);
-            })
-            .catch((e: any) => {
-                if (!mounted) return;
-                setVisualization(null);
-                setVisualRegion(null);
-                setError(e?.response?.data?.error || 'Unable to load condition visualization.');
-            })
-            .finally(() => {
-                if (!mounted) return;
-                setLoading(false);
-            });
+            .then((data) => { if (mounted) { setVisualization(data); setVisualRegion(data.regions[0] ?? null); setError(null); } })
+            .catch((e: any) => { if (mounted) { setVisualization(null); setVisualRegion(null); setError(e?.response?.data?.error || 'Unable to load condition visualization.'); } })
+            .finally(() => { if (mounted) setLoading(false); });
         return () => { mounted = false; };
     }, [activeConditionId]);
 
@@ -143,158 +80,104 @@ export default function AnatomyEducationCard() {
     };
 
     return (
-        <Card className="overflow-hidden border-white/8 bg-gradient-to-br from-slate-950 via-slate-900/95 to-slate-950 shadow-2xl">
-            {/* Header */}
-            <div className="px-6 pt-5 pb-3">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <Activity className="h-4.5 w-4.5 text-white" />
-                        </div>
-                        <div>
-                            <h3 className="text-base font-bold text-white tracking-tight">Anatomy Education</h3>
-                            <p className="text-[11px] text-slate-400">Interactive body mapping & condition visualization</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 rounded-full bg-gradient-to-r from-blue-500/15 to-purple-500/15 border border-white/10 px-3 flex items-center gap-1.5">
-                            <div
-                                className="h-1.5 w-1.5 rounded-full"
-                                style={{
-                                    backgroundColor: patientFocusScore > 60 ? '#34d399' : patientFocusScore > 30 ? '#fbbf24' : '#64748b',
-                                    boxShadow: patientFocusScore > 60 ? '0 0 8px rgba(52,211,153,0.5)' : 'none',
-                                }}
-                            />
-                            <span className="text-[11px] font-bold text-white/80">{patientFocusScore}%</span>
-                        </div>
-                    </div>
+        <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
+            {/* Header — matches Health Insights, Upcoming Appointments headers */}
+            <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-blue-500" />
+                    <h3 className="font-semibold text-lg">Anatomy Education</h3>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-primary font-semibold">
+                        Focus {patientFocusScore}%
+                    </span>
+                    {selection.selectedRegions.length > 0 && (
+                        <span className="rounded-full bg-blue-500/10 px-2 py-1 text-blue-500 font-medium">
+                            {selection.selectedRegions.length} regions
+                        </span>
+                    )}
                 </div>
             </div>
 
-            {/* Tabs */}
-            <Tabs defaultValue="explore" className="px-5 pb-5">
-                <TabsList className="w-full bg-slate-800/50 border border-white/5 p-0.5 mb-4">
-                    <TabsTrigger value="explore" className="flex-1 gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-700 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/20">
-                        <Activity className="h-3.5 w-3.5" />
-                        Explore
-                    </TabsTrigger>
-                    <TabsTrigger value="explainers" className="flex-1 gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-700 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/20">
-                        <BookOpen className="h-3.5 w-3.5" />
-                        Explainers
-                    </TabsTrigger>
-                    <TabsTrigger value="conditions" className="flex-1 gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-700 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/20">
-                        <Stethoscope className="h-3.5 w-3.5" />
-                        Conditions
-                    </TabsTrigger>
-                </TabsList>
+            {/* Main content — single-view grid: 3D body left, info right */}
+            <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
+                {/* Left: 3D Body Explorer */}
+                <div className="space-y-3">
+                    <BodyExplorer3D onSelectionChange={handleSelectionChange} />
 
-                {/* ── Explore ──────────────────────────────────── */}
-                <TabsContent value="explore" className="space-y-3 mt-0">
-                    <BodyExplorer3D onSelectionChange={handleSelectionChange} compact />
-                    <AnimatePresence>
-                        {selection.selectedSymptoms.length > 0 && (
-                            <motion.div {...fadeIn} className="flex flex-wrap gap-1.5">
-                                {selection.selectedSymptoms.map((symptom) => (
-                                    <span
-                                        key={symptom}
-                                        className="text-[11px] font-medium rounded-full px-2.5 py-1 bg-blue-500/10 text-blue-300 border border-blue-500/20 backdrop-blur-sm"
-                                    >
-                                        {symptom}
-                                    </span>
-                                ))}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </TabsContent>
-
-                {/* ── Explainers ───────────────────────────────── */}
-                <TabsContent value="explainers" className="space-y-3 mt-0">
-                    <AnimatePresence mode="wait">
-                        {activeRegion && explainer ? (
-                            <motion.div key={explainer.region_id} {...fadeIn} className="space-y-3">
-                                {/* Title card */}
-                                <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                                        <p className="text-sm font-bold text-white">{explainer.title}</p>
-                                    </div>
-                                    <p className="text-xs text-slate-400 leading-relaxed">{explainer.summary}</p>
-                                </div>
-
-                                {/* Details */}
-                                {explainer.details.length > 0 && (
-                                    <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Clinical Details</p>
-                                        <ul className="space-y-1.5">
-                                            {explainer.details.map((detail, idx) => (
-                                                <li key={idx} className="text-xs text-slate-300 leading-relaxed flex gap-2">
-                                                    <span className="text-blue-400 mt-0.5 shrink-0">›</span>
-                                                    {detail}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {/* Common symptoms */}
-                                {explainer.common_symptoms.length > 0 && (
-                                    <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Common Symptoms</p>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {explainer.common_symptoms.map((symptom) => (
-                                                <span key={symptom} className="text-[11px] font-medium rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                                                    {symptom}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Warning signals */}
-                                {explainer.warning_signals.length > 0 && (
-                                    <div className="rounded-xl border border-red-500/15 bg-red-500/[0.04] p-4 space-y-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-red-400/80">⚠ Warning Signals</p>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {explainer.warning_signals.map((signal) => (
-                                                <span key={signal} className="text-[11px] font-medium rounded-full px-2.5 py-1 bg-red-500/15 text-red-300 border border-red-500/20">
-                                                    {signal}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </motion.div>
-                        ) : (
-                            <motion.div {...fadeIn} className="rounded-xl border border-dashed border-white/10 p-8 flex flex-col items-center gap-3">
-                                <div className="h-12 w-12 rounded-xl bg-slate-800/80 flex items-center justify-center">
-                                    <BookOpen className="h-5 w-5 text-slate-500" />
-                                </div>
-                                <p className="text-xs text-slate-500 text-center max-w-[200px]">
-                                    Select a region from the <span className="text-slate-300">Explore</span> tab to load anatomy education
-                                </p>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </TabsContent>
-
-                {/* ── Conditions ────────────────────────────────── */}
-                <TabsContent value="conditions" className="space-y-4 mt-0">
-                    <Select value={activeConditionId} onValueChange={setActiveConditionId}>
-                        <SelectTrigger className="w-full bg-slate-800/50 border-white/10 text-white text-sm h-10">
-                            <SelectValue placeholder="Select a condition to visualize" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-white/10">
-                            {conditions.map((item) => (
-                                <SelectItem key={item.condition_id} value={item.condition_id} className="text-slate-200 focus:bg-blue-600/20 focus:text-white">
-                                    {item.name}
-                                </SelectItem>
+                    {/* Symptom badges from body selection */}
+                    {selection.selectedSymptoms.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {selection.selectedSymptoms.map((symptom) => (
+                                <span
+                                    key={symptom}
+                                    className="text-xs rounded-full px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                >
+                                    {symptom}
+                                </span>
                             ))}
-                        </SelectContent>
-                    </Select>
+                        </div>
+                    )}
+                </div>
 
-                    <AnimatePresence mode="wait">
+                {/* Right: Info panels — explainer + condition */}
+                <div className="space-y-4">
+                    {/* Region Explainer */}
+                    {activeRegion && explainer ? (
+                        <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/20 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                                <p className="text-sm font-semibold text-foreground">{explainer.title}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{explainer.summary}</p>
+
+                            {explainer.common_symptoms.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                    {explainer.common_symptoms.map((symptom) => (
+                                        <span key={symptom} className="text-[11px] rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                            {symptom}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {explainer.warning_signals.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Warning Signals</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {explainer.warning_signals.map((signal) => (
+                                            <span key={signal} className="text-[11px] rounded-full px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                                {signal}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-muted-foreground bg-white/5 rounded-xl border border-dashed border-white/10">
+                            <p className="text-sm">Click body regions to view anatomy education</p>
+                        </div>
+                    )}
+
+                    {/* Condition Visualization */}
+                    <div className="p-4 rounded-xl border border-border/50 bg-white/5 space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Condition Visualization
+                        </p>
+                        <select
+                            value={activeConditionId}
+                            onChange={(e) => setActiveConditionId(e.target.value)}
+                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                            <option value="">Select condition</option>
+                            {conditions.map((item) => (
+                                <option key={item.condition_id} value={item.condition_id}>{item.name}</option>
+                            ))}
+                        </select>
+
                         {visualization && (
-                            <motion.div key={visualization.condition_id} {...fadeIn} className="space-y-4">
+                            <>
                                 <BodyExplorer3D
                                     mode="condition"
                                     compact
@@ -303,76 +186,52 @@ export default function AnatomyEducationCard() {
                                     onConditionRegionSelect={setVisualRegion}
                                 />
 
-                                {/* Condition overview */}
-                                <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <Stethoscope className="h-4 w-4 text-blue-400" />
-                                        <p className="text-sm font-bold text-white">{visualization.name}</p>
-                                    </div>
-                                    <p className="text-xs text-slate-400 leading-relaxed">{visualization.overview}</p>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-semibold text-foreground">{visualization.name}</p>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">{visualization.overview}</p>
 
-                                    {/* Typical symptoms */}
                                     {visualization.typical_symptoms.length > 0 && (
-                                        <div className="flex flex-wrap gap-1.5">
+                                        <div className="flex flex-wrap gap-1">
                                             {visualization.typical_symptoms.map((symptom) => (
-                                                <span key={symptom} className="text-[11px] font-medium rounded-full px-2.5 py-1 bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                                <span key={symptom} className="text-[11px] rounded-full px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                                                     {symptom}
                                                 </span>
                                             ))}
                                         </div>
                                     )}
+
+                                    {visualization.seek_care_rules.length > 0 && (
+                                        <div className="p-3 bg-amber-500/5 rounded-lg border border-amber-500/20">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1">When to Seek Care</p>
+                                            <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                                                {visualization.seek_care_rules.map((rule) => (
+                                                    <li key={rule}>{rule}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
-
-                                {/* Seek care rules */}
-                                {visualization.seek_care_rules.length > 0 && (
-                                    <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-4 space-y-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400/80">When to Seek Care</p>
-                                        <ul className="space-y-1.5">
-                                            {visualization.seek_care_rules.map((rule) => (
-                                                <li key={rule} className="text-xs text-slate-300 leading-relaxed flex gap-2">
-                                                    <span className="text-amber-400 mt-0.5 shrink-0">•</span>
-                                                    {rule}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {/* Pins */}
-                                {visualization.pins.length > 0 && (
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Condition Pins</p>
-                                        {visualization.pins.map((pin) => (
-                                            <div key={pin.id} className={`rounded-xl border p-3 space-y-1 ${SEVERITY_STYLES[pin.severity] || SEVERITY_STYLES.medium}`}>
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-xs font-semibold">{pin.label}</span>
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">{pin.severity}</span>
-                                                </div>
-                                                <p className="text-[11px] opacity-80 leading-relaxed">{pin.text}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </motion.div>
+                            </>
                         )}
-                    </AnimatePresence>
-                </TabsContent>
-            </Tabs>
+                    </div>
 
-            {/* Status bar */}
-            {(loading || error) && (
-                <div className="px-5 pb-3">
-                    {loading && (
-                        <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-full border border-blue-400/30 border-t-blue-400 animate-spin" />
-                            <p className="text-[11px] text-slate-400">Loading anatomy data…</p>
-                        </div>
-                    )}
-                    {error && (
-                        <p className="text-[11px] text-red-400">{error}</p>
+                    {/* Reset */}
+                    {selection.selectedRegions.length > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSelectionChange({ selectedRegions: [], selectedSymptoms: [], intensityByRegion: {} })}
+                            className="w-full"
+                        >
+                            Reset Selection
+                        </Button>
                     )}
                 </div>
-            )}
+            </div>
+
+            {/* Status */}
+            {loading && <p className="mt-4 text-xs text-muted-foreground">Loading anatomy education data...</p>}
+            {error && <p className="mt-4 text-xs text-destructive">{error}</p>}
         </Card>
     );
 }
