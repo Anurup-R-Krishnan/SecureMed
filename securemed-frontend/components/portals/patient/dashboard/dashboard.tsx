@@ -143,7 +143,13 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 />
             </div>
 
-            {/* Row 3: Upcoming Appointments */}
+            {/* Row 3: Health Insights + Anatomy Education */}
+            <div className="grid lg:grid-cols-2 gap-6">
+                <HealthInsightsCard insights={dashboardStats?.health_insights || null} />
+                <AnatomyEducationCard />
+            </div>
+
+            {/* Row 4: Upcoming Appointments */}
             <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="font-semibold text-lg">Upcoming Appointments</h3>
@@ -185,7 +191,7 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 </div>
             </Card>
 
-            {/* Row 4: Recent Medical Records + Billing Summary */}
+            {/* Row 5: Recent Medical Records + Billing Summary */}
             <div className="grid lg:grid-cols-2 gap-6">
                 <RecentRecordsCard
                     records={dashboardStats?.recent_records || []}
@@ -196,12 +202,6 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                     onNavigate={onNavigate}
                 />
             </div>
-
-            {/* Row 5: Health Insights */}
-            <HealthInsightsCard insights={dashboardStats?.health_insights || null} />
-
-            {/* Row 6: Anatomy Education + Condition Visualization */}
-            <AnatomyEducationCard />
         </div>
     );
 }
