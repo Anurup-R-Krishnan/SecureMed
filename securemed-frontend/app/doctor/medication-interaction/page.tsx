@@ -51,7 +51,7 @@ export default function MedicationInteractionPage() {
             </div>
 
             <div className="bg-card border rounded-[32px] shadow-sm p-1 overflow-hidden">
-                <MedicationSandbox />
+                <MedicationSandbox mode="doctor" />
             </div>
         </div>
     );

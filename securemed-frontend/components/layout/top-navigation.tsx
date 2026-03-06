@@ -53,6 +53,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
     const patientNav = [
         { name: 'Dashboard', href: '/patient/dashboard' },
         { name: 'My Health', href: '/patient/records' },
+        { name: 'Interactions', href: '/patient/medication-interaction' },
         { name: 'Appointments', href: '/patient/appointments' },
         { name: 'Billing', href: '/patient/billing' },
     ];
