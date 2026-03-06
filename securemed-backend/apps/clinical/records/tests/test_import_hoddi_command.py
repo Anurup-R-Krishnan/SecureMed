@@ -5,7 +5,8 @@ from pathlib import Path
 from django.core.management import call_command
 from django.test import TestCase
 
-from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationSideEffect
+from apps.clinical.records.interaction_service import evaluate_medication_safety
+from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationReference, MedicationSideEffect
 
 
 class ImportHoddiCommandTests(TestCase):
@@ -88,3 +89,31 @@ class ImportHoddiCommandTests(TestCase):
             call_command("import_hoddi", path=str(data_path), version="HODDI_v2", side_effect_map=str(map_path))
             row = MedicationInteractionKnowledge.objects.first()
             self.assertEqual(row.side_effect, "Gastrointestinal haemorrhage")
+
+    def test_drug_map_enables_name_to_drugbank_resolution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_path = Path(tmp) / "hoddi.csv"
+            map_path = Path(tmp) / "drug_map.csv"
+
+            with data_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["DrugBankID", "SE_above_0.9", "hyperedge_label"])
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "DrugBankID": "['DB00001', 'DB00002']",
+                        "SE_above_0.9": "Bleeding risk",
+                        "hyperedge_label": "1",
+                    }
+                )
+
+            with map_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["drugbank_id", "name"])
+                writer.writeheader()
+                writer.writerow({"drugbank_id": "DB00001", "name": "Aspirin"})
+                writer.writerow({"drugbank_id": "DB00002", "name": "Warfarin"})
+
+            call_command("import_hoddi", path=str(data_path), version="HODDI_v2", drug_map=str(map_path))
+            self.assertEqual(MedicationReference.objects.count(), 2)
+
+            result = evaluate_medication_safety(["Aspirin", "Warfarin"])
+            self.assertEqual(result["totals"]["moderate"], 1)

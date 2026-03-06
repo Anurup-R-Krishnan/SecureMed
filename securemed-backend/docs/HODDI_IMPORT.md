@@ -42,6 +42,21 @@ The map CSV should include recognizable columns like:
 - code: `umls_cui_from_meddra` / `umls_cui` / `SE_above_0.9`
 - label: `recommended_meddra_term` / `term` / `side_effect`
 
+## 5) Optional DrugBank ID -> Name map
+
+To let the checker resolve UI names (e.g. `Aspirin`) to imported DrugBank IDs (e.g. `DB00945`), load a drug map:
+
+```bash
+python manage.py import_hoddi \
+  --path /tmp/HODDI/dataset/HODDI_v2 \
+  --version HODDI_v2 \
+  --drug-map /path/to/drugbank_id_to_name.csv
+```
+
+Expected columns include:
+- ID: `drugbank_id` / `DrugBank ID` / `drugbankid`
+- Name: `name` / `drug_name` / `generic_name`
+
 ## Supported Input Schemas
 
 The importer auto-detects common schemas:

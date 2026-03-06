@@ -6,7 +6,7 @@ from typing import Dict, Iterable, List, Optional
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.clinical.records.interaction_service import canonical_signature, normalize_medication_name
-from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationSideEffect
+from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationReference, MedicationSideEffect
 
 
 class Command(BaseCommand):
@@ -22,6 +22,11 @@ class Command(BaseCommand):
             "--side-effect-map",
             default="",
             help="Optional CSV with side effect code->label mapping (e.g. UMLS CUI to term).",
+        )
+        parser.add_argument(
+            "--drug-map",
+            default="",
+            help="Optional CSV mapping DrugBank IDs to medication names for name->ID resolution.",
         )
 
     @staticmethod
@@ -84,6 +89,43 @@ class Command(BaseCommand):
             return [root_path]
         return sorted([p for p in root_path.rglob("*.csv") if p.is_file()])
 
+    def _load_drug_map(self, map_path: str, source_name: str) -> int:
+        if not map_path:
+            return 0
+        path = Path(map_path).expanduser()
+        if not path.exists():
+            raise CommandError(f"drug-map file not found: {path}")
+        created = 0
+        with path.open("r", encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            header = [h for h in (reader.fieldnames or []) if h]
+            if not header:
+                return created
+            id_col = self._detect_column(header, ["drugbank_id", "drugbank id", "drugbankid", "id", "identifier"])
+            name_col = self._detect_column(header, ["name", "drug_name", "generic_name", "drug"])
+            if not id_col or not name_col:
+                raise CommandError(
+                    "drug-map requires recognizable ID and name columns "
+                    "(e.g. drugbank_id + name)."
+                )
+            for row in reader:
+                identifier = normalize_medication_name(row.get(id_col, ""))
+                display_name = (row.get(name_col) or "").strip()
+                normalized_name = normalize_medication_name(display_name)
+                if not identifier or not normalized_name:
+                    continue
+                _, was_created = MedicationReference.objects.get_or_create(
+                    identifier=identifier,
+                    normalized_name=normalized_name,
+                    defaults={
+                        "display_name": display_name,
+                        "source": source_name,
+                    },
+                )
+                if was_created:
+                    created += 1
+        return created
+
     def _parse_row(
         self,
         row: Dict[str, str],
@@ -138,6 +180,7 @@ class Command(BaseCommand):
         include_negative = options["include_negative"]
         source_name = options["source"]
         side_effect_map = self._load_side_effect_map(options["side_effect_map"])
+        reference_count = self._load_drug_map(options["drug_map"], source_name)
 
         csv_files = self._iter_csv_files(input_path)
         if not csv_files:
@@ -221,6 +264,7 @@ class Command(BaseCommand):
                 "Imported "
                 f"files={processed_files}, rows={processed_rows}, "
                 f"knowledge={created_knowledge}, side_effects={created_side_effects}, "
+                f"references={reference_count}, "
                 f"version={dataset_version or 'auto'}"
             )
         )

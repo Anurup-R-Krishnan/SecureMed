@@ -8,6 +8,7 @@ from .models import (
     MedicationInteractionKnowledge,
     MedicationInteractionReport,
     MedicationInteractionReportItem,
+    MedicationReference,
     MedicationSideEffect,
     Prescription,
 )
@@ -30,12 +31,32 @@ def canonical_signature(medications: Sequence[str]) -> str:
     return "|".join(normalized)
 
 
+def resolve_medications_for_knowledge(medications: Sequence[str]) -> List[str]:
+    normalized_inputs = [normalize_medication_name(m) for m in medications if m]
+    if not normalized_inputs:
+        return []
+
+    refs = MedicationReference.objects.filter(normalized_name__in=normalized_inputs).order_by("id")
+    by_name: Dict[str, str] = {}
+    for ref in refs:
+        # First seen mapping wins for deterministic behavior.
+        by_name.setdefault(ref.normalized_name, normalize_medication_name(ref.identifier))
+
+    resolved: List[str] = []
+    for med in normalized_inputs:
+        if med.startswith("db") and med[2:].isdigit():
+            resolved.append(med)
+        else:
+            resolved.append(by_name.get(med, med))
+    return sorted(set(resolved))
+
+
 def _get_active_medications_for_patient(patient_id: int) -> List[str]:
     rows = Prescription.objects.filter(
         medical_record__patient_id=patient_id,
         status__in=["signed", "dispensed"],
     ).values_list("medication_name", flat=True)
-    meds = [normalize_medication_name(name) for name in rows if name]
+    meds = resolve_medications_for_knowledge([name for name in rows if name])
     # Preserve stable order for deterministic report payloads.
     return sorted(set(meds))
 
@@ -105,7 +126,7 @@ def _fallback_pair_findings(pair_groups: Iterable[Tuple[str, str]]) -> List[Dict
 
 
 def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
-    normalized = sorted({normalize_medication_name(m) for m in medications if m})
+    normalized = resolve_medications_for_knowledge(medications)
     if not normalized:
         return {
             "medications": [],

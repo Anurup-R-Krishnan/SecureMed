@@ -190,6 +190,27 @@ class MedicationSideEffect(models.Model):
         return f"{self.medication_name}: {self.side_effect} ({self.severity})"
 
 
+class MedicationReference(models.Model):
+    """
+    Links user-facing medication names to canonical identifiers (e.g. DrugBank IDs).
+    """
+    identifier = models.CharField(max_length=100, db_index=True)
+    display_name = models.CharField(max_length=255)
+    normalized_name = models.CharField(max_length=255, db_index=True)
+    source = models.CharField(max_length=100, default='HODDI')
+
+    class Meta:
+        db_table = 'medication_references'
+        indexes = [
+            models.Index(fields=['normalized_name']),
+            models.Index(fields=['identifier']),
+        ]
+        unique_together = ('identifier', 'normalized_name')
+
+    def __str__(self):
+        return f"{self.display_name} -> {self.identifier}"
+
+
 class MedicationInteractionKnowledge(models.Model):
     """
     Higher-order interaction knowledge (2+ medications) imported from HODDI-like datasets.

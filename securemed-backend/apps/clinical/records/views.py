@@ -575,8 +575,13 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             is_active=True,
             name__icontains=query
         ).values_list('name', flat=True)[:30]
+        from .models import MedicationReference
+        mapped_names = MedicationReference.objects.filter(
+            normalized_name__icontains=query
+        ).values_list('display_name', flat=True)[:30]
 
         all_names = set(pharmacy_names)
+        all_names.update(mapped_names)
         all_names.update(active_names)
         filtered = sorted([name for name in all_names if query in name.lower()])[:50]
         return Response({"results": filtered})
