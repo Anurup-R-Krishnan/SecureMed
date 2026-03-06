@@ -80,6 +80,7 @@
     "@types/react-dom": "^19.2.2",
     "@types/react-google-recaptcha": "^2.1.9",
     "@types/three": "^0.180.0",
+    "cypress": "^15.11.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.0.3",
     "postcss": "^8.5",
