@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Card } from '@/components/ui/card';
@@ -11,8 +11,10 @@ import {
   deriveSymptomsFromRegions,
   REGION_LOOKUP,
 } from '@/components/features/anatomy/region-map';
+import { ConditionVisualization } from '@/services/anatomy-content';
 
 type RegionShape = 'sphere' | 'capsule' | 'torso' | 'pelvis';
+type ExplorerMode = 'selection' | 'condition';
 
 interface RegionMeshDef {
   id: string;
@@ -34,9 +36,13 @@ const REGION_MESHES: RegionMeshDef[] = [
 ];
 
 interface BodyExplorer3DProps {
-  onSelectionChange: (payload: AnatomySelectionPayload) => void;
+  onSelectionChange?: (payload: AnatomySelectionPayload) => void;
   className?: string;
   compact?: boolean;
+  mode?: ExplorerMode;
+  activeCondition?: ConditionVisualization | null;
+  activeConditionRegion?: string | null;
+  onConditionRegionSelect?: (regionId: string) => void;
 }
 
 function supportsWebGL(): boolean {
@@ -48,6 +54,15 @@ function supportsWebGL(): boolean {
   } catch {
     return false;
   }
+}
+
+function PinMesh({ position }: { position: [number, number, number] }) {
+  return (
+    <mesh position={[position[0], position[1] + 0.35, position[2] + 0.3]}>
+      <sphereGeometry args={[0.08, 20, 20]} />
+      <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.35} />
+    </mesh>
+  );
 }
 
 function RegionMesh({
@@ -142,9 +157,11 @@ function RegionMesh({
 function AnatomyScene({
   selectedRegions,
   onToggle,
+  pinRegionIds,
 }: {
   selectedRegions: string[];
   onToggle: (regionId: string) => void;
+  pinRegionIds: string[];
 }) {
   return (
     <>
@@ -159,6 +176,10 @@ function AnatomyScene({
           isSelected={selectedRegions.includes(def.id)}
           onToggle={onToggle}
         />
+      ))}
+
+      {REGION_MESHES.filter((mesh) => pinRegionIds.includes(mesh.id)).map((mesh) => (
+        <PinMesh key={`pin-${mesh.id}`} position={mesh.position} />
       ))}
 
       <OrbitControls
@@ -177,14 +198,28 @@ export default function BodyExplorer3D({
   onSelectionChange,
   className = '',
   compact = false,
+  mode = 'selection',
+  activeCondition = null,
+  activeConditionRegion = null,
+  onConditionRegionSelect,
 }: BodyExplorer3DProps) {
   const [webglReady, setWebglReady] = useState(false);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [intensityByRegion, setIntensityByRegion] = useState<Record<string, number>>({});
+  const selectionCallbackRef = useRef(onSelectionChange);
+
+  useEffect(() => {
+    selectionCallbackRef.current = onSelectionChange;
+  }, [onSelectionChange]);
 
   useEffect(() => {
     setWebglReady(supportsWebGL());
   }, []);
+
+  const conditionRegions = activeCondition?.regions ?? [];
+  const effectiveSelectedRegions = mode === 'condition'
+    ? (activeConditionRegion ? [activeConditionRegion] : conditionRegions)
+    : selectedRegions;
 
   const selectedSymptoms = useMemo(
     () => deriveSymptomsFromRegions(selectedRegions),
@@ -192,10 +227,20 @@ export default function BodyExplorer3D({
   );
 
   useEffect(() => {
-    onSelectionChange({ selectedRegions, selectedSymptoms, intensityByRegion });
-  }, [selectedRegions, selectedSymptoms, intensityByRegion, onSelectionChange]);
+    if (mode !== 'selection' || !selectionCallbackRef.current) {
+      return;
+    }
+    selectionCallbackRef.current({ selectedRegions, selectedSymptoms, intensityByRegion });
+  }, [mode, selectedRegions, selectedSymptoms, intensityByRegion]);
 
   const toggleRegion = (regionId: string) => {
+    if (mode === 'condition') {
+      if (conditionRegions.includes(regionId)) {
+        onConditionRegionSelect?.(regionId);
+      }
+      return;
+    }
+
     setSelectedRegions((prev) => {
       if (prev.includes(regionId)) {
         setIntensityByRegion((old) => {
@@ -211,6 +256,9 @@ export default function BodyExplorer3D({
   };
 
   const resetSelection = () => {
+    if (mode === 'condition') {
+      return;
+    }
     setSelectedRegions([]);
     setIntensityByRegion({});
   };
@@ -220,9 +268,18 @@ export default function BodyExplorer3D({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-foreground">3D Anatomy Explorer</h3>
-          <p className="text-xs text-muted-foreground">Rotate, zoom, and click regions to add symptom context.</p>
+          <p className="text-xs text-muted-foreground">
+            {mode === 'condition'
+              ? 'Condition visualization mode with region pin overlays.'
+              : 'Rotate, zoom, and click regions to add symptom context.'}
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={resetSelection} disabled={selectedRegions.length === 0}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={resetSelection}
+          disabled={mode === 'condition' || selectedRegions.length === 0}
+        >
           Reset Selection
         </Button>
       </div>
@@ -230,34 +287,44 @@ export default function BodyExplorer3D({
       {webglReady ? (
         <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'lg:grid-cols-[1.25fr_1fr]'}`}>
           <div className={`${compact ? 'h-[240px]' : 'h-[420px]'} w-full rounded-xl border bg-slate-950/5`}>
-            <Canvas camera={{ position: [0, 0.2, 4.4], fov: 44 }} dpr={[1, 2]}>
+            <Canvas camera={{ position: [0, 0.2, 4.4], fov: 44 }} dpr={[1, 1.5]}>
               <Suspense fallback={null}>
-                <AnatomyScene selectedRegions={selectedRegions} onToggle={toggleRegion} />
+                <AnatomyScene
+                  selectedRegions={effectiveSelectedRegions}
+                  onToggle={toggleRegion}
+                  pinRegionIds={activeCondition?.pins.map((pin) => pin.region_id) ?? []}
+                />
               </Suspense>
             </Canvas>
           </div>
 
           <div className="space-y-3 rounded-xl border p-3">
-            <p className="text-sm font-medium text-foreground">Selected Regions</p>
-            {selectedRegions.length === 0 ? (
+            <p className="text-sm font-medium text-foreground">
+              {mode === 'condition' ? 'Highlighted Regions' : 'Selected Regions'}
+            </p>
+            {effectiveSelectedRegions.length === 0 ? (
               <p className="text-sm text-muted-foreground">No regions selected yet.</p>
             ) : (
-              selectedRegions.map((regionId) => (
+              effectiveSelectedRegions.map((regionId) => (
                 <div key={regionId} className="rounded-lg border p-2">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{REGION_LOOKUP[regionId]?.label || regionId}</span>
-                    <span className="text-xs text-muted-foreground">Intensity {intensityByRegion[regionId] ?? 5}/10</span>
+                    {mode === 'selection' && (
+                      <span className="text-xs text-muted-foreground">Intensity {intensityByRegion[regionId] ?? 5}/10</span>
+                    )}
                   </div>
-                  <Slider
-                    value={[intensityByRegion[regionId] ?? 5]}
-                    min={1}
-                    max={10}
-                    step={1}
-                    onValueChange={(value) => {
-                      const next = value?.[0] ?? 5;
-                      setIntensityByRegion((old) => ({ ...old, [regionId]: next }));
-                    }}
-                  />
+                  {mode === 'selection' && (
+                    <Slider
+                      value={[intensityByRegion[regionId] ?? 5]}
+                      min={1}
+                      max={10}
+                      step={1}
+                      onValueChange={(value) => {
+                        const next = value?.[0] ?? 5;
+                        setIntensityByRegion((old) => ({ ...old, [regionId]: next }));
+                      }}
+                    />
+                  )}
                 </div>
               ))
             )}

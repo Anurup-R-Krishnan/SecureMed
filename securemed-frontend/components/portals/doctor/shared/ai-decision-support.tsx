@@ -16,6 +16,14 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/urls';
 import { AnatomySelectionPayload } from '@/components/features/anatomy/region-map';
+import {
+    AnatomyRegionExplainer,
+    ConditionCatalogItem,
+    ConditionVisualization,
+    fetchConditionCatalog,
+    fetchConditionVisualization,
+    fetchRegionExplainer,
+} from '@/services/anatomy-content';
 
 const BodyExplorer3D = dynamic(
     () => import('@/components/features/anatomy/body-explorer-3d'),
@@ -62,6 +70,14 @@ export default function AIDecisionSupport({
         selectedSymptoms: [],
         intensityByRegion: {},
     });
+    const [activeRegion, setActiveRegion] = useState<string | null>(null);
+    const [explainer, setExplainer] = useState<AnatomyRegionExplainer | null>(null);
+    const [conditionCatalog, setConditionCatalog] = useState<ConditionCatalogItem[]>([]);
+    const [activeConditionId, setActiveConditionId] = useState('');
+    const [conditionVisualization, setConditionVisualization] = useState<ConditionVisualization | null>(null);
+    const [conditionRegion, setConditionRegion] = useState<string | null>(null);
+    const [contentLoading, setContentLoading] = useState(false);
+    const [contentError, setContentError] = useState<string | null>(null);
 
     const filteredSymptoms = commonSymptoms.filter(
         (symptom) =>
@@ -73,6 +89,54 @@ export default function AIDecisionSupport({
         ...selectedSymptoms,
         ...anatomySelection.selectedSymptoms,
     ]));
+
+    React.useEffect(() => {
+        fetchConditionCatalog('top20', 'doctor')
+            .then((items) => setConditionCatalog(items))
+            .catch(() => setContentError('Unable to load condition catalog.'));
+    }, []);
+
+    React.useEffect(() => {
+        if (!activeRegion) {
+            setExplainer(null);
+            return;
+        }
+        fetchRegionExplainer(activeRegion, 'doctor')
+            .then((data) => {
+                setExplainer(data);
+                setContentError(null);
+            })
+            .catch(() => {
+                setExplainer(null);
+                setContentError('Unable to load anatomy explainer.');
+            });
+    }, [activeRegion]);
+
+    React.useEffect(() => {
+        if (!activeConditionId) {
+            setConditionVisualization(null);
+            setConditionRegion(null);
+            return;
+        }
+        setContentLoading(true);
+        fetchConditionVisualization(activeConditionId, 'doctor')
+            .then((data) => {
+                setConditionVisualization(data);
+                setConditionRegion(data.regions[0] ?? null);
+                setContentError(null);
+            })
+            .catch(() => {
+                setConditionVisualization(null);
+                setConditionRegion(null);
+                setContentError('Unable to load condition visualization.');
+            })
+            .finally(() => setContentLoading(false));
+    }, [activeConditionId]);
+
+    const handleAnatomySelectionChange = (payload: AnatomySelectionPayload) => {
+        setAnatomySelection(payload);
+        setActiveRegion(payload.selectedRegions[payload.selectedRegions.length - 1] || null);
+    };
 
     const handleAddSymptom = (symptom: string) => {
         if (!selectedSymptoms.includes(symptom)) {
@@ -180,7 +244,56 @@ export default function AIDecisionSupport({
                 </h3>
 
                 {ENABLE_3D_BODY && (
-                    <BodyExplorer3D onSelectionChange={setAnatomySelection} className="mb-4" />
+                    <div className="space-y-3 mb-4">
+                        <BodyExplorer3D onSelectionChange={handleAnatomySelectionChange} />
+                        {activeRegion && explainer && (
+                            <div className="rounded-lg border p-3 space-y-2">
+                                <p className="text-sm font-semibold text-foreground">{explainer.title}</p>
+                                <p className="text-xs text-muted-foreground">{explainer.summary}</p>
+                                <div className="flex flex-wrap gap-1">
+                                    {explainer.warning_signals.map((signal) => (
+                                        <span
+                                            key={signal}
+                                            className="text-[11px] px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        >
+                                            {signal}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div className="rounded-lg border p-3 space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Condition Visualization
+                            </p>
+                            <select
+                                value={activeConditionId}
+                                onChange={(e) => setActiveConditionId(e.target.value)}
+                                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                            >
+                                <option value="">Select condition</option>
+                                {conditionCatalog.map((item) => (
+                                    <option key={item.condition_id} value={item.condition_id}>
+                                        {item.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {conditionVisualization && (
+                                <>
+                                    <BodyExplorer3D
+                                        mode="condition"
+                                        compact
+                                        activeCondition={conditionVisualization}
+                                        activeConditionRegion={conditionRegion}
+                                        onConditionRegionSelect={setConditionRegion}
+                                    />
+                                    <p className="text-xs text-muted-foreground">{conditionVisualization.overview}</p>
+                                </>
+                            )}
+                            {contentLoading && <p className="text-xs text-muted-foreground">Loading condition visualization...</p>}
+                            {contentError && <p className="text-xs text-destructive">{contentError}</p>}
+                        </div>
+                    </div>
                 )}
 
                 {/* Selected Symptoms */}

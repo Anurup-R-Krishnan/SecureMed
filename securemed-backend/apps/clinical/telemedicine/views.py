@@ -383,7 +383,13 @@ from django.db import models
 
 
 from .models import Conversation, Message
-from .serializers import ConversationSerializer, MessageSerializer
+from .serializers import (
+    ConversationSerializer,
+    MessageSerializer,
+    AnatomyRegionExplainerSerializer,
+    ConditionCatalogListSerializer,
+    ConditionVisualizationSerializer,
+)
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -454,7 +460,7 @@ class MessageViewSet(viewsets.ModelViewSet):
 # ============================================
 
 from django.contrib.auth import get_user_model
-from .models import TriageRequest
+from .models import TriageRequest, AnatomyRegionExplainer, ConditionCatalog
 
 _User = get_user_model()
 
@@ -567,3 +573,54 @@ def triage_status_check(request, triage_id):
         'triage_id': triage.id,
         'status': triage.status,
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def anatomy_region_explainer(request):
+    """
+    Returns educational anatomy explainer content for one selected region.
+
+    GET /api/telemedicine/anatomy/explainers/?region=<region_id>&role=<patient|doctor>
+    """
+    region_id = (request.query_params.get('region') or '').strip().lower()
+    if not region_id:
+        return Response({'error': 'region query parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    explainer = get_object_or_404(
+        AnatomyRegionExplainer.objects.filter(is_active=True),
+        region_id=region_id,
+    )
+    return Response(AnatomyRegionExplainerSerializer(explainer).data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_condition_catalog(request):
+    """
+    Returns condition cards used by anatomy condition visualization UI.
+
+    GET /api/telemedicine/conditions/?scope=<scope>&role=<patient|doctor>
+    """
+    scope = (request.query_params.get('scope') or 'top20').strip()
+    conditions = ConditionCatalog.objects.filter(
+        is_active=True,
+        scope=scope,
+    ).order_by('name')
+    serializer = ConditionCatalogListSerializer(conditions, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def condition_visualization(request, condition_id):
+    """
+    Returns a full condition payload including 3D annotation pins.
+
+    GET /api/telemedicine/conditions/<condition_id>/visualization/?role=<patient|doctor>
+    """
+    condition = get_object_or_404(
+        ConditionCatalog.objects.filter(is_active=True).prefetch_related('pins'),
+        condition_id=condition_id,
+    )
+    return Response(ConditionVisualizationSerializer(condition).data, status=status.HTTP_200_OK)

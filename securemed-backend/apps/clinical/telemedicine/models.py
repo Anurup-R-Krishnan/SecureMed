@@ -255,3 +255,85 @@ class TriageRequest(models.Model):
 
     def __str__(self):
         return f"TriageRequest {self.id} ({self.patient.username} → {self.doctor.username}) [{self.status}]"
+
+
+class AnatomyRegionExplainer(models.Model):
+    """Backend-managed educational content for anatomy regions."""
+
+    region_id = models.CharField(max_length=64, unique=True, db_index=True)
+    title = models.CharField(max_length=200)
+    summary = models.TextField()
+    details = models.JSONField(default=list, blank=True)
+    common_symptoms = models.JSONField(default=list, blank=True)
+    related_condition_ids = models.JSONField(default=list, blank=True)
+    warning_signals = models.JSONField(default=list, blank=True)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'anatomy_region_explainers'
+        ordering = ['region_id']
+        indexes = [
+            models.Index(fields=['region_id', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.region_id}: {self.title}"
+
+
+class ConditionCatalog(models.Model):
+    """Backend-managed condition catalog for 3D body visualization."""
+
+    condition_id = models.CharField(max_length=64, unique=True, db_index=True)
+    name = models.CharField(max_length=200)
+    overview = models.TextField()
+    regions = models.JSONField(default=list, blank=True)
+    typical_symptoms = models.JSONField(default=list, blank=True)
+    seek_care_rules = models.JSONField(default=list, blank=True)
+    scope = models.CharField(max_length=32, default='top20', db_index=True)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'condition_catalog'
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['scope', 'is_active']),
+            models.Index(fields=['condition_id', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.condition_id}: {self.name}"
+
+
+class ConditionPin(models.Model):
+    """Region-anchored annotation pin for condition visualization."""
+
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+
+    condition = models.ForeignKey(
+        ConditionCatalog,
+        on_delete=models.CASCADE,
+        related_name='pins',
+    )
+    pin_id = models.CharField(max_length=64)
+    region_id = models.CharField(max_length=64)
+    label = models.CharField(max_length=200)
+    text = models.TextField()
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='low')
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'condition_pins'
+        ordering = ['sort_order', 'id']
+        unique_together = [('condition', 'pin_id')]
+        indexes = [
+            models.Index(fields=['condition', 'region_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.condition.condition_id}:{self.pin_id}"

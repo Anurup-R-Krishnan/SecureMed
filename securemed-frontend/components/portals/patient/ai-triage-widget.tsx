@@ -6,8 +6,17 @@ import dynamic from 'next/dynamic';
 import { Bot, X, Send, Loader2, CalendarCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import api from '@/lib/api';
 import { AnatomySelectionPayload } from '@/components/features/anatomy/region-map';
+import {
+    AnatomyRegionExplainer,
+    ConditionCatalogItem,
+    ConditionVisualization,
+    fetchConditionCatalog,
+    fetchConditionVisualization,
+    fetchRegionExplainer,
+} from '@/services/anatomy-content';
 
 const BodyExplorer3D = dynamic(
     () => import('@/components/features/anatomy/body-explorer-3d'),
@@ -82,6 +91,14 @@ export default function AiTriageWidget() {
         selectedSymptoms: [],
         intensityByRegion: {},
     });
+    const [activeRegion, setActiveRegion] = useState<string | null>(null);
+    const [explainer, setExplainer] = useState<AnatomyRegionExplainer | null>(null);
+    const [conditionCatalog, setConditionCatalog] = useState<ConditionCatalogItem[]>([]);
+    const [activeConditionId, setActiveConditionId] = useState<string>('');
+    const [conditionVisualization, setConditionVisualization] = useState<ConditionVisualization | null>(null);
+    const [conditionRegion, setConditionRegion] = useState<string | null>(null);
+    const [contentLoading, setContentLoading] = useState(false);
+    const [contentError, setContentError] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to latest message
@@ -111,6 +128,81 @@ export default function AiTriageWidget() {
         const interval = setInterval(pollStatus, 5000);
         return () => clearInterval(interval);
     }, [triageStatus, submittedTriageId, pollStatus]);
+
+    useEffect(() => {
+        if (!showBodyExplorer) return;
+        let isMounted = true;
+        setContentLoading(true);
+        setContentError(null);
+        fetchConditionCatalog('top20', 'patient')
+            .then((items) => {
+                if (!isMounted) return;
+                setConditionCatalog(items);
+            })
+            .catch((error: any) => {
+                if (!isMounted) return;
+                setContentError(error?.response?.data?.error || 'Unable to load condition catalog.');
+            })
+            .finally(() => {
+                if (!isMounted) return;
+                setContentLoading(false);
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, [showBodyExplorer]);
+
+    useEffect(() => {
+        if (!activeRegion) {
+            setExplainer(null);
+            return;
+        }
+        let isMounted = true;
+        fetchRegionExplainer(activeRegion, 'patient')
+            .then((data) => {
+                if (!isMounted) return;
+                setExplainer(data);
+                setContentError(null);
+            })
+            .catch((error: any) => {
+                if (!isMounted) return;
+                setExplainer(null);
+                setContentError(error?.response?.data?.error || 'Unable to load anatomy explainer.');
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, [activeRegion]);
+
+    useEffect(() => {
+        if (!activeConditionId) {
+            setConditionVisualization(null);
+            setConditionRegion(null);
+            return;
+        }
+        let isMounted = true;
+        setContentLoading(true);
+        fetchConditionVisualization(activeConditionId, 'patient')
+            .then((data) => {
+                if (!isMounted) return;
+                setConditionVisualization(data);
+                setConditionRegion(data.regions[0] ?? null);
+                setContentError(null);
+            })
+            .catch((error: any) => {
+                if (!isMounted) return;
+                setConditionVisualization(null);
+                setConditionRegion(null);
+                setContentError(error?.response?.data?.error || 'Unable to load condition visualization.');
+            })
+            .finally(() => {
+                if (!isMounted) return;
+                setContentLoading(false);
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, [activeConditionId]);
 
     const buildHistory = (msgs: Message[]): GeminiPart[] =>
         msgs.map((m) => ({
@@ -202,6 +294,18 @@ export default function AiTriageWidget() {
             selectedSymptoms: [],
             intensityByRegion: {},
         });
+        setActiveRegion(null);
+        setExplainer(null);
+        setActiveConditionId('');
+        setConditionVisualization(null);
+        setConditionRegion(null);
+        setContentError(null);
+    };
+
+    const handleAnatomySelectionChange = (payload: AnatomySelectionPayload) => {
+        setAnatomySelection(payload);
+        const latestRegion = payload.selectedRegions[payload.selectedRegions.length - 1] || null;
+        setActiveRegion(latestRegion);
     };
 
     return (
@@ -241,20 +345,89 @@ export default function AiTriageWidget() {
                                     </Button>
                                 </div>
                                 {showBodyExplorer && (
-                                    <BodyExplorer3D onSelectionChange={setAnatomySelection} className="mb-2" compact />
+                                    <Tabs defaultValue="explore" className="space-y-2">
+                                        <TabsList className="w-full">
+                                            <TabsTrigger value="explore">Explore</TabsTrigger>
+                                            <TabsTrigger value="explainers">Explainers</TabsTrigger>
+                                            <TabsTrigger value="conditions">Conditions</TabsTrigger>
+                                        </TabsList>
+                                        <TabsContent value="explore" className="space-y-2">
+                                            <BodyExplorer3D onSelectionChange={handleAnatomySelectionChange} className="mb-2" compact />
+                                            {anatomySelection.selectedSymptoms.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {anatomySelection.selectedSymptoms.map((symptom) => (
+                                                        <span
+                                                            key={symptom}
+                                                            className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                                        >
+                                                            {symptom}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </TabsContent>
+                                        <TabsContent value="explainers" className="space-y-2">
+                                            {activeRegion ? (
+                                                <>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Region selected: <span className="font-medium text-foreground">{activeRegion}</span>
+                                                    </p>
+                                                    {explainer && (
+                                                        <div className="rounded-lg border p-2 space-y-2">
+                                                            <p className="text-sm font-semibold text-foreground">{explainer.title}</p>
+                                                            <p className="text-xs text-muted-foreground">{explainer.summary}</p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {explainer.common_symptoms.map((symptom) => (
+                                                                    <span
+                                                                        key={symptom}
+                                                                        className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                                                    >
+                                                                        {symptom}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground">Select a body region from Explore tab to load anatomy explainer.</p>
+                                            )}
+                                        </TabsContent>
+                                        <TabsContent value="conditions" className="space-y-2">
+                                            <div className="grid gap-2">
+                                                <select
+                                                    value={activeConditionId}
+                                                    onChange={(e) => setActiveConditionId(e.target.value)}
+                                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                                >
+                                                    <option value="">Select a condition</option>
+                                                    {conditionCatalog.map((item) => (
+                                                        <option key={item.condition_id} value={item.condition_id}>
+                                                            {item.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {conditionVisualization && (
+                                                    <>
+                                                        <BodyExplorer3D
+                                                            mode="condition"
+                                                            compact
+                                                            activeCondition={conditionVisualization}
+                                                            activeConditionRegion={conditionRegion}
+                                                            onConditionRegionSelect={setConditionRegion}
+                                                        />
+                                                        <div className="rounded-lg border p-2 space-y-2">
+                                                            <p className="text-sm font-semibold text-foreground">{conditionVisualization.name}</p>
+                                                            <p className="text-xs text-muted-foreground">{conditionVisualization.overview}</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </TabsContent>
+                                    </Tabs>
                                 )}
-                                {anatomySelection.selectedSymptoms.length > 0 && (
-                                    <div className="flex flex-wrap gap-1">
-                                        {anatomySelection.selectedSymptoms.map((symptom) => (
-                                            <span
-                                                key={symptom}
-                                                className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                                            >
-                                                {symptom}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                                {contentLoading && <p className="mt-2 text-xs text-muted-foreground">Loading anatomy content...</p>}
+                                {contentError && <p className="mt-2 text-xs text-destructive">{contentError}</p>}
                             </div>
                         )}
 

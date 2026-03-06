@@ -2,7 +2,13 @@
 Serializers for telemedicine models.
 """
 from rest_framework import serializers
-from .models import VideoRoom, RoomParticipant
+from .models import (
+    VideoRoom,
+    RoomParticipant,
+    AnatomyRegionExplainer,
+    ConditionCatalog,
+    ConditionPin,
+)
 
 
 class RoomParticipantSerializer(serializers.ModelSerializer):
@@ -87,3 +93,49 @@ class ConversationSerializer(serializers.ModelSerializer):
         if last_msg:
             return MessageSerializer(last_msg).data
         return None
+
+
+class AnatomyRegionExplainerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnatomyRegionExplainer
+        fields = [
+            'region_id',
+            'title',
+            'summary',
+            'details',
+            'common_symptoms',
+            'related_condition_ids',
+            'warning_signals',
+            'updated_at',
+        ]
+
+
+class ConditionPinSerializer(serializers.ModelSerializer):
+    conditionId = serializers.CharField(source='condition.condition_id', read_only=True)
+    id = serializers.CharField(source='pin_id', read_only=True)
+
+    class Meta:
+        model = ConditionPin
+        fields = ['id', 'conditionId', 'region_id', 'label', 'text', 'severity', 'sort_order']
+
+
+class ConditionCatalogListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConditionCatalog
+        fields = ['condition_id', 'name', 'overview', 'regions', 'typical_symptoms']
+
+
+class ConditionVisualizationSerializer(serializers.ModelSerializer):
+    pins = ConditionPinSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ConditionCatalog
+        fields = [
+            'condition_id',
+            'name',
+            'overview',
+            'regions',
+            'typical_symptoms',
+            'seek_care_rules',
+            'pins',
+        ]
