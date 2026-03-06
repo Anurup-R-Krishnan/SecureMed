@@ -60,7 +60,9 @@ export function DigitalTwin({ patientStatus, patientId = 'PT-8492' }: DigitalTwi
                     )}
                 </button>
                 {!patientStatus && (
-                    <span className="text-xs text-muted-foreground italic mt-2 block">(No live data connected)</span>
+                    <span className="text-xs text-muted-foreground italic mt-2 block">
+                        Select a region to view anatomy education and condition context.
+                    </span>
                 )}
             </div>
 

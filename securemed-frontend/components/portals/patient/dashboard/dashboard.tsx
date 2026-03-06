@@ -13,6 +13,7 @@ import LabResultsCard from './lab-results-card';
 import RecentRecordsCard from './recent-records-card';
 import BillingSummaryCard from './billing-summary-card';
 import HealthInsightsCard from './health-insights-card';
+import AnatomyEducationCard from './anatomy-education-card';
 import { getDashboardStats } from '@/lib/api';
 
 interface Appointment extends Omit<BaseAppointment, 'doctor_name'> {
@@ -198,6 +199,9 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
 
             {/* Row 5: Health Insights */}
             <HealthInsightsCard insights={dashboardStats?.health_insights || null} />
+
+            {/* Row 6: Anatomy Education + Condition Visualization */}
+            <AnatomyEducationCard />
         </div>
     );
 }
