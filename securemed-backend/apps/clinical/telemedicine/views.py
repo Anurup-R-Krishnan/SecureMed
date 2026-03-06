@@ -398,15 +398,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
             participants=self.request.user
         ).prefetch_related('participants').distinct()
     
-    def perform_create(self, serializer):
-        # Conversations are typically started by finding a doctor/patient pairing
-        # This basic create doesn't handle participants logic fully; 
-        # usually done via a specific action or signal.
-        # For MVP, we presume participants are added after creation or passed in context.
-        # But ModelViewSet create doesn't handle M2M well in perform_create easily without custom logic.
-        # Let's override create to handle 'participant_id' in data.
-        pass
-
     def create(self, request, *args, **kwargs):
         participant_id = request.data.get('participant_id')
         if not participant_id:

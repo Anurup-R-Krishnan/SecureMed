@@ -248,7 +248,7 @@ export const medicalRecordService = {
         const token = getAccessToken();
         if (!token) throw new Error("No auth token");
 
-        const response = await api.post('/medical-records/', formData, {
+        const response = await api.post('/medical-records/records/', formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'multipart/form-data'

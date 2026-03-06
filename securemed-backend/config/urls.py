@@ -59,6 +59,7 @@ api_patterns = [
 urlpatterns = [
     path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
+    path('api/', api_root, name='api-root-prefixed'),
     path('api/', include(api_patterns)),
     
     # Health check endpoints

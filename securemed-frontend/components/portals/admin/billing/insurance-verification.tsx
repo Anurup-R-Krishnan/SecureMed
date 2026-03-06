@@ -15,7 +15,7 @@ import {
     Building2,
     Loader2,
 } from 'lucide-react';
-import { API_BASE_URL } from '@/lib/urls';
+import api from '@/lib/api';
 
 
 // Supported insurance providers
@@ -47,24 +47,12 @@ export default function InsuranceVerification() {
         setVerificationResult(null);
 
         try {
-            // Call Django backend for insurance verification
-            const response = await fetch(`${API_BASE_URL}/insurance/verify/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+            const response = await api.post('/billing/insurance/verify/', {
                     providerId: selectedProvider,
                     policyNumber: policyNumber,
                     patientId: patientId,
-                }),
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
+            const result = response.data;
             setVerificationResult(result);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Verification failed');
