@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -102,7 +102,7 @@ export default function PharmacyPortal({ onLogout, currentTab: currentTabProp, o
     }
   };
 
-  const closeScanner = () => {
+  const closeScanner = useCallback(() => {
     setScanOrderId(null);
     setScanError(null);
     setScanning(false);
@@ -110,7 +110,7 @@ export default function PharmacyPortal({ onLogout, currentTab: currentTabProp, o
       videoStream.getTracks().forEach((t) => t.stop());
       setVideoStream(null);
     }
-  };
+  }, [videoStream]);
 
   const startScan = async (orderId: number) => {
     setScanOrderId(orderId);

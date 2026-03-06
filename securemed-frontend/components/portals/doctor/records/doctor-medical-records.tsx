@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Plus, Filter } from 'lucide-react';
+import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Plus } from 'lucide-react';
 import api from '@/lib/api';
 
 interface DoctorMedicalRecordsProps {
@@ -28,9 +28,39 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const fetchRecords = async (search?: string) => {
-    // ... function contents
-  };
+  const fetchRecords = useCallback(async (search?: string) => {
+    setLoading(true);
+    try {
+      const params: Record<string, string> = {};
+      if (search?.trim()) {
+        params.search = search.trim();
+      }
+      if (patientId?.trim()) {
+        params.patient_id = patientId.trim();
+      }
+
+      const [recordsResponse, prescriptionsResponse] = await Promise.all([
+        api.get('/medical-records/records/', { params }),
+        api.get('/medical-records/prescriptions/'),
+      ]);
+
+      const records = Array.isArray(recordsResponse.data)
+        ? recordsResponse.data
+        : (recordsResponse.data?.results ?? []);
+      const rx = Array.isArray(prescriptionsResponse.data)
+        ? prescriptionsResponse.data
+        : (prescriptionsResponse.data?.results ?? []);
+
+      setMedicalRecords(records);
+      setPrescriptions(rx);
+    } catch (error) {
+      console.error('Failed to fetch doctor medical records', error);
+      setMedicalRecords([]);
+      setPrescriptions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [patientId]);
 
   useEffect(() => {
     fetchRecords(debouncedSearch);
