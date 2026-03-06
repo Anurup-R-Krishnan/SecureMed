@@ -92,7 +92,7 @@ class DrugBatchModelTest(TestCase):
         self.assertFalse(self.batch.is_expired)
 
     def test_is_expired_true(self):
-        self.batch.expiry_date = date.today() - timedelta(days=1)
+        self.batch.expiry_date = date.today() - timedelta(days=2)
         self.batch.save()
         self.assertTrue(self.batch.is_expired)
 
