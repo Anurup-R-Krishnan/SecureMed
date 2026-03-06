@@ -12,6 +12,17 @@ export interface TimelineEvent {
 }
 
 export const patientService = {
+    getPatients: async (): Promise<any[]> => {
+        try {
+            const response = await api.get('/patients/');
+            if (Array.isArray(response.data)) return response.data;
+            return response.data?.results || [];
+        } catch (error) {
+            console.error('Error fetching patients:', error);
+            return [];
+        }
+    },
+
     getPatientTimeline: async (patientId?: string): Promise<TimelineEvent[]> => {
         try {
             const params = patientId ? { patient_id: patientId } : {};

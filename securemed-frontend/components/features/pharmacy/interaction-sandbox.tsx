@@ -17,21 +17,29 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const [reportLoading, setReportLoading] = useState(false);
     const [checkResult, setCheckResult] = useState<InteractionCheckResult | null>(null);
     const [latestReport, setLatestReport] = useState<InteractionReport | null>(null);
+    const [reportHistory, setReportHistory] = useState<InteractionReport[]>([]);
     const [error, setError] = useState<string>('');
 
+    const reloadReports = async () => {
+        try {
+            setReportLoading(true);
+            const [report, history] = await Promise.all([
+                drugInteractionService.getLatestReport(patientId),
+                drugInteractionService.getReportHistory(patientId),
+            ]);
+            setLatestReport(report);
+            setReportHistory(history.slice(0, 5));
+        } catch {
+            setLatestReport(null);
+            setReportHistory([]);
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
     React.useEffect(() => {
-        const loadLatestReport = async () => {
-            try {
-                setReportLoading(true);
-                const report = await drugInteractionService.getLatestReport(patientId);
-                setLatestReport(report);
-            } catch {
-                setLatestReport(null);
-            } finally {
-                setReportLoading(false);
-            }
-        };
-        loadLatestReport();
+        reloadReports();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patientId]);
 
     React.useEffect(() => {
@@ -156,15 +164,45 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
 
             {latestReport && (
                 <div className="rounded-xl border bg-blue-50/60 p-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
                         <h4 className="font-semibold text-sm">Latest Patient Report</h4>
-                        <span className="text-xs text-muted-foreground">
-                            {new Date(latestReport.created_at).toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    try {
+                                        setReportLoading(true);
+                                        await drugInteractionService.regenerateReport(patientId);
+                                        await reloadReports();
+                                    } catch {
+                                        setError('Could not regenerate report.');
+                                        setReportLoading(false);
+                                    }
+                                }}
+                                className="text-xs px-2 py-1 rounded border bg-background hover:bg-muted"
+                            >
+                                Regenerate
+                            </button>
+                            <span className="text-xs text-muted-foreground">
+                                {new Date(latestReport.created_at).toLocaleString()}
+                            </span>
+                        </div>
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
                         Findings: {latestReport.total_findings} | Critical: {latestReport.critical_count} | High: {latestReport.high_count}
                     </div>
+                    {reportHistory.length > 1 && (
+                        <div className="mt-3">
+                            <p className="text-xs font-medium mb-2">Recent Reports</p>
+                            <div className="space-y-1">
+                                {reportHistory.slice(1).map((r) => (
+                                    <div key={r.id} className="text-xs text-muted-foreground">
+                                        #{r.id} - {new Date(r.created_at).toLocaleString()} - findings {r.total_findings}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
             {reportLoading && <div className="text-xs text-muted-foreground">Loading latest report...</div>}

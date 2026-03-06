@@ -58,4 +58,18 @@ export const drugInteractionService = {
         const response = await api.get('/medical-records/drug-interactions/reports/latest/', { params });
         return response.data || null;
     },
+
+    async getReportHistory(patientId?: number): Promise<InteractionReport[]> {
+        const params: Record<string, string | number> = {};
+        if (patientId) params.patient_id = patientId;
+        const response = await api.get('/medical-records/drug-interactions/reports/', { params });
+        return Array.isArray(response.data) ? response.data : [];
+    },
+
+    async regenerateReport(patientId?: number): Promise<InteractionReport> {
+        const payload: Record<string, number> = {};
+        if (patientId) payload.patient_id = patientId;
+        const response = await api.post('/medical-records/drug-interactions/reports/generate/', payload);
+        return response.data;
+    },
 };

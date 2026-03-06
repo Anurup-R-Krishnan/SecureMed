@@ -616,6 +616,19 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         serializer = self.MedicationInteractionReportSerializer(reports, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['post'], url_path='reports/generate')
+    def generate_report(self, request):
+        patient = self._resolve_patient(request)
+        if not patient:
+            raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
+        report = generate_and_store_report(
+            patient=patient,
+            generated_by=request.user,
+            trigger_event='manual_refresh',
+        )
+        serializer = self.MedicationInteractionReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class PharmacyOrderViewSet(viewsets.ModelViewSet):
     from .models import PharmacyOrder

@@ -127,3 +127,13 @@ class MedicationInteractionApiTests(TestCase):
         self.assertEqual(report.total_medications, 2)
         self.assertEqual(report.total_findings, 1)
         self.assertEqual(report.items.count(), 1)
+
+    def test_patient_can_generate_latest_report_endpoint(self):
+        self.client.force_authenticate(user=self.patient_user)
+        response = self.client.post(
+            "/api/medical-records/drug-interactions/reports/generate/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("id", response.data)

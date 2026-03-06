@@ -3,10 +3,23 @@
 import React from 'react';
 import { MedicationSandbox } from '@/components/features/pharmacy/interaction-sandbox';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Printer, Info, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Printer, Info } from 'lucide-react';
 import Link from 'next/link';
+import { patientService } from '@/services/patients';
 
 export default function MedicationInteractionPage() {
+    const [patients, setPatients] = React.useState<any[]>([]);
+    const [patientId, setPatientId] = React.useState<string>('');
+
+    React.useEffect(() => {
+        const loadPatients = async () => {
+            const list = await patientService.getPatients();
+            setPatients(list);
+        };
+        loadPatients();
+    }, []);
+
     return (
         <div className="space-y-8 max-w-7xl mx-auto p-6 animate-in fade-in duration-500">
             {/* Zenith Header */}
@@ -51,7 +64,24 @@ export default function MedicationInteractionPage() {
             </div>
 
             <div className="bg-card border rounded-[32px] shadow-sm p-1 overflow-hidden">
-                <MedicationSandbox mode="doctor" />
+                <div className="p-4 border-b bg-muted/20">
+                    <div className="max-w-md">
+                        <p className="text-xs text-muted-foreground mb-2 font-medium">Patient Context (optional)</p>
+                        <Select value={patientId} onValueChange={setPatientId}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select patient for patient-specific report context" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {patients.map((p) => (
+                                    <SelectItem key={p.id} value={String(p.id)}>
+                                        {p.user_first_name} {p.user_last_name} ({p.patient_id})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <MedicationSandbox mode="doctor" patientId={patientId ? parseInt(patientId, 10) : undefined} />
             </div>
         </div>
     );
