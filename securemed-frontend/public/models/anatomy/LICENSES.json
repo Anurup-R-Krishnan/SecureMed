@@ -1,7 +1,0 @@
-{
-  "model": "procedural-anatomy-v1",
-  "source": "generated in-code using three.js primitives",
-  "license": "no external asset license required",
-  "attribution_required": false,
-  "notes": "This release uses procedural geometry only. External anatomy meshes can be added later with explicit license metadata."
-}
