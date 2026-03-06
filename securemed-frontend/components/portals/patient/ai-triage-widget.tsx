@@ -2,10 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Bot, X, Send, Loader2, CalendarCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import api from '@/lib/api';
+import { AnatomySelectionPayload } from '@/components/features/anatomy/region-map';
+
+const BodyExplorer3D = dynamic(
+    () => import('@/components/features/anatomy/body-explorer-3d'),
+    { ssr: false }
+);
+const ENABLE_3D_BODY = process.env.NEXT_PUBLIC_ENABLE_3D_BODY !== 'false';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -68,6 +76,12 @@ export default function AiTriageWidget() {
     const [submittedTriageId, setSubmittedTriageId] = useState<number | null>(null);
     const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
     const [sentToDoctor, setSentToDoctor] = useState('');
+    const [showBodyExplorer, setShowBodyExplorer] = useState(false);
+    const [anatomySelection, setAnatomySelection] = useState<AnatomySelectionPayload>({
+        selectedRegions: [],
+        selectedSymptoms: [],
+        intensityByRegion: {},
+    });
     const bottomRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to latest message
@@ -117,8 +131,18 @@ export default function AiTriageWidget() {
         try {
             // Send all prior messages as history, current message separately
             const history = buildHistory(updatedMessages.slice(0, -1));
+            const contextLines: string[] = [];
+            if (anatomySelection.selectedRegions.length > 0) {
+                contextLines.push(`Body regions: ${anatomySelection.selectedRegions.join(', ')}`);
+            }
+            if (anatomySelection.selectedSymptoms.length > 0) {
+                contextLines.push(`Region-derived symptoms: ${anatomySelection.selectedSymptoms.join(', ')}`);
+            }
+            const enrichedMessage = contextLines.length > 0
+                ? `${text}\n\n[Anatomy Context]\n${contextLines.join('\n')}`
+                : text;
             const { data } = await api.post('/telemedicine/api/triage/chat/', {
-                message: text,
+                message: enrichedMessage,
                 history,
             }, { timeout: 120000 }); // 120s: up to 3 model attempts × 30s + headroom
 
@@ -172,6 +196,12 @@ export default function AiTriageWidget() {
         setSubmittedTriageId(null);
         setSelectedDoctorId(null);
         setSentToDoctor('');
+        setShowBodyExplorer(false);
+        setAnatomySelection({
+            selectedRegions: [],
+            selectedSymptoms: [],
+            intensityByRegion: {},
+        });
     };
 
     return (
@@ -196,6 +226,38 @@ export default function AiTriageWidget() {
 
                     {/* Chat area */}
                     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 m-0 bg-slate-50/80 dark:bg-slate-900/80">
+                        {!triageComplete && ENABLE_3D_BODY && (
+                            <div className="rounded-xl border border-border bg-background p-3 shadow-sm">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        3D Body Context
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowBodyExplorer((prev) => !prev)}
+                                    >
+                                        {showBodyExplorer ? 'Hide' : 'Show'} 3D Body
+                                    </Button>
+                                </div>
+                                {showBodyExplorer && (
+                                    <BodyExplorer3D onSelectionChange={setAnatomySelection} className="mb-2" compact />
+                                )}
+                                {anatomySelection.selectedSymptoms.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                        {anatomySelection.selectedSymptoms.map((symptom) => (
+                                            <span
+                                                key={symptom}
+                                                className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                            >
+                                                {symptom}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {messages.map((msg, idx) => {
                             const isUser = msg.role === 'user';
                             const isFinalMsg =

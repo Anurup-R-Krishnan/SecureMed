@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +15,13 @@ import {
     FlaskConical,
 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/urls';
+import { AnatomySelectionPayload } from '@/components/features/anatomy/region-map';
+
+const BodyExplorer3D = dynamic(
+    () => import('@/components/features/anatomy/body-explorer-3d'),
+    { ssr: false }
+);
+const ENABLE_3D_BODY = process.env.NEXT_PUBLIC_ENABLE_3D_BODY !== 'false';
 
 // Backend API URL
 
@@ -49,12 +57,22 @@ export default function AIDecisionSupport({
     const [error, setError] = useState<string | null>(null);
     const [symptomInput, setSymptomInput] = useState('');
     const [showSuggestionList, setShowSuggestionList] = useState(false);
+    const [anatomySelection, setAnatomySelection] = useState<AnatomySelectionPayload>({
+        selectedRegions: [],
+        selectedSymptoms: [],
+        intensityByRegion: {},
+    });
 
     const filteredSymptoms = commonSymptoms.filter(
         (symptom) =>
             symptom.toLowerCase().includes(symptomInput.toLowerCase()) &&
             !selectedSymptoms.includes(symptom)
     );
+
+    const mergedSymptoms = Array.from(new Set([
+        ...selectedSymptoms,
+        ...anatomySelection.selectedSymptoms,
+    ]));
 
     const handleAddSymptom = (symptom: string) => {
         if (!selectedSymptoms.includes(symptom)) {
@@ -69,7 +87,7 @@ export default function AIDecisionSupport({
     };
 
     const handleGetSuggestions = async () => {
-        if (selectedSymptoms.length === 0) {
+        if (mergedSymptoms.length === 0) {
             setError('Please select at least one symptom');
             return;
         }
@@ -85,7 +103,9 @@ export default function AIDecisionSupport({
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    symptoms: selectedSymptoms,
+                    symptoms: mergedSymptoms,
+                    regions: anatomySelection.selectedRegions,
+                    intensityByRegion: anatomySelection.intensityByRegion,
                 }),
             });
 
@@ -159,6 +179,10 @@ export default function AIDecisionSupport({
                     Enter Symptoms
                 </h3>
 
+                {ENABLE_3D_BODY && (
+                    <BodyExplorer3D onSelectionChange={setAnatomySelection} className="mb-4" />
+                )}
+
                 {/* Selected Symptoms */}
                 <div className="flex flex-wrap gap-2 mb-4">
                     {selectedSymptoms.map((symptom) => (
@@ -176,6 +200,24 @@ export default function AIDecisionSupport({
                         </span>
                     ))}
                 </div>
+
+                {anatomySelection.selectedSymptoms.length > 0 && (
+                    <div className="mb-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+                            Region-Derived Symptoms
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {anatomySelection.selectedSymptoms.map((symptom) => (
+                                <span
+                                    key={symptom}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-sm"
+                                >
+                                    {symptom}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Symptom Input */}
                 <div className="relative">
@@ -218,7 +260,7 @@ export default function AIDecisionSupport({
                 {/* Get Suggestions Button */}
                 <Button
                     onClick={handleGetSuggestions}
-                    disabled={loading || selectedSymptoms.length === 0}
+                    disabled={loading || mergedSymptoms.length === 0}
                     className="mt-4 flex items-center gap-2"
                 >
                     {loading ? (
