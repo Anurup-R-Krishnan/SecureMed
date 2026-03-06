@@ -204,6 +204,7 @@ export default function BodyExplorer3D({
   onConditionRegionSelect,
 }: BodyExplorer3DProps) {
   const [webglReady, setWebglReady] = useState(false);
+  const [render3DEnabled, setRender3DEnabled] = useState(true);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [intensityByRegion, setIntensityByRegion] = useState<Record<string, number>>({});
   const selectionCallbackRef = useRef(onSelectionChange);
@@ -214,6 +215,12 @@ export default function BodyExplorer3D({
 
   useEffect(() => {
     setWebglReady(supportsWebGL());
+  }, []);
+
+  useEffect(() => {
+    const handle = () => setRender3DEnabled(false);
+    window.addEventListener('error', handle);
+    return () => window.removeEventListener('error', handle);
   }, []);
 
   const conditionRegions = activeCondition?.regions ?? [];
@@ -284,7 +291,7 @@ export default function BodyExplorer3D({
         </Button>
       </div>
 
-      {webglReady ? (
+      {webglReady && render3DEnabled ? (
         <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'lg:grid-cols-[1.25fr_1fr]'}`}>
           <div className={`${compact ? 'h-[240px]' : 'h-[420px]'} w-full rounded-xl border bg-slate-950/5`}>
             <Canvas camera={{ position: [0, 0.2, 4.4], fov: 44 }} dpr={[1, 1.5]}>
@@ -333,7 +340,7 @@ export default function BodyExplorer3D({
       ) : (
         <div className="rounded-lg border p-3">
           <p className="text-sm text-muted-foreground">
-            3D rendering is unavailable in this browser. Use the symptom list to continue triage.
+            3D rendering is unavailable right now. Use region and symptom context to continue triage safely.
           </p>
         </div>
       )}

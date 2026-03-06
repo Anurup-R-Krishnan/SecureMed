@@ -89,6 +89,10 @@ export default function AIDecisionSupport({
         ...selectedSymptoms,
         ...anatomySelection.selectedSymptoms,
     ]));
+    const patientFocusScore = Math.min(
+        100,
+        (anatomySelection.selectedRegions.length * 20) + (mergedSymptoms.length * 8)
+    );
 
     React.useEffect(() => {
         fetchConditionCatalog('top20', 'doctor')
@@ -242,6 +246,28 @@ export default function AIDecisionSupport({
                     <Stethoscope className="h-5 w-5 text-primary" />
                     Enter Symptoms
                 </h3>
+
+                <div className="mb-4 rounded-lg border p-3 bg-slate-50 dark:bg-slate-900/40">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                        Active Patient Focus
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-primary">
+                            Focus Score {patientFocusScore}%
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            Regions {anatomySelection.selectedRegions.length}
+                        </span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                            Symptoms {mergedSymptoms.length}
+                        </span>
+                        {activeConditionId && (
+                            <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                Condition {activeConditionId}
+                            </span>
+                        )}
+                    </div>
+                </div>
 
                 {ENABLE_3D_BODY && (
                     <div className="space-y-3 mb-4">
