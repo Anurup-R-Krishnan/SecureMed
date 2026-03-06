@@ -206,16 +206,16 @@ class HospitalGraphService:
         date_str = appointment.appointment_date.isoformat()
         start_time_str = appointment.appointment_time.isoformat()
         duration = appointment.duration or 30
+        appointment_id = str(getattr(appointment, 'appointment_id', '') or getattr(appointment, 'id', ''))
 
         # Patient <-> Doctor relationship
         query_patient_doctor = """
         MERGE (p:Patient {patient_id: $patient_id})
         MERGE (d:Doctor {doctor_id: $doctor_id})
-        MERGE (p)-[rel:SAW]->(d)
+        MERGE (p)-[rel:SAW {appointment_id: $appointment_id}]->(d)
         SET rel.date = date($date),
             rel.start_time = time($start_time),
-            rel.duration_minutes = $duration,
-            rel.appointment_id = $appointment_id
+            rel.duration_minutes = $duration
         """
         params = {
             'patient_id': appointment.patient.patient_id,
@@ -223,7 +223,7 @@ class HospitalGraphService:
             'date': date_str,
             'start_time': start_time_str,
             'duration': duration,
-            'appointment_id': appointment.appointment_id,
+            'appointment_id': appointment_id,
         }
 
         with self._session() as session:
@@ -236,11 +236,10 @@ class HospitalGraphService:
                 query_patient_room = """
                 MERGE (p:Patient {patient_id: $patient_id})
                 MERGE (r:Room {room_id: $room_id})
-                MERGE (p)-[rel:VISITED]->(r)
+                MERGE (p)-[rel:VISITED {appointment_id: $appointment_id}]->(r)
                 SET rel.date = date($date),
                     rel.start_time = time($start_time),
-                    rel.duration_minutes = $duration,
-                    rel.appointment_id = $appointment_id
+                    rel.duration_minutes = $duration
                 """
                 session.run(query_patient_room, {
                     'patient_id': appointment.patient.patient_id,
@@ -248,13 +247,13 @@ class HospitalGraphService:
                     'date': date_str,
                     'start_time': start_time_str,
                     'duration': duration,
-                    'appointment_id': appointment.appointment_id,
+                    'appointment_id': appointment_id,
                 })
 
                 query_doctor_room = """
                 MERGE (d:Doctor {doctor_id: $doctor_id})
                 MERGE (r:Room {room_id: $room_id})
-                MERGE (d)-[rel:WORKED_IN]->(r)
+                MERGE (d)-[rel:WORKED_IN {appointment_id: $appointment_id}]->(r)
                 SET rel.date = date($date),
                     rel.start_time = time($start_time),
                     rel.duration_minutes = $duration
@@ -265,6 +264,7 @@ class HospitalGraphService:
                     'date': date_str,
                     'start_time': start_time_str,
                     'duration': duration,
+                    'appointment_id': appointment_id,
                 })
 
     def sync_equipment_usage(self, usage_log):
@@ -275,17 +275,20 @@ class HospitalGraphService:
         query = """
         MERGE (p:Patient {patient_id: $patient_id})
         MERGE (e:Equipment {equipment_id: $equipment_id})
-        MERGE (p)-[rel:USED_EQUIPMENT]->(e)
+        MERGE (p)-[rel:USED_EQUIPMENT {usage_log_id: $usage_log_id}]->(e)
         SET rel.date = date($date),
             rel.start_time = time($start_time),
+            rel.end_time = CASE WHEN $end_time IS NULL THEN NULL ELSE time($end_time) END,
             rel.sterilized_after = $sterilized_after
         """
         with self._session() as session:
             session.run(query, {
                 'patient_id': usage_log.patient.patient_id,
                 'equipment_id': usage_log.equipment.equipment_id,
+                'usage_log_id': usage_log.id,
                 'date': usage_log.started_at.date().isoformat(),
                 'start_time': usage_log.started_at.time().isoformat(),
+                'end_time': usage_log.ended_at.time().isoformat() if usage_log.ended_at else None,
                 'sterilized_after': usage_log.sterilized_after,
             })
 
@@ -414,10 +417,10 @@ class HospitalGraphService:
         }})
         YIELD nodes, relationships
         RETURN
-            [n IN nodes | {{type: labels(n)[0], props: properties(n)}}] AS nodes,
+            [n IN nodes | {{type: labels(n)[0], properties: properties(n)}}] AS nodes,
             [r IN relationships | {{
-                type: type(r),
-                props: properties(r),
+                relationship: type(r),
+                properties: properties(r),
                 source: properties(startNode(r)),
                 target: properties(endNode(r))
             }}] AS relationships
@@ -427,8 +430,8 @@ class HospitalGraphService:
         MATCH path = (p:Patient {{patient_id: $patient_id}})-[*1..{depth}]-(connected)
         WHERE ALL(r IN relationships(path)
                   WHERE r.date >= date($start_date))
-        WITH DISTINCT connected, labels(connected)[0] AS node_type, properties(connected) AS props
-        RETURN collect({{type: node_type, props: props}}) AS nodes
+        WITH DISTINCT connected, labels(connected)[0] AS node_type, properties(connected) AS node_properties
+        RETURN collect({{type: node_type, properties: node_properties}}) AS nodes
         """
 
         with self._session() as session:
@@ -539,18 +542,18 @@ class HospitalGraphService:
             id: coalesce(n.patient_id, n.doctor_id, n.room_id, n.equipment_id, n.code),
             label: coalesce(n.name, n.patient_id, n.doctor_id, n.room_id, n.equipment_id),
             type: labels(n)[0],
-            props: properties(n)
+            properties: properties(n)
         }) + collect(DISTINCT {
             id: coalesce(m.patient_id, m.doctor_id, m.room_id, m.equipment_id, m.code),
             label: coalesce(m.name, m.patient_id, m.doctor_id, m.room_id, m.equipment_id),
             type: labels(m)[0],
-            props: properties(m)
+            properties: properties(m)
         }) AS all_nodes,
         collect({
             source: coalesce(n.patient_id, n.doctor_id, n.room_id, n.equipment_id, n.code),
             target: coalesce(m.patient_id, m.doctor_id, m.room_id, m.equipment_id, m.code),
-            type: type(r),
-            props: properties(r)
+            relationship: type(r),
+            properties: properties(r)
         }) AS links
         UNWIND all_nodes AS node
         WITH DISTINCT node, links

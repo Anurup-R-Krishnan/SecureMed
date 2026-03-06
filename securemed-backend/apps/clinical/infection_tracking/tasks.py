@@ -9,12 +9,18 @@ Tasks:
 - compute_room_risk_scores: periodic risk score snapshots
 """
 import logging
+from uuid import uuid4
 from datetime import timedelta
 
 from celery import shared_task
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_trace_id():
+    """Generate a collision-resistant trace ID."""
+    return f"TRC-{uuid4().hex[:12].upper()}"
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
@@ -158,9 +164,10 @@ def detect_infection_cluster(self, report_id):
         vector_type = graph.determine_vector_type(path_data) if path_data['path'] else 'unknown'
         confidence = graph.compute_confidence(path_data, hours_between) if path_data['path'] else 0.0
 
-        # Generate trace ID
-        trace_count = InfectionTrace.objects.count()
-        trace_id = f"TRC-{trace_count + 1:06d}"
+        # Generate trace ID (collision-resistant under concurrency)
+        trace_id = _generate_trace_id()
+        while InfectionTrace.objects.filter(trace_id=trace_id).exists():
+            trace_id = _generate_trace_id()
 
         InfectionTrace.objects.create(
             trace_id=trace_id,

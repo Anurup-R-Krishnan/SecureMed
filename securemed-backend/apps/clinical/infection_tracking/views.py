@@ -19,6 +19,20 @@ from apps.accounts.users.permissions import IsDoctor
 logger = logging.getLogger(__name__)
 
 
+def _parse_int_query_param(raw_value, *, default, field, minimum=None, maximum=None):
+    if raw_value is None:
+        return default
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid '{field}' value; expected integer.") from exc
+    if minimum is not None and value < minimum:
+        raise ValueError(f"Invalid '{field}' value; minimum is {minimum}.")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"Invalid '{field}' value; maximum is {maximum}.")
+    return value
+
+
 class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == 'admin'
@@ -144,14 +158,29 @@ class InfectionReportViewSet(viewsets.ModelViewSet):
     def contact_network(self, request, pk=None):
         """Get the contact network around the infected patient."""
         report = self.get_object()
-        depth = int(request.query_params.get('depth', 2))
-        days = int(request.query_params.get('days', 30))
+        try:
+            depth = _parse_int_query_param(
+                request.query_params.get('depth'),
+                default=2,
+                field='depth',
+                minimum=1,
+                maximum=4,
+            )
+            days = _parse_int_query_param(
+                request.query_params.get('days'),
+                default=30,
+                field='days',
+                minimum=1,
+                maximum=365,
+            )
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         from .graph_service import HospitalGraphService
         graph = HospitalGraphService.get_instance()
         network = graph.get_patient_contact_network(
             report.patient.patient_id,
-            depth=min(depth, 4),  # cap at 4 to prevent huge queries
+            depth=depth,
             days=days,
         )
         return Response(network)
@@ -195,8 +224,23 @@ class InfectionTraceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def high_risk_rooms(self, request):
         """Get rooms with highest risk scores."""
-        days = int(request.query_params.get('days', 7))
-        limit = int(request.query_params.get('limit', 20))
+        try:
+            days = _parse_int_query_param(
+                request.query_params.get('days'),
+                default=7,
+                field='days',
+                minimum=1,
+                maximum=365,
+            )
+            limit = _parse_int_query_param(
+                request.query_params.get('limit'),
+                default=20,
+                field='limit',
+                minimum=1,
+                maximum=200,
+            )
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         from .graph_service import HospitalGraphService
         graph = HospitalGraphService.get_instance()
@@ -247,10 +291,19 @@ def graph_stats(request):
 @permission_classes([permissions.IsAuthenticated, IsDoctorOrAdmin])
 def graph_visualization(request):
     """Return graph data for frontend visualization (D3.js / vis.js format)."""
-    limit = int(request.query_params.get('limit', 200))
+    try:
+        limit = _parse_int_query_param(
+            request.query_params.get('limit'),
+            default=200,
+            field='limit',
+            minimum=1,
+            maximum=500,
+        )
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     from .graph_service import HospitalGraphService
     graph = HospitalGraphService.get_instance()
-    data = graph.get_graph_visualization_data(limit=min(limit, 500))
+    data = graph.get_graph_visualization_data(limit=limit)
     return Response(data)
 
 

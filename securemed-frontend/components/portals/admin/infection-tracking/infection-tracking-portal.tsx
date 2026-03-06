@@ -13,17 +13,33 @@ import ForceGraph from './force-graph';
 import TraceTable from './trace-table';
 import GraphLegend from './graph-legend';
 
-type InfectionTrackingPortalProps = {
-    isActive?: boolean;
+export type InfectionTrackingCacheData = {
+    graphData: GraphVisualization;
+    traces: InfectionTrace[];
+    stats: GraphStats;
+    fetchedAt: number;
 };
 
-export default function InfectionTrackingPortal({ isActive = true }: InfectionTrackingPortalProps) {
-    const [graphData, setGraphData] = useState<GraphVisualization | null>(null);
-    const [traces, setTraces] = useState<InfectionTrace[]>([]);
-    const [stats, setStats] = useState<GraphStats | null>(null);
-    const [loading, setLoading] = useState(true);
+type InfectionTrackingPortalProps = {
+    isActive?: boolean;
+    initialData?: InfectionTrackingCacheData | null;
+    onDataLoaded?: (data: InfectionTrackingCacheData) => void;
+    cacheTtlMs?: number;
+};
+
+const DEFAULT_CACHE_TTL_MS = 60_000;
+
+export default function InfectionTrackingPortal({
+    isActive = true,
+    initialData = null,
+    onDataLoaded,
+    cacheTtlMs = DEFAULT_CACHE_TTL_MS,
+}: InfectionTrackingPortalProps) {
+    const [graphData, setGraphData] = useState<GraphVisualization | null>(initialData?.graphData ?? null);
+    const [traces, setTraces] = useState<InfectionTrace[] | null>(initialData?.traces ?? null);
+    const [stats, setStats] = useState<GraphStats | null>(initialData?.stats ?? null);
+    const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
-    const [warnings, setWarnings] = useState<string[]>([]);
     const [selectedTrace, setSelectedTrace] = useState<InfectionTrace | null>(null);
     const [refreshToken, setRefreshToken] = useState(0);
 
@@ -36,12 +52,25 @@ export default function InfectionTrackingPortal({ isActive = true }: InfectionTr
         let cancelled = false;
 
         const fetchAll = async () => {
+            const hasValidCache = Boolean(
+                initialData
+                && Date.now() - initialData.fetchedAt <= cacheTtlMs
+                && refreshToken === 0,
+            );
+            if (hasValidCache && initialData) {
+                setGraphData(initialData.graphData);
+                setTraces(initialData.traces);
+                setStats(initialData.stats);
+                setError(null);
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             setError(null);
-            setWarnings([]);
 
             try {
-                const [graphRes, tracesRes, statsRes] = await Promise.allSettled([
+                const [graphRes, tracesRes, statsRes] = await Promise.all([
                     infectionTrackingService.getGraphVisualization(180, { signal: controller.signal }),
                     infectionTrackingService.getTraces({ signal: controller.signal }),
                     infectionTrackingService.getGraphStats({ signal: controller.signal }),
@@ -49,37 +78,33 @@ export default function InfectionTrackingPortal({ isActive = true }: InfectionTr
 
                 if (cancelled) return;
 
-                const sectionWarnings: string[] = [];
-
-                if (graphRes.status === 'fulfilled') {
-                    const data = graphRes.value;
-                    setGraphData({
-                        nodes: Array.isArray(data?.nodes) ? data.nodes : [],
-                        links: Array.isArray(data?.links) ? data.links : [],
-                    });
-                } else {
-                    setGraphData({ nodes: [], links: [] });
-                    sectionWarnings.push('Graph visualization is currently unavailable.');
+                if (!Array.isArray(graphRes?.nodes) || !Array.isArray(graphRes?.links)) {
+                    throw new Error('Invalid graph visualization payload.');
                 }
 
-                if (tracesRes.status === 'fulfilled') {
-                    setTraces(Array.isArray(tracesRes.value) ? tracesRes.value : []);
-                } else {
-                    setTraces([]);
-                    sectionWarnings.push('Transmission traces could not be loaded.');
+                if (!Array.isArray(tracesRes)) {
+                    throw new Error('Invalid traces payload.');
                 }
 
-                if (statsRes.status === 'fulfilled') {
-                    setStats(statsRes.value);
-                } else {
-                    setStats(null);
-                    sectionWarnings.push('Graph stats could not be loaded.');
+                if (!statsRes || typeof statsRes !== 'object') {
+                    throw new Error('Invalid graph stats payload.');
                 }
 
-                if (sectionWarnings.length === 3) {
+                const nextData: InfectionTrackingCacheData = {
+                    graphData: graphRes,
+                    traces: tracesRes,
+                    stats: statsRes,
+                    fetchedAt: Date.now(),
+                };
+
+                setGraphData(nextData.graphData);
+                setTraces(nextData.traces);
+                setStats(nextData.stats);
+                setError(null);
+                onDataLoaded?.(nextData);
+            } catch {
+                if (!cancelled) {
                     setError('Unable to load infection tracking data right now.');
-                } else if (sectionWarnings.length > 0) {
-                    setWarnings(sectionWarnings);
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -92,7 +117,7 @@ export default function InfectionTrackingPortal({ isActive = true }: InfectionTr
             cancelled = true;
             controller.abort();
         };
-    }, [isActive, refreshToken]);
+    }, [cacheTtlMs, initialData, isActive, onDataLoaded, refreshToken]);
 
     if (!isActive) {
         return null;
@@ -119,14 +144,21 @@ export default function InfectionTrackingPortal({ isActive = true }: InfectionTr
         );
     }
 
+    if (!graphData || !traces || !stats) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <AlertTriangle className="h-10 w-10 text-destructive" />
+                <p className="text-destructive font-medium">Infection tracking data is unavailable.</p>
+                <Button variant="outline" onClick={refresh}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry
+                </Button>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
-            {warnings.length > 0 && (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
-                    {warnings.join(' ')}
-                </div>
-            )}
-
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card p-6 rounded-2xl border border-border/60 shadow-sm">
                 <div className="flex items-center gap-4">
                     <div className="bg-red-500/10 p-3 rounded-xl ring-1 ring-red-500/20">

@@ -95,12 +95,53 @@ interface RequestOptions {
     signal?: AbortSignal;
 }
 
+function normalizeGraphVisualization(payload: unknown): GraphVisualization {
+    const data = (payload ?? {}) as Record<string, unknown>;
+    const rawNodes = Array.isArray(data.nodes) ? data.nodes : [];
+    const rawLinks = Array.isArray(data.links) ? data.links : [];
+
+    const nodes: GraphNode[] = rawNodes.flatMap((item) => {
+        const node = item as Record<string, unknown>;
+        const id = typeof node.id === 'string' ? node.id : null;
+        const type = typeof node.type === 'string' ? node.type as GraphNode['type'] : null;
+        if (!id || !type) return [];
+        const legacyProperties = (node.props ?? {}) as Record<string, string | number | boolean>;
+        const nextProperties = (node.properties ?? legacyProperties) as Record<string, string | number | boolean>;
+        return [{
+            id,
+            label: typeof node.label === 'string' ? node.label : id,
+            type,
+            properties: nextProperties,
+        }];
+    });
+
+    const links: GraphLink[] = rawLinks.flatMap((item) => {
+        const link = item as Record<string, unknown>;
+        const source = typeof link.source === 'string' ? link.source : null;
+        const target = typeof link.target === 'string' ? link.target : null;
+        const relationship = typeof link.relationship === 'string'
+            ? link.relationship
+            : (typeof link.type === 'string' ? link.type : null);
+        if (!source || !target || !relationship) return [];
+        const legacyProperties = (link.props ?? {}) as Record<string, string | number>;
+        const nextProperties = (link.properties ?? legacyProperties) as Record<string, string | number>;
+        return [{
+            source,
+            target,
+            relationship,
+            properties: nextProperties,
+        }];
+    });
+
+    return { nodes, links };
+}
+
 export const infectionTrackingService = {
     async getGraphVisualization(limit = 200, options?: RequestOptions): Promise<GraphVisualization> {
         const response = await apiClient.get(`/infection-tracking/graph/visualization/?limit=${limit}`, {
             signal: options?.signal,
         });
-        return response.data;
+        return normalizeGraphVisualization(response.data);
     },
 
     async getGraphStats(options?: RequestOptions): Promise<GraphStats> {
