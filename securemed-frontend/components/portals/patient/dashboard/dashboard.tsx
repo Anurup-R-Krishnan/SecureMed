@@ -143,13 +143,13 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 />
             </div>
 
-            {/* Row 3: Health Insights + Anatomy Education */}
-            <div className="grid lg:grid-cols-2 gap-6">
-                <HealthInsightsCard insights={dashboardStats?.health_insights || null} />
-                <AnatomyEducationCard />
-            </div>
+            {/* Row 3: Health Insights */}
+            <HealthInsightsCard insights={dashboardStats?.health_insights || null} />
 
-            {/* Row 4: Upcoming Appointments */}
+            {/* Row 4: Anatomy Education & Condition Visualization */}
+            <AnatomyEducationCard />
+
+            {/* Row 5: Upcoming Appointments */}
             <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="font-semibold text-lg">Upcoming Appointments</h3>
