@@ -75,3 +75,17 @@ The importer auto-detects common schemas:
 
 - Use `--truncate` to clear existing imported knowledge before reloading.
 - Use `--include-negative` only if you intentionally want `hyperedge_label != 1` rows imported.
+
+## Report and Check APIs
+
+After import + migration, use:
+
+- `POST /api/medical-records/drug-interactions/check/`
+  - body: `{ "medications": ["Aspirin", "Warfarin", "Ibuprofen"] }`
+- `GET /api/medical-records/drug-interactions/search/?q=asp`
+- `GET /api/medical-records/drug-interactions/reports/latest/?patient_id=<id>`
+- `GET /api/medical-records/drug-interactions/reports/?patient_id=<id>`
+- `POST /api/medical-records/drug-interactions/reports/generate/`
+  - body: `{ "patient_id": <id> }` for doctor/admin, empty body for patient self
+
+Report regeneration also happens automatically on prescription create/sign/cancel/dispense events.
