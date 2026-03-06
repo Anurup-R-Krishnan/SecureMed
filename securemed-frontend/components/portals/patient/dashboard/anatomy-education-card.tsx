@@ -146,7 +146,7 @@ export default function AnatomyEducationCard() {
             </div>
 
             {/* ── Layout: [Body SVG] | [Info panel] ──────────────── */}
-            <div className="grid md:grid-cols-[220px_1fr] grid-cols-1 gap-6 items-start">
+            <div className="grid md:grid-cols-[280px_1fr] grid-cols-1 gap-6 items-start">
 
                 {/* ── Left: Body SVG ──────────────────────── */}
                 <div>

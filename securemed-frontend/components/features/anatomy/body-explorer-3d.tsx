@@ -23,130 +23,143 @@ interface BodyExplorer3DProps {
   onConditionRegionSelect?: (regionId: string) => void;
 }
 
-// ── SVG region definitions ────────────────────────────────────────────────────
-// Coordinate space: viewBox="0 0 200 460"  centre-x = 100
+// ── Anatomical SVG paths ─────────────────────────────────────────────────────
+// viewBox: 0 0 200 500. Smooth human silhouette.
 
 const BODY_REGIONS: {
   id: string;
-  d: string;    // SVG path
-  labelX: number;
-  labelY: number;
+  d: string;
 }[] = [
     {
+      // Head — smooth oval
       id: 'head',
-      d: 'M100,14 C121,14 138,28 138,50 C138,72 121,82 100,82 C79,82 62,72 62,50 C62,28 79,14 100,14 Z',
-      labelX: 148,
-      labelY: 50,
+      d: 'M100,20 C115,20 128,30 130,48 C132,62 126,78 118,84 C114,87 106,90 100,90 C94,90 86,87 82,84 C74,78 68,62 70,48 C72,30 85,20 100,20 Z',
     },
     {
+      // Neck
       id: 'throat',
-      d: 'M89,82 L111,82 L114,106 L86,106 Z',
-      labelX: 148,
-      labelY: 94,
+      d: 'M90,90 L110,90 L112,110 L88,110 Z',
     },
     {
+      // Chest — broad shoulders tapering to waist
       id: 'chest',
-      d: 'M58,106 C58,106 74,100 86,106 L114,106 C126,100 142,106 142,106 L148,132 C148,154 140,176 128,186 L100,190 L72,186 C60,176 52,154 52,132 Z',
-      labelX: 152,
-      labelY: 148,
+      d: 'M88,110 L112,110 C120,110 136,112 148,118 C154,122 156,128 154,136 L148,170 C144,180 136,188 126,192 L100,196 L74,192 C64,188 56,180 52,170 L46,136 C44,128 46,122 52,118 C64,112 80,110 88,110 Z',
     },
     {
+      // Abdomen — natural torso narrowing
       id: 'abdomen',
-      d: 'M72,186 L128,186 L130,240 C130,252 116,260 100,260 C84,260 70,252 70,240 Z',
-      labelX: 152,
-      labelY: 222,
+      d: 'M74,192 L126,192 L128,230 C128,244 118,256 100,258 C82,256 72,244 72,230 Z',
     },
     {
+      // Pelvis — hip shape
       id: 'pelvis',
-      d: 'M70,240 C70,252 84,260 100,260 C116,260 130,252 130,240 L136,278 C136,290 120,298 100,298 C80,298 64,290 64,278 Z',
-      labelX: 152,
-      labelY: 270,
+      d: 'M72,230 C72,244 82,256 100,258 C118,256 128,244 128,230 L134,262 C136,274 124,286 100,288 C76,286 64,274 66,262 Z',
     },
     {
+      // Left arm — smooth arm shape
       id: 'left_arm',
-      d: 'M52,108 C40,108 28,118 24,134 L16,194 C14,207 22,218 34,218 L46,218 C52,218 56,212 55,206 L48,148 C62,140 60,120 52,108 Z',
-      labelX: 2,
-      labelY: 163,
+      d: 'M46,118 C38,118 28,124 24,134 L14,186 C10,200 12,210 18,216 L26,224 C30,226 34,224 34,220 L34,210 L44,166 C50,150 52,138 46,118 Z',
     },
     {
+      // Right arm — mirror
       id: 'right_arm',
-      d: 'M148,108 C160,108 172,118 176,134 L184,194 C186,207 178,218 166,218 L154,218 C148,218 144,212 145,206 L152,148 C138,140 140,120 148,108 Z',
-      labelX: 188,
-      labelY: 163,
+      d: 'M154,118 C162,118 172,124 176,134 L186,186 C190,200 188,210 182,216 L174,224 C170,226 166,224 166,220 L166,210 L156,166 C150,150 148,138 154,118 Z',
     },
     {
+      // Left leg
       id: 'left_leg',
-      d: 'M64,278 L100,298 L96,360 C96,372 90,384 82,390 L76,430 C74,442 66,450 58,448 L52,448 C44,448 40,440 42,432 L50,390 C42,380 36,366 36,352 Z',
-      labelX: 10,
-      labelY: 365,
+      d: 'M66,262 C64,274 76,286 100,288 L96,320 L90,370 C88,390 82,410 78,430 L76,450 C74,458 68,462 62,460 L58,458 C52,456 50,448 52,442 L60,400 C62,386 58,370 54,350 L50,310 C50,300 54,288 66,262 Z',
     },
     {
+      // Right leg — mirror
       id: 'right_leg',
-      d: 'M100,298 L136,278 L164,352 C164,366 158,380 150,390 L158,432 C160,440 156,448 148,448 L142,448 C134,450 126,442 124,430 L118,390 C110,384 104,372 104,360 Z',
-      labelX: 172,
-      labelY: 365,
+      d: 'M134,262 C136,274 124,286 100,288 L104,320 L110,370 C112,390 118,410 122,430 L124,450 C126,458 132,462 138,460 L142,458 C148,456 150,448 148,442 L140,400 C138,386 142,370 146,350 L150,310 C150,300 146,288 134,262 Z',
     },
   ];
 
-// Pin position on the canvas (centre of region approx.)
 const REGION_CENTRES: Record<string, [number, number]> = {
-  head: [100, 50],
-  throat: [100, 94],
-  chest: [100, 148],
-  abdomen: [100, 222],
-  pelvis: [100, 270],
-  left_arm: [34, 163],
-  right_arm: [166, 163],
-  left_leg: [62, 370],
-  right_leg: [138, 370],
+  head: [100, 55],
+  throat: [100, 100],
+  chest: [100, 155],
+  abdomen: [100, 225],
+  pelvis: [100, 262],
+  left_arm: [34, 170],
+  right_arm: [166, 170],
+  left_leg: [66, 370],
+  right_leg: [134, 370],
 };
 
-// ── Colour palette ────────────────────────────────────────────────────────────
+// ── Color helpers ─────────────────────────────────────────────────────────────
 
-const REGION_BASE = '#3b82f6';  // bright blue fill (resting)
-const REGION_STROKE = '#60a5fa';  // lighter blue border
-const REGION_HOVER_FILL = '#60a5fa';  // sky blue hover
-const REGION_SEL_FILL = '#ef4444';  // red selected
-const REGION_COND_FILL = '#f97316';  // orange — condition highlight
-const REGION_HOVER_STROKE = '#93c5fd';
-const REGION_SEL_STROKE = '#fca5a5';
+// Pain level drives the color: 1-3 = mild yellow, 4-6 = orange, 7-10 = deep red
+function painColor(level: number): string {
+  if (level <= 3) return '#fbbf24';  // amber-400
+  if (level <= 6) return '#f97316';  // orange-500
+  return '#ef4444';                    // red-500
+}
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+function painOpacity(level: number): number {
+  // Higher pain = more opaque: 0.55 at 1, 1.0 at 10
+  return 0.5 + (level / 10) * 0.5;
+}
 
-function regionFill(
-  id: string,
+const BASE_FILL = '#60a5fa';  // blue-400
+const BASE_STROKE = '#93c5fd';  // blue-300
+const HOVER_FILL = '#93c5fd';  // blue-300  (lighter on hover)
+const HOVER_STROKE = '#bfdbfe';  // blue-200
+const COND_FILL = '#fb923c';  // orange-400
+const COND_FOCUSED = '#f97316';  // orange-500
+
+function getRegionFill(
   selected: boolean,
   hovered: boolean,
+  painLevel: number,
   conditionHighlight: boolean,
   conditionFocused: boolean,
 ): string {
-  if (selected) return REGION_SEL_FILL;
-  if (conditionFocused) return REGION_COND_FILL;
-  if (conditionHighlight) return '#ea580c';
-  if (hovered) return REGION_HOVER_FILL;
-  return REGION_BASE;
+  if (selected) return painColor(painLevel);
+  if (conditionFocused) return COND_FOCUSED;
+  if (conditionHighlight) return COND_FILL;
+  if (hovered) return HOVER_FILL;
+  return BASE_FILL;
 }
 
-function regionStroke(selected: boolean, hovered: boolean): string {
-  if (selected) return REGION_SEL_STROKE;
-  if (hovered) return REGION_HOVER_STROKE;
-  return REGION_STROKE;
+function getRegionStroke(selected: boolean, hovered: boolean): string {
+  if (selected) return '#fecaca';  // red-200
+  if (hovered) return HOVER_STROKE;
+  return BASE_STROKE;
 }
 
-// ── Pulsing pin dot ───────────────────────────────────────────────────────────
+function getRegionOpacity(
+  selected: boolean,
+  painLevel: number,
+  conditionDimmed: boolean,
+): number {
+  if (selected) return painOpacity(painLevel);
+  if (conditionDimmed) return 0.2;
+  return 0.65;
+}
+
+// ── Pulsing pin ───────────────────────────────────────────────────────────────
 
 function PinDot({ x, y, severity }: { x: number; y: number; severity?: string }) {
   const color = severity === 'high' ? '#ef4444' : severity === 'low' ? '#10b981' : '#f97316';
   return (
     <g>
-      <circle cx={x} cy={y} r={7} fill={color} opacity={0.25}>
-        <animate attributeName="r" values="7;13;7" dur="2s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.25;0;0.25" dur="2s" repeatCount="indefinite" />
+      <circle cx={x} cy={y} r={8} fill={color} opacity={0.2}>
+        <animate attributeName="r" values="8;16;8" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.2;0;0.2" dur="2s" repeatCount="indefinite" />
       </circle>
-      <circle cx={x} cy={y} r={5} fill={color} opacity={0.9} />
+      <circle cx={x} cy={y} r={5} fill={color} />
     </g>
   );
 }
+
+// Pain level legend
+const PAIN_LABELS: Record<number, string> = {
+  1: 'Minimal', 2: 'Mild', 3: 'Mild', 4: 'Moderate', 5: 'Moderate',
+  6: 'Moderate', 7: 'Severe', 8: 'Severe', 9: 'Very Severe', 10: 'Worst',
+};
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -162,7 +175,6 @@ export default function BodyExplorer3D({
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [intensityByRegion, setIntensityByRegion] = useState<Record<string, number>>({});
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{ id: string; x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const callbackRef = useRef(onSelectionChange);
   useEffect(() => { callbackRef.current = onSelectionChange; }, [onSelectionChange]);
@@ -195,79 +207,43 @@ export default function BodyExplorer3D({
     });
   };
 
-  const handleRegionEnter = (id: string, evt: React.MouseEvent<SVGElement>) => {
-    setHoveredRegion(id);
-    const svg = svgRef.current;
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const cx = ((evt.clientX - rect.left) / rect.width) * 200;
-    const cy = ((evt.clientY - rect.top) / rect.height) * 460;
-    setTooltip({ id, x: cx, y: cy });
-  };
-
-  const handleRegionLeave = () => {
-    setHoveredRegion(null);
-    setTooltip(null);
-  };
-
-  const svgHeight = compact ? 280 : 460;
-
   return (
     <div className={`space-y-3 ${className}`}>
-      {/* SVG canvas */}
-      <div className="w-full relative select-none overflow-hidden rounded-lg">
+      {/* SVG body */}
+      <div className="w-full relative select-none overflow-hidden">
         <svg
           ref={svgRef}
-          viewBox={`0 0 200 ${svgHeight}`}
+          viewBox="0 0 200 480"
           xmlns="http://www.w3.org/2000/svg"
           className="w-full h-auto block"
           preserveAspectRatio="xMidYMid meet"
         >
-          {/* Definitions */}
-          <defs>
-            <filter id="region-glow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <filter id="selected-glow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {/* Subtle body shadow / background silhouette */}
-          <ellipse cx="100" cy="450" rx="55" ry="8" fill="currentColor" className="text-muted/20" />
-
           {/* Body regions */}
           {BODY_REGIONS.map((region) => {
             const isSelected = mode === 'selection' && selectedRegions.includes(region.id);
             const isHovered = hoveredRegion === region.id;
             const isCondition = mode === 'condition' && conditionRegions.includes(region.id);
             const isFocused = mode === 'condition' && activeConditionRegion === region.id;
+            const isDimmed = mode === 'condition' && !isCondition;
             const isInteractive = mode === 'selection' || isCondition;
+            const pain = intensityByRegion[region.id] ?? 5;
 
             return (
               <path
                 key={region.id}
                 d={region.d}
-                fill={regionFill(region.id, isSelected, isHovered, isCondition, isFocused)}
-                stroke={regionStroke(isSelected, isHovered)}
-                strokeWidth={isSelected || isFocused ? 2 : 1}
-                opacity={mode === 'condition' && !isCondition ? 0.35 : 1}
-                filter={isSelected || isFocused ? 'url(#selected-glow)' : isHovered ? 'url(#region-glow)' : undefined}
+                fill={getRegionFill(isSelected, isHovered, pain, isCondition, isFocused)}
+                stroke={getRegionStroke(isSelected, isHovered)}
+                strokeWidth={isSelected || isFocused ? 2.5 : 1.5}
+                strokeLinejoin="round"
+                opacity={getRegionOpacity(isSelected, pain, isDimmed)}
                 style={{
                   cursor: isInteractive ? 'pointer' : 'default',
-                  transition: 'fill 0.15s ease, stroke 0.15s ease, opacity 0.15s ease',
+                  transition: 'fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease, stroke-width 0.2s ease',
                 }}
                 onClick={() => handleRegionClick(region.id)}
-                onMouseEnter={(e) => handleRegionEnter(region.id, e)}
-                onMouseLeave={handleRegionLeave}
+                onMouseEnter={() => setHoveredRegion(region.id)}
+                onMouseLeave={() => setHoveredRegion(null)}
               />
             );
           })}
@@ -276,70 +252,104 @@ export default function BodyExplorer3D({
           {mode === 'condition' && conditionPins.map((pin) => {
             const centre = REGION_CENTRES[pin.region_id];
             if (!centre) return null;
-            return (
-              <PinDot key={pin.id} x={centre[0]} y={centre[1]} severity={pin.severity} />
-            );
+            return <PinDot key={pin.id} x={centre[0]} y={centre[1]} severity={pin.severity} />;
           })}
 
-          {/* Selected region markers */}
+          {/* Selected region pulsing markers */}
           {mode === 'selection' && selectedRegions.map((id) => {
             const centre = REGION_CENTRES[id];
             if (!centre) return null;
+            const pain = intensityByRegion[id] ?? 5;
             return (
-              <circle key={`sel-${id}`} cx={centre[0]} cy={centre[1]} r={4} fill="#fca5a5" opacity={0.9}>
-                <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.8s" repeatCount="indefinite" />
+              <circle key={`sel-${id}`} cx={centre[0]} cy={centre[1]} r={4} fill={painColor(pain)}>
+                <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
               </circle>
             );
           })}
 
-          {/* Hover tooltip */}
-          {tooltip && (
-            <g transform={`translate(${Math.min(tooltip.x, 160)},${Math.max(tooltip.y - 30, 10)})`}>
-              <rect rx="6" ry="6" x="0" y="0" width="76" height="22" fill="#1e293b" stroke="#334155" strokeWidth="1" />
-              <text x="38" y="15" textAnchor="middle" fill="#e2e8f0" fontSize="10" fontWeight="600" fontFamily="system-ui,sans-serif">
-                {REGION_LOOKUP[tooltip.id]?.label || tooltip.id}
-              </text>
-            </g>
-          )}
+          {/* Hover label */}
+          {hoveredRegion && (() => {
+            const centre = REGION_CENTRES[hoveredRegion];
+            if (!centre) return null;
+            const label = REGION_LOOKUP[hoveredRegion]?.label || hoveredRegion;
+            const textWidth = label.length * 6 + 16;
+            const tx = Math.max(textWidth / 2, Math.min(200 - textWidth / 2, centre[0]));
+            const ty = centre[1] - 22;
+            return (
+              <g>
+                <rect
+                  rx="4" ry="4"
+                  x={tx - textWidth / 2} y={ty - 8}
+                  width={textWidth} height={18}
+                  fill="hsl(var(--card))" stroke="hsl(var(--border))" strokeWidth="1"
+                />
+                <text
+                  x={tx} y={ty + 5}
+                  textAnchor="middle"
+                  fill="hsl(var(--foreground))"
+                  fontSize="9" fontWeight="600" fontFamily="system-ui, sans-serif"
+                >
+                  {label}
+                </text>
+              </g>
+            );
+          })()}
         </svg>
       </div>
 
-      {/* Click hint */}
+      {/* Hint */}
       {mode === 'selection' && selectedRegions.length === 0 && (
         <p className="text-center text-[11px] text-muted-foreground">
           Click a body region to select it
         </p>
       )}
 
-      {/* Selected region pain level sliders */}
+      {/* Pain level sliders */}
       {mode === 'selection' && selectedRegions.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Pain Level</p>
-          {selectedRegions.map((regionId) => (
-            <div
-              key={regionId}
-              className="flex items-center gap-2 rounded-md border border-border/50 bg-white/5 px-2 py-1.5"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
-              <span className="text-xs font-medium text-foreground truncate flex-1 min-w-0">
-                {REGION_LOOKUP[regionId]?.label || regionId}
-              </span>
-              <Slider
-                value={[intensityByRegion[regionId] ?? 5]}
-                min={1}
-                max={10}
-                step={1}
-                onValueChange={(value) => {
-                  const next = value?.[0] ?? 5;
-                  setIntensityByRegion((old) => ({ ...old, [regionId]: next }));
-                }}
-                className="w-16"
-              />
-              <span className="text-[10px] text-muted-foreground font-mono w-6 text-right shrink-0">
-                {intensityByRegion[regionId] ?? 5}
-              </span>
-            </div>
-          ))}
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
+            Pain Level
+          </p>
+          {selectedRegions.map((regionId) => {
+            const pain = intensityByRegion[regionId] ?? 5;
+            return (
+              <div
+                key={regionId}
+                className="flex items-center gap-2 rounded-md border border-border/50 bg-white/5 px-2.5 py-1.5"
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: painColor(pain) }}
+                />
+                <span className="text-xs font-medium text-foreground truncate min-w-0 flex-1">
+                  {REGION_LOOKUP[regionId]?.label || regionId}
+                </span>
+                <Slider
+                  value={[pain]}
+                  min={1}
+                  max={10}
+                  step={1}
+                  onValueChange={(value) => {
+                    const next = value?.[0] ?? 5;
+                    setIntensityByRegion((old) => ({ ...old, [regionId]: next }));
+                  }}
+                  className="w-20"
+                />
+                <span
+                  className="text-[10px] font-bold shrink-0 w-[52px] text-right"
+                  style={{ color: painColor(pain) }}
+                >
+                  {pain}/10 {pain >= 7 ? '🔴' : pain >= 4 ? '🟠' : '🟡'}
+                </span>
+              </div>
+            );
+          })}
+          {/* Pain scale legend */}
+          <div className="flex items-center justify-between pt-1 px-1">
+            <span className="text-[9px] text-amber-400">1 — Minimal</span>
+            <span className="text-[9px] text-orange-500">5 — Moderate</span>
+            <span className="text-[9px] text-red-500">10 — Worst</span>
+          </div>
         </div>
       )}
     </div>
