@@ -220,3 +220,38 @@ class Message(models.Model):
     
     def __str__(self):
         return f"Message {self.id} from {self.sender.username}"
+
+
+class TriageRequest(models.Model):
+    """
+    Represents an AI triage handover request from a patient to a doctor.
+    """
+    STATUS_CHOICES = [
+        ('PENDING', 'PENDING'),
+        ('APPROVED', 'APPROVED'),
+        ('DECLINED', 'DECLINED'),
+    ]
+
+    patient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='triage_requests_as_patient',
+    )
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='triage_requests_as_doctor',
+    )
+    ai_summary = models.TextField()
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='PENDING',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"TriageRequest {self.id} ({self.patient.username} → {self.doctor.username}) [{self.status}]"
