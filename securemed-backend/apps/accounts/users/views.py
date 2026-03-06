@@ -11,7 +11,7 @@ except ImportError:
             return fn
         return decorator
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -344,6 +344,7 @@ def register_view(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='5/m', block=True)
 def login_view(request):
@@ -689,6 +690,7 @@ def regenerate_recovery_codes_view(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='5/m', block=True)
 def mfa_login_view(request):
@@ -1657,3 +1659,31 @@ class DownloadPolicyReceiptView(APIView):
         )
         
         return response
+
+
+# ============================================
+# Doctor Search API (for Triage Handover)
+# ============================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def doctor_search_api(request):
+    """
+    Return a list of doctors, optionally filtered by ?specialty=<value>.
+
+    GET /api/auth/doctors/search/?specialty=cardiology
+    """
+    specialty = request.query_params.get('specialty', '').strip()
+    doctors = User.objects.filter(role='doctor').select_related('doctor_profile')
+    if specialty:
+        doctors = doctors.filter(doctor_profile__specialization__iexact=specialty)
+    results = []
+    for user in doctors:
+        profile = getattr(user, 'doctor_profile', None)
+        results.append({
+            'id': user.id,
+            'name': user.get_full_name() or user.username,
+            'specialty': profile.specialization if profile else '',
+            'specialty_display': profile.get_specialization_display() if profile else '',
+        })
+    return Response(results, status=status.HTTP_200_OK)

@@ -51,4 +51,7 @@ urlpatterns = [
     
     # User Management (Admin only) - Story 1.2
     path('', include(router.urls)),
+
+    # Doctor Search (for Triage Handover)
+    path('doctors/search/', views.doctor_search_api, name='doctor_search'),
 ]

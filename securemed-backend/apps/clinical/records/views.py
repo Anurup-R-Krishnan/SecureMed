@@ -670,7 +670,6 @@ class VitalSignViewSet(viewsets.ModelViewSet):
              serializer.save()
 
 
-@action(detail=False, methods=['get'])
 @api_view(['GET'])
 @permission_classes([IsPatient])
 def patient_dashboard_stats(request):
