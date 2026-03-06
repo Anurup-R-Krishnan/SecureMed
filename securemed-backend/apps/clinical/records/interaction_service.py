@@ -12,6 +12,7 @@ from .models import (
     MedicationSideEffect,
     Prescription,
 )
+from apps.clinical.pharmacy.models import Drug
 
 
 SEVERITY_ORDER = {
@@ -41,6 +42,14 @@ def resolve_medications_for_knowledge(medications: Sequence[str]) -> List[str]:
     for ref in refs:
         # First seen mapping wins for deterministic behavior.
         by_name.setdefault(ref.normalized_name, normalize_medication_name(ref.identifier))
+
+    # Fallback to pharmacy inventory code if available (useful when drug_code stores canonical IDs).
+    unresolved = [name for name in normalized_inputs if name not in by_name and not (name.startswith("db") and name[2:].isdigit())]
+    if unresolved:
+        for drug in Drug.objects.filter(name__in=unresolved, is_active=True).only("name", "drug_code"):
+            normalized_name = normalize_medication_name(drug.name)
+            if normalized_name and drug.drug_code:
+                by_name.setdefault(normalized_name, normalize_medication_name(drug.drug_code))
 
     resolved: List[str] = []
     for med in normalized_inputs:

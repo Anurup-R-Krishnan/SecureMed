@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.accounts.patients.models import Patient
+from apps.clinical.pharmacy.models import Drug
 from apps.clinical.records.interaction_service import evaluate_medication_safety, generate_and_store_report
 from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationSideEffect
 from apps.scheduling.availability.models import Department, Doctor
@@ -40,6 +41,40 @@ class MedicationInteractionServiceTests(TestCase):
         self.assertEqual(result["triplets_checked"], 1)
         self.assertTrue(any(f["finding_type"] == "side_effect" for f in result["findings"]))
         self.assertTrue(any(f["combination_size"] == 3 for f in result["findings"]))
+
+    def test_resolves_with_pharmacy_drug_code_fallback(self):
+        Drug.objects.create(
+            drug_code="DB00001",
+            name="Aspirin",
+            generic_name="Acetylsalicylic acid",
+            manufacturer="Test Pharma",
+            dosage_form="tablet",
+            strength="100mg",
+            unit_price=1.0,
+            reorder_level=10,
+        )
+        Drug.objects.create(
+            drug_code="DB00002",
+            name="Warfarin",
+            generic_name="Warfarin",
+            manufacturer="Test Pharma",
+            dosage_form="tablet",
+            strength="5mg",
+            unit_price=1.0,
+            reorder_level=10,
+        )
+        MedicationInteractionKnowledge.objects.create(
+            combination_signature="db00001|db00002",
+            medications=["db00001", "db00002"],
+            combination_size=2,
+            side_effect="Bleeding risk",
+            severity="high",
+            source="HODDI",
+            source_version="v1",
+        )
+
+        result = evaluate_medication_safety(["Aspirin", "Warfarin"])
+        self.assertEqual(result["totals"]["high"], 1)
 
 
 class MedicationInteractionApiTests(TestCase):
