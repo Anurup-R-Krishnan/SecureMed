@@ -148,7 +148,7 @@ export default function AnatomyEducationCard() {
             {/* ── Layout: [Body SVG] | [Info panel] ──────────────── */}
             <div className="grid md:grid-cols-[220px_1fr] grid-cols-1 gap-6 items-start">
 
-                {/* ── Left: Single, tall 3D canvas ──────────────────────── */}
+                {/* ── Left: Body SVG ──────────────────────── */}
                 <div>
                     <BodyExplorer3D
                         mode={canvasMode}
@@ -158,22 +158,6 @@ export default function AnatomyEducationCard() {
                         activeConditionRegion={visualRegion}
                         onConditionRegionSelect={handleConditionRegionSelect}
                     />
-
-                    {/* Derived symptoms (explore mode) */}
-                    {canvasMode === 'selection' && selection.selectedSymptoms.length > 0 && (
-                        <div className="mt-4">
-                            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                                Region-Derived Symptoms
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {selection.selectedSymptoms.map((symptom) => (
-                                    <span key={symptom} className="text-xs rounded-full px-2.5 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                                        {symptom}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* ── Right: Info panel ─────────────────────────────────── */}
@@ -286,6 +270,20 @@ export default function AnatomyEducationCard() {
                     {/* ── Region explainer panel (explore mode) ── */}
                     {!visualization && (
                         <>
+                            {/* Derived symptoms from selected regions */}
+                            {selection.selectedSymptoms.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Region-Derived Symptoms</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {selection.selectedSymptoms.map((symptom) => (
+                                            <span key={symptom} className="text-xs rounded-full px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                {symptom}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-2">
                                 <BookOpen className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm font-semibold text-foreground">Region Explainer</p>

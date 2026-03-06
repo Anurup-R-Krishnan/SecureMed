@@ -213,18 +213,15 @@ export default function BodyExplorer3D({
   const svgHeight = compact ? 280 : 460;
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
       {/* SVG canvas */}
-      <div
-        className="w-full relative select-none"
-        style={{ aspectRatio: `200 / ${svgHeight}` }}
-      >
+      <div className="w-full relative select-none overflow-hidden rounded-lg">
         <svg
           ref={svgRef}
           viewBox={`0 0 200 ${svgHeight}`}
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
-          style={{ overflow: 'visible' }}
+          className="w-full h-auto block"
+          preserveAspectRatio="xMidYMid meet"
         >
           {/* Definitions */}
           <defs>
@@ -309,41 +306,38 @@ export default function BodyExplorer3D({
 
       {/* Click hint */}
       {mode === 'selection' && selectedRegions.length === 0 && (
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-[11px] text-muted-foreground">
           Click a body region to select it
         </p>
       )}
 
-      {/* Selected region intensity sliders */}
+      {/* Selected region pain level sliders */}
       {mode === 'selection' && selectedRegions.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Pain Level</p>
           {selectedRegions.map((regionId) => (
             <div
               key={regionId}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-white/5 px-3 py-2 hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 rounded-md border border-border/50 bg-white/5 px-2 py-1.5"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="h-2 w-2 rounded-full bg-red-400 shrink-0" />
-                <span className="text-sm font-medium text-foreground truncate">
-                  {REGION_LOOKUP[regionId]?.label || regionId}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className="text-xs text-muted-foreground font-mono">
-                  {intensityByRegion[regionId] ?? 5}/10
-                </span>
-                <Slider
-                  value={[intensityByRegion[regionId] ?? 5]}
-                  min={1}
-                  max={10}
-                  step={1}
-                  onValueChange={(value) => {
-                    const next = value?.[0] ?? 5;
-                    setIntensityByRegion((old) => ({ ...old, [regionId]: next }));
-                  }}
-                  className="w-24"
-                />
-              </div>
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
+              <span className="text-xs font-medium text-foreground truncate flex-1 min-w-0">
+                {REGION_LOOKUP[regionId]?.label || regionId}
+              </span>
+              <Slider
+                value={[intensityByRegion[regionId] ?? 5]}
+                min={1}
+                max={10}
+                step={1}
+                onValueChange={(value) => {
+                  const next = value?.[0] ?? 5;
+                  setIntensityByRegion((old) => ({ ...old, [regionId]: next }));
+                }}
+                className="w-16"
+              />
+              <span className="text-[10px] text-muted-foreground font-mono w-6 text-right shrink-0">
+                {intensityByRegion[regionId] ?? 5}
+              </span>
             </div>
           ))}
         </div>
