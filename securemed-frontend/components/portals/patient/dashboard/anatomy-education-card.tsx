@@ -145,13 +145,14 @@ export default function AnatomyEducationCard() {
                 </div>
             </div>
 
-            {/* ── Layout: [Big 3D canvas] | [Info panel] ──────────────── */}
-            <div className="grid xl:grid-cols-[1fr_420px] lg:grid-cols-[1fr_360px] grid-cols-1 gap-6 items-start">
+            {/* ── Layout: [Body SVG] | [Info panel] ──────────────── */}
+            <div className="grid md:grid-cols-[220px_1fr] grid-cols-1 gap-6 items-start">
 
                 {/* ── Left: Single, tall 3D canvas ──────────────────────── */}
                 <div>
                     <BodyExplorer3D
                         mode={canvasMode}
+                        compact
                         onSelectionChange={handleSelectionChange}
                         activeCondition={visualization}
                         activeConditionRegion={visualRegion}
@@ -224,8 +225,8 @@ export default function AnatomyEducationCard() {
                                                 key={regionId}
                                                 onClick={() => handleConditionRegionSelect(regionId)}
                                                 className={`text-xs rounded-full px-2.5 py-1 border font-medium transition-all ${visualRegion === regionId
-                                                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                                        : 'bg-white/5 text-muted-foreground border-border/50 hover:bg-white/10 hover:text-foreground'
+                                                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                                    : 'bg-white/5 text-muted-foreground border-border/50 hover:bg-white/10 hover:text-foreground'
                                                     }`}
                                             >
                                                 {REGION_LOOKUP[regionId]?.label || regionId}
