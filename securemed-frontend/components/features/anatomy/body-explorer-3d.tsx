@@ -103,13 +103,13 @@ const REGION_CENTRES: Record<string, [number, number]> = {
 
 // ── Colour palette ────────────────────────────────────────────────────────────
 
-const REGION_BASE = '#1e3a5f';  // dark navy fill (resting)
-const REGION_STROKE = '#2d5a9e';  // border
-const REGION_HOVER_FILL = '#2563eb';  // blue hover
-const REGION_SEL_FILL = '#ef4444';  // red selected
-const REGION_COND_FILL = '#f97316';  // orange — condition highlight
-const REGION_HOVER_STROKE = '#60a5fa';
-const REGION_SEL_STROKE = '#fca5a5';
+const REGION_BASE = 'rgba(255, 255, 255, 0.08)';  // Subtle glass fill
+const REGION_STROKE = 'rgba(255, 255, 255, 0.15)';  // Subtle border
+const REGION_HOVER_FILL = 'rgba(255, 255, 255, 0.15)';  // Slightly brighter glass
+const REGION_SEL_FILL = 'rgba(59, 130, 246, 0.25)';   // Blue selected bg
+const REGION_COND_FILL = 'rgba(249, 115, 22, 0.15)';   // Orange condition bg
+const REGION_HOVER_STROKE = 'rgba(255, 255, 255, 0.4)';
+const REGION_SEL_STROKE = 'rgba(59, 130, 246, 0.6)';    // Blue selected border
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -122,13 +122,14 @@ function regionFill(
 ): string {
   if (selected) return REGION_SEL_FILL;
   if (conditionFocused) return REGION_COND_FILL;
-  if (conditionHighlight) return '#c2410c';
+  if (conditionHighlight) return 'rgba(249, 115, 22, 0.05)';
   if (hovered) return REGION_HOVER_FILL;
   return REGION_BASE;
 }
 
-function regionStroke(selected: boolean, hovered: boolean): string {
+function regionStroke(selected: boolean, hovered: boolean, conditionFocused: boolean): string {
   if (selected) return REGION_SEL_STROKE;
+  if (conditionFocused) return 'rgba(249, 115, 22, 0.5)';
   if (hovered) return REGION_HOVER_STROKE;
   return REGION_STROKE;
 }
@@ -139,11 +140,11 @@ function PinDot({ x, y, severity }: { x: number; y: number; severity?: string })
   const color = severity === 'high' ? '#ef4444' : severity === 'low' ? '#10b981' : '#f97316';
   return (
     <g>
-      <circle cx={x} cy={y} r={7} fill={color} opacity={0.25}>
-        <animate attributeName="r" values="7;13;7" dur="2s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.25;0;0.25" dur="2s" repeatCount="indefinite" />
+      <circle cx={x} cy={y} r={7} fill={color} opacity={0.3}>
+        <animate attributeName="r" values="7;11;7" dur="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
       </circle>
-      <circle cx={x} cy={y} r={5} fill={color} opacity={0.9} />
+      <circle cx={x} cy={y} r={4} fill={color} opacity={0.9} />
     </g>
   );
 }
@@ -213,7 +214,7 @@ export default function BodyExplorer3D({
   const svgHeight = compact ? 320 : 460;
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 max-w-[280px] mx-auto ${className}`}>
       {/* SVG canvas */}
       <div
         className="w-full relative select-none"
@@ -226,24 +227,6 @@ export default function BodyExplorer3D({
           className="w-full h-full"
           style={{ overflow: 'visible' }}
         >
-          {/* Definitions */}
-          <defs>
-            <filter id="region-glow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <filter id="selected-glow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
           {/* Subtle body shadow / background silhouette */}
           <ellipse cx="100" cy="460" rx="55" ry="8" fill="#0f172a" opacity="0.4" />
 
@@ -260,10 +243,9 @@ export default function BodyExplorer3D({
                 key={region.id}
                 d={region.d}
                 fill={regionFill(region.id, isSelected, isHovered, isCondition, isFocused)}
-                stroke={regionStroke(isSelected, isHovered)}
+                stroke={regionStroke(isSelected, isHovered, isFocused)}
                 strokeWidth={isSelected || isFocused ? 2 : 1}
                 opacity={mode === 'condition' && !isCondition ? 0.35 : 1}
-                filter={isSelected || isFocused ? 'url(#selected-glow)' : isHovered ? 'url(#region-glow)' : undefined}
                 style={{
                   cursor: isInteractive ? 'pointer' : 'default',
                   transition: 'fill 0.15s ease, stroke 0.15s ease, opacity 0.15s ease',
