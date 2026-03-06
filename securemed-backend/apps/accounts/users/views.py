@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.mail import send_mail
+from django.utils.decorators import method_decorator
 try:
     from django_ratelimit.decorators import ratelimit
 except ImportError:
@@ -992,7 +993,7 @@ class PasswordResetRequestView(APIView):
     """
     permission_classes = (AllowAny,)
 
-    @ratelimit(key='ip', rate='3/m', block=True)
+    @method_decorator(ratelimit(key='ip', rate='3/m', method='POST', block=True))
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

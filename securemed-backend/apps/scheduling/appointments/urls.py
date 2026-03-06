@@ -9,12 +9,11 @@ router.register(r'appointments', AppointmentViewSet, basename='appointment')
 router.register(r'referrals', ReferralViewSet, basename='referral')
 
 urlpatterns = [
-    path('', include(router.urls)),
     # Availability endpoints
     path('doctors/<int:doctor_id>/availability/', get_doctor_availability, name='doctor-availability'),
     path('doctors/available/', get_available_doctors, name='available-doctors'),
     path('doctor/availability/', doctor_availability_schedule, name='doctor-availability-schedule'),
     # Patient-facing referral endpoint
     path('my-referrals/', patient_referrals_view, name='patient-referrals'),
+    path('', include(router.urls)),
 ]
-
