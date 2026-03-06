@@ -45,6 +45,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
         { name: 'Dashboard', href: '/doctor/dashboard' },
         { name: 'Patients', href: '/doctor/patients' },
         { name: 'Appointments', href: '/doctor/appointments' },
+        { name: 'Triage Requests', href: '/doctor/triage-inbox' },
         { name: 'Ward Map', href: '/doctor/ward-map' },
         { name: 'Pharmacology', href: '/doctor/medication-interaction' },
     ];
@@ -117,7 +118,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                 </div>
 
                 {/* Desktop Navigation */}
-                <nav className="hidden lg:flex items-center gap-2 mx-8 bg-muted/30 p-1.5 rounded-full border border-border/50">
+                <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center mx-4 bg-muted/30 p-1.5 rounded-full border border-border/50">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                         return (
@@ -125,7 +126,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    "px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300",
+                                    "px-3.5 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap",
                                     isActive
                                         ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-105 font-extrabold ring-1 ring-primary/50"
                                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
