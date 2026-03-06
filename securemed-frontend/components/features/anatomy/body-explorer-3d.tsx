@@ -103,12 +103,12 @@ const REGION_CENTRES: Record<string, [number, number]> = {
 
 // ── Colour palette ────────────────────────────────────────────────────────────
 
-const REGION_BASE = '#1e3a5f';  // dark navy fill (resting)
-const REGION_STROKE = '#2d5a9e';  // border
-const REGION_HOVER_FILL = '#2563eb';  // blue hover
+const REGION_BASE = '#3b82f6';  // bright blue fill (resting)
+const REGION_STROKE = '#60a5fa';  // lighter blue border
+const REGION_HOVER_FILL = '#60a5fa';  // sky blue hover
 const REGION_SEL_FILL = '#ef4444';  // red selected
 const REGION_COND_FILL = '#f97316';  // orange — condition highlight
-const REGION_HOVER_STROKE = '#60a5fa';
+const REGION_HOVER_STROKE = '#93c5fd';
 const REGION_SEL_STROKE = '#fca5a5';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ function regionFill(
 ): string {
   if (selected) return REGION_SEL_FILL;
   if (conditionFocused) return REGION_COND_FILL;
-  if (conditionHighlight) return '#c2410c';
+  if (conditionHighlight) return '#ea580c';
   if (hovered) return REGION_HOVER_FILL;
   return REGION_BASE;
 }
@@ -242,7 +242,7 @@ export default function BodyExplorer3D({
           </defs>
 
           {/* Subtle body shadow / background silhouette */}
-          <ellipse cx="100" cy="460" rx="55" ry="8" fill="#0f172a" opacity="0.4" />
+          <ellipse cx="100" cy="450" rx="55" ry="8" fill="currentColor" className="text-muted/20" />
 
           {/* Body regions */}
           {BODY_REGIONS.map((region) => {
