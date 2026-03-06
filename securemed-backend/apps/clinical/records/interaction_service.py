@@ -1,0 +1,217 @@
+from itertools import combinations
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
+from django.db.models import Q
+
+from .models import (
+    DrugInteraction,
+    MedicationInteractionKnowledge,
+    MedicationInteractionReport,
+    MedicationInteractionReportItem,
+    MedicationSideEffect,
+    Prescription,
+)
+
+
+SEVERITY_ORDER = {
+    "critical": 0,
+    "high": 1,
+    "moderate": 2,
+    "low": 3,
+}
+
+
+def normalize_medication_name(value: str) -> str:
+    return " ".join((value or "").strip().lower().split())
+
+
+def canonical_signature(medications: Sequence[str]) -> str:
+    normalized = sorted({normalize_medication_name(m) for m in medications if m})
+    return "|".join(normalized)
+
+
+def _get_active_medications_for_patient(patient_id: int) -> List[str]:
+    rows = Prescription.objects.filter(
+        medical_record__patient_id=patient_id,
+        status__in=["signed", "dispensed"],
+    ).values_list("medication_name", flat=True)
+    meds = [normalize_medication_name(name) for name in rows if name]
+    # Preserve stable order for deterministic report payloads.
+    return sorted(set(meds))
+
+
+def _single_drug_findings(medications: Iterable[str]) -> List[Dict]:
+    findings: List[Dict] = []
+    for med in medications:
+        for effect in MedicationSideEffect.objects.filter(medication_name__iexact=med):
+            findings.append(
+                {
+                    "finding_type": "side_effect",
+                    "medications": [med],
+                    "combination_size": 1,
+                    "side_effect": effect.side_effect,
+                    "severity": effect.severity,
+                    "description": effect.description,
+                    "source": effect.source,
+                    "source_reference": effect.source_version,
+                }
+            )
+    return findings
+
+
+def _knowledge_findings_for_combos(combo_groups: Iterable[Tuple[str, ...]]) -> List[Dict]:
+    findings: List[Dict] = []
+    for meds in combo_groups:
+        signature = canonical_signature(meds)
+        if not signature:
+            continue
+        rows = MedicationInteractionKnowledge.objects.filter(combination_signature=signature)
+        for row in rows:
+            findings.append(
+                {
+                    "finding_type": "interaction",
+                    "medications": list(meds),
+                    "combination_size": len(meds),
+                    "side_effect": row.side_effect,
+                    "severity": row.severity,
+                    "description": row.description,
+                    "source": row.source,
+                    "source_reference": row.source_version,
+                }
+            )
+    return findings
+
+
+def _fallback_pair_findings(pair_groups: Iterable[Tuple[str, str]]) -> List[Dict]:
+    findings: List[Dict] = []
+    for a, b in pair_groups:
+        inter = DrugInteraction.objects.filter(
+            Q(drug_a__iexact=a, drug_b__iexact=b) | Q(drug_a__iexact=b, drug_b__iexact=a)
+        ).first()
+        if inter:
+            findings.append(
+                {
+                    "finding_type": "interaction",
+                    "medications": [a, b],
+                    "combination_size": 2,
+                    "side_effect": inter.description or f"Interaction between {a} and {b}",
+                    "severity": inter.severity,
+                    "description": inter.description,
+                    "source": "SecureMed Seed",
+                    "source_reference": "",
+                }
+            )
+    return findings
+
+
+def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
+    normalized = sorted({normalize_medication_name(m) for m in medications if m})
+    if not normalized:
+        return {
+            "medications": [],
+            "pairs_checked": 0,
+            "triplets_checked": 0,
+            "findings": [],
+            "totals": {"critical": 0, "high": 0, "moderate": 0, "low": 0},
+        }
+
+    pairs = list(combinations(normalized, 2))
+    triplets = list(combinations(normalized, 3))
+
+    findings = []
+    findings.extend(_single_drug_findings(normalized))
+    findings.extend(_knowledge_findings_for_combos(triplets))
+    findings.extend(_knowledge_findings_for_combos(pairs))
+    findings.extend(_fallback_pair_findings(pairs))
+
+    # Deduplicate by semantic identity.
+    dedup_key = set()
+    unique_findings = []
+    for finding in findings:
+        key = (
+            finding["finding_type"],
+            tuple(sorted(finding["medications"])),
+            finding["side_effect"].strip().lower(),
+            finding["severity"],
+        )
+        if key not in dedup_key:
+            dedup_key.add(key)
+            unique_findings.append(finding)
+
+    unique_findings.sort(
+        key=lambda x: (
+            SEVERITY_ORDER.get(x["severity"], 99),
+            -x["combination_size"],
+            ",".join(x["medications"]),
+        )
+    )
+
+    totals = {"critical": 0, "high": 0, "moderate": 0, "low": 0}
+    for finding in unique_findings:
+        if finding["severity"] in totals:
+            totals[finding["severity"]] += 1
+
+    return {
+        "medications": normalized,
+        "pairs_checked": len(pairs),
+        "triplets_checked": len(triplets),
+        "findings": unique_findings,
+        "totals": totals,
+    }
+
+
+def generate_and_store_report(
+    *,
+    patient,
+    generated_by=None,
+    trigger_event: str = "manual",
+    candidate_medications: Optional[Sequence[str]] = None,
+) -> MedicationInteractionReport:
+    current_meds = _get_active_medications_for_patient(patient.id)
+    if candidate_medications:
+        current_meds = sorted(set(current_meds + [normalize_medication_name(m) for m in candidate_medications if m]))
+
+    result = evaluate_medication_safety(current_meds)
+    source_version = (
+        MedicationInteractionKnowledge.objects.exclude(source_version="")
+        .order_by("-id")
+        .values_list("source_version", flat=True)
+        .first()
+        or ""
+    )
+
+    report = MedicationInteractionReport.objects.create(
+        patient=patient,
+        generated_by=generated_by,
+        trigger_event=trigger_event,
+        medications=result["medications"],
+        total_medications=len(result["medications"]),
+        total_pairs_checked=result["pairs_checked"],
+        total_triplets_checked=result["triplets_checked"],
+        total_findings=len(result["findings"]),
+        critical_count=result["totals"]["critical"],
+        high_count=result["totals"]["high"],
+        moderate_count=result["totals"]["moderate"],
+        low_count=result["totals"]["low"],
+        source_version=source_version,
+    )
+
+    MedicationInteractionReportItem.objects.bulk_create(
+        [
+            MedicationInteractionReportItem(
+                report=report,
+                finding_type=finding["finding_type"],
+                medications=finding["medications"],
+                combination_size=finding["combination_size"],
+                side_effect=finding["side_effect"],
+                severity=finding["severity"],
+                description=finding["description"],
+                source=finding["source"],
+                source_reference=finding["source_reference"],
+            )
+            for finding in result["findings"]
+        ],
+        batch_size=1000,
+    )
+
+    return report

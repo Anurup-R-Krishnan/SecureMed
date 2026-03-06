@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import MedicalRecord, Prescription, VitalSign, DrugInteraction, PharmacyOrder, MedicationAdherenceLog, MedicationHistoryEvent
+from .models import (
+    MedicalRecord,
+    Prescription,
+    VitalSign,
+    DrugInteraction,
+    PharmacyOrder,
+    MedicationAdherenceLog,
+    MedicationHistoryEvent,
+    MedicationInteractionReport,
+    MedicationInteractionReportItem,
+)
 from apps.scheduling.appointments.serializers import DoctorSerializer
 from datetime import timedelta
 
@@ -183,6 +193,47 @@ class DrugInteractionSerializer(serializers.ModelSerializer):
     class Meta:
         model = DrugInteraction
         fields = '__all__'
+
+
+class MedicationInteractionReportItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MedicationInteractionReportItem
+        fields = [
+            'id',
+            'finding_type',
+            'medications',
+            'combination_size',
+            'side_effect',
+            'severity',
+            'description',
+            'source',
+            'source_reference',
+        ]
+
+
+class MedicationInteractionReportSerializer(serializers.ModelSerializer):
+    items = MedicationInteractionReportItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MedicationInteractionReport
+        fields = [
+            'id',
+            'patient',
+            'generated_by',
+            'trigger_event',
+            'medications',
+            'total_medications',
+            'total_pairs_checked',
+            'total_triplets_checked',
+            'total_findings',
+            'critical_count',
+            'high_count',
+            'moderate_count',
+            'low_count',
+            'source_version',
+            'created_at',
+            'items',
+        ]
 
 
 class PharmacyOrderSerializer(serializers.ModelSerializer):

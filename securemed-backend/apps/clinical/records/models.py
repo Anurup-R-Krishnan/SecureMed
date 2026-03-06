@@ -168,6 +168,113 @@ class DrugInteraction(models.Model):
         return f"{self.drug_a} + {self.drug_b} ({self.severity})"
 
 
+class MedicationSideEffect(models.Model):
+    SEVERITY_CHOICES = DrugInteraction.SEVERITY_CHOICES
+
+    medication_name = models.CharField(max_length=200, db_index=True)
+    side_effect = models.CharField(max_length=255)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='moderate')
+    description = models.TextField(blank=True)
+    source = models.CharField(max_length=100, default='HODDI')
+    source_version = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        db_table = 'medication_side_effects'
+        indexes = [
+            models.Index(fields=['medication_name']),
+            models.Index(fields=['severity']),
+        ]
+        unique_together = ('medication_name', 'side_effect', 'source_version')
+
+    def __str__(self):
+        return f"{self.medication_name}: {self.side_effect} ({self.severity})"
+
+
+class MedicationInteractionKnowledge(models.Model):
+    """
+    Higher-order interaction knowledge (2+ medications) imported from HODDI-like datasets.
+    """
+    SEVERITY_CHOICES = DrugInteraction.SEVERITY_CHOICES
+
+    combination_signature = models.CharField(max_length=600, db_index=True)
+    medications = models.JSONField(default=list)
+    combination_size = models.IntegerField(default=2, db_index=True)
+    side_effect = models.CharField(max_length=255)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='moderate')
+    description = models.TextField(blank=True)
+    source = models.CharField(max_length=100, default='HODDI')
+    source_version = models.CharField(max_length=50, blank=True)
+    evidence = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = 'medication_interaction_knowledge'
+        indexes = [
+            models.Index(fields=['combination_signature']),
+            models.Index(fields=['combination_size']),
+            models.Index(fields=['severity']),
+        ]
+        unique_together = ('combination_signature', 'side_effect', 'source_version')
+
+    def __str__(self):
+        return f"{self.combination_signature}: {self.side_effect} ({self.severity})"
+
+
+class MedicationInteractionReport(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='interaction_reports')
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='generated_interaction_reports'
+    )
+    trigger_event = models.CharField(max_length=50, default='manual')
+    medications = models.JSONField(default=list)
+    total_medications = models.IntegerField(default=0)
+    total_pairs_checked = models.IntegerField(default=0)
+    total_triplets_checked = models.IntegerField(default=0)
+    total_findings = models.IntegerField(default=0)
+    critical_count = models.IntegerField(default=0)
+    high_count = models.IntegerField(default=0)
+    moderate_count = models.IntegerField(default=0)
+    low_count = models.IntegerField(default=0)
+    source_version = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'medication_interaction_reports'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['patient', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"Report#{self.id} patient={self.patient_id} findings={self.total_findings}"
+
+
+class MedicationInteractionReportItem(models.Model):
+    report = models.ForeignKey(MedicationInteractionReport, on_delete=models.CASCADE, related_name='items')
+    finding_type = models.CharField(max_length=20, default='interaction')  # interaction | side_effect
+    medications = models.JSONField(default=list)
+    combination_size = models.IntegerField(default=1)
+    side_effect = models.CharField(max_length=255)
+    severity = models.CharField(max_length=20, choices=DrugInteraction.SEVERITY_CHOICES, default='moderate')
+    description = models.TextField(blank=True)
+    source = models.CharField(max_length=100, default='HODDI')
+    source_reference = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        db_table = 'medication_interaction_report_items'
+        indexes = [
+            models.Index(fields=['severity']),
+            models.Index(fields=['combination_size']),
+        ]
+
+    def __str__(self):
+        meds = ', '.join(self.medications or [])
+        return f"{self.finding_type}:{meds} -> {self.side_effect}"
+
+
 class PharmacyOrder(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),

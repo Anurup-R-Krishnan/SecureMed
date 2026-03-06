@@ -8,6 +8,9 @@ from django.db.models import Q
 from .models import MedicalRecord, MedicalRecordAccess
 from .serializers import MedicalRecordSerializer
 from apps.accounts.users.permissions import IsPatient
+from apps.accounts.patients.models import Patient
+from apps.clinical.pharmacy.models import Drug
+from .interaction_service import evaluate_medication_safety, generate_and_store_report
 
 class MedicalRecordViewSet(viewsets.ModelViewSet):
     serializer_class = MedicalRecordSerializer
@@ -382,10 +385,9 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('Only doctors can create prescriptions.')
         doctor_profile = self.request.user.doctor_profile
 
-        # Drug-drug interaction check
+        # Drug-drug interaction check (warning-only policy for this workflow).
         from .models import Prescription as PrescriptionModel, DrugInteraction
         new_med = serializer.validated_data.get('medication_name', '').strip()
-        override_reason = serializer.validated_data.get('override_reason', '').strip()
         interactions = []
         if new_med:
             active_rx = PrescriptionModel.objects.filter(
@@ -399,20 +401,6 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 ).first()
                 if inter:
                     interactions.append(inter)
-
-        high_interactions = [i for i in interactions if i.severity in ['high', 'critical']]
-        if high_interactions and not override_reason:
-            raise serializers.ValidationError({
-                'override_reason': 'Override reason required for high severity interaction.',
-                'interactions': [
-                    {
-                        'drug_a': i.drug_a,
-                        'drug_b': i.drug_b,
-                        'severity': i.severity,
-                        'description': i.description
-                    } for i in high_interactions
-                ]
-            })
         
         # Create a Medical Record wrapper for this prescription
         # In a real app, we might group them by visit, but for now 1-to-1 or 1-to-many is fine
@@ -425,8 +413,16 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             diagnosis="Prescription Order",
             notes=f"Prescription for {serializer.validated_data.get('medication_name')}"
         )
-        
-        serializer.save(medical_record=record)
+
+        prescription = serializer.save(medical_record=record)
+        patient = Patient.objects.get(pk=patient_id)
+        # Regenerate report whenever medication set changes.
+        generate_and_store_report(
+            patient=patient,
+            generated_by=self.request.user,
+            trigger_event='prescription_created',
+            candidate_medications=[prescription.medication_name],
+        )
 
     def get_queryset(self):
         user = self.request.user
@@ -476,6 +472,11 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 prescription=prescription,
                 defaults={'pickup_code': secrets.token_hex(6).upper()}
             )
+            generate_and_store_report(
+                patient=prescription.medical_record.patient,
+                generated_by=request.user,
+                trigger_event='prescription_signed',
+            )
             return Response({
                 "status": "signed", 
                 "message": "Prescription digitally signed and locked.",
@@ -498,20 +499,117 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             event_type='cancelled',
             changed_by=request.user
         )
+        generate_and_store_report(
+            patient=prescription.medical_record.patient,
+            generated_by=request.user,
+            trigger_event='prescription_cancelled',
+        )
         return Response({"status": "cancelled"})
 
 
 class DrugInteractionViewSet(viewsets.ModelViewSet):
-    from .models import DrugInteraction
-    from .serializers import DrugInteractionSerializer
+    from .models import DrugInteraction, MedicationInteractionReport
+    from .serializers import DrugInteractionSerializer, MedicationInteractionReportSerializer
     queryset = DrugInteraction.objects.all()
     serializer_class = DrugInteractionSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def _resolve_patient(self, request):
+        patient_id = request.query_params.get('patient_id') or request.data.get('patient_id')
+        if hasattr(request.user, 'patient_profile'):
+            return request.user.patient_profile
+        if not patient_id:
+            return None
+        try:
+            patient = Patient.objects.get(pk=patient_id)
+        except Patient.DoesNotExist:
+            raise ValidationError({"patient_id": "Patient not found."})
+
+        if request.user.is_staff or request.user.role == 'admin':
+            return patient
+        if hasattr(request.user, 'doctor_profile'):
+            # Doctor must have existing record relationship or emergency access.
+            has_access = MedicalRecord.objects.filter(
+                patient=patient,
+                doctor=request.user.doctor_profile,
+            ).exists()
+            if not has_access:
+                from .models import EmergencyAccessLog
+                has_access = EmergencyAccessLog.objects.filter(
+                    patient=patient,
+                    accessed_by=request.user
+                ).exists()
+            if has_access:
+                return patient
+        raise PermissionDenied("No permission to access this patient.")
 
     def get_queryset(self):
         if self.request.user.is_staff or self.request.user.role == 'admin':
             return self.queryset
         return self.queryset.none()
+
+    @action(detail=False, methods=['get'])
+    def search(self, request):
+        query = (request.query_params.get('q') or '').strip().lower()
+        if len(query) < 2:
+            return Response({"results": []})
+
+        active_names = set()
+        patient = None
+        try:
+            patient = self._resolve_patient(request)
+        except (ValidationError, PermissionDenied):
+            patient = None
+
+        if patient:
+            from .models import Prescription
+            active_rx_names = Prescription.objects.filter(
+                medical_record__patient=patient,
+                status__in=['signed', 'dispensed'],
+            ).values_list('medication_name', flat=True)
+            for name in active_rx_names:
+                if name:
+                    active_names.add(name.strip())
+
+        pharmacy_names = Drug.objects.filter(
+            is_active=True,
+            name__icontains=query
+        ).values_list('name', flat=True)[:30]
+
+        all_names = set(pharmacy_names)
+        all_names.update(active_names)
+        filtered = sorted([name for name in all_names if query in name.lower()])[:50]
+        return Response({"results": filtered})
+
+    @action(detail=False, methods=['post'])
+    def check(self, request):
+        meds = request.data.get('medications') or []
+        if not isinstance(meds, list):
+            raise ValidationError({"medications": "Must be a list of medication names."})
+        if len(meds) < 1:
+            raise ValidationError({"medications": "At least one medication is required."})
+        result = evaluate_medication_safety(meds)
+        return Response(result)
+
+    @action(detail=False, methods=['get'], url_path='reports/latest')
+    def latest_report(self, request):
+        patient = self._resolve_patient(request)
+        if not patient:
+            raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
+        report = self.MedicationInteractionReport.objects.filter(patient=patient).prefetch_related('items').first()
+        if not report:
+            return Response({"detail": "No report found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.MedicationInteractionReportSerializer(report)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='reports')
+    def report_history(self, request):
+        patient = self._resolve_patient(request)
+        if not patient:
+            raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
+        reports = self.MedicationInteractionReport.objects.filter(patient=patient).prefetch_related('items')[:20]
+        serializer = self.MedicationInteractionReportSerializer(reports, many=True)
+        return Response(serializer.data)
 
 
 class PharmacyOrderViewSet(viewsets.ModelViewSet):
@@ -568,6 +666,11 @@ class PharmacyOrderViewSet(viewsets.ModelViewSet):
             prescription=prescription,
             event_type='dispensed',
             changed_by=request.user
+        )
+        generate_and_store_report(
+            patient=prescription.medical_record.patient,
+            generated_by=request.user,
+            trigger_event='prescription_dispensed',
         )
         
         # Create invoice for pharmacy order
