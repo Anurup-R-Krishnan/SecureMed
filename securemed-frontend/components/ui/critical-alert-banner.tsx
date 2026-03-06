@@ -11,12 +11,7 @@ interface CriticalAlertBannerProps {
     }[];
 }
 
-// Mock alerts for now, normally this would come from a global context or websocket
-const MOCK_ALERTS = [
-    // { id: '1', message: 'CRITICAL VALUE: Patient #9283 - Potassium 2.4 mmol/L', type: 'critical' },
-];
-
-export function CriticalAlertBanner({ alerts = MOCK_ALERTS }: CriticalAlertBannerProps) {
+export function CriticalAlertBanner({ alerts = [] }: CriticalAlertBannerProps) {
     if (alerts.length === 0) return null;
 
     return (

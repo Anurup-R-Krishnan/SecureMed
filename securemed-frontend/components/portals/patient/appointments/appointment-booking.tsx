@@ -33,29 +33,25 @@ import { useAuth } from '@/context/auth-context';
 type BookingStep = 'doctor' | 'date' | 'time' | 'confirm' | 'success';
 
 interface EnhancedAppointmentBookingProps {
-  patientId?: string; // Kept for API compatibility, though pulled from auth usually
+  patientId?: string;
   patientName?: string;
   initialDoctorId?: string;
-  initialDoctorName?: string;
 }
 
 export default function AppointmentBooking({
   patientId = '',
-  patientName = 'Guest', // Fallback
-  initialDoctorId,
-  initialDoctorName
+  patientName = 'Guest',
+  initialDoctorId
 }: EnhancedAppointmentBookingProps) {
   const { toast } = useToast();
-  const { user } = useAuth(); // Auth Hook
+  const { user } = useAuth();
 
-  // Use authenticated user details if available
   const effectivePatientName = user?.username || user?.email || patientName;
 
-  const [currentStep, setCurrentStep] = useState<BookingStep>(initialDoctorId ? 'date' : 'doctor'); // Skip to date if doctor provided
+  const [currentStep, setCurrentStep] = useState<BookingStep>(initialDoctorId ? 'date' : 'doctor');
   const [isLoading, setIsLoading] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
 
-  // Selection state
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
 
@@ -73,7 +69,7 @@ export default function AppointmentBooking({
       if (prev && prev.id === numericId) return prev; // already set
       return {
         id: numericId,
-        name: initialDoctorName || 'Selected Doctor',
+        name: 'Selected Doctor',
         specialty: '',
         specialization: '',
         hospital: '',
@@ -87,17 +83,14 @@ export default function AppointmentBooking({
         available: true,
       } as Doctor;
     });
-  }, [initialDoctorId, initialDoctorName]);
-
+  }, [initialDoctorId]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [reasonForVisit, setReasonForVisit] = useState('');
 
-  // Booking result
   const [bookingResult, setBookingResult] = useState<any | null>(null);
 
-  // Filter state
   const [specialtyFilter, setSpecialtyFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -134,7 +127,6 @@ export default function AppointmentBooking({
     fetchDoctors();
   }, [toast, initialDoctorId]);
 
-  // Load available slots when doctor and date are selected
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
       setIsLoading(true);
@@ -162,7 +154,6 @@ export default function AppointmentBooking({
     }
   }, [selectedDoctor, selectedDate, toast]);
 
-  // Internal debounced search effect
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery || specialtyFilter) {
@@ -173,7 +164,6 @@ export default function AppointmentBooking({
           console.error(e);
         }
       } else if (doctors.length === 0 && !isLoading) {
-        // Reload initial if cleared
         try {
           const data = await appointmentService.getDoctors();
           setDoctors(data);
@@ -184,10 +174,8 @@ export default function AppointmentBooking({
   }, [searchQuery, specialtyFilter, doctors.length, isLoading]);
 
 
-  // Dynamic specialties extraction
   const specialties = Array.from(new Set(doctors.map(doc => doc.specialty || doc.specialization))).filter(Boolean);
 
-  // Check if date is disabled (weekends or past)
   const isDateDisabled = (date: Date) => {
     const day = date.getDay();
     const today = new Date();
@@ -195,7 +183,6 @@ export default function AppointmentBooking({
     return day === 0 || day === 6 || date < today;
   };
 
-  // Handle booking
   const handleBookAppointment = async () => {
     if (!selectedDoctor || !selectedDate || !selectedSlot) return;
 
@@ -207,7 +194,7 @@ export default function AppointmentBooking({
       const payload: any = {
         doctor: selectedDoctor.id,
         appointment_date: dateStr,
-        appointment_time: selectedSlot.startTime.substring(0, 5), // Send HH:MM only
+        appointment_time: selectedSlot.startTime.substring(0, 5),
         reason: reasonForVisit || 'General Consultation',
       };
 
@@ -231,11 +218,9 @@ export default function AppointmentBooking({
       console.error("Booking Error:", error);
       let errorMessage = error.message || 'Please try another slot.';
 
-      // Parse backend validation errors
       if (error.response?.data) {
         const data = error.response.data;
         if (typeof data === 'object') {
-          // Extract first error message from values
           const messages = Object.values(data).flat();
           if (messages.length > 0) {
             errorMessage = messages[0];
@@ -244,7 +229,6 @@ export default function AppointmentBooking({
           errorMessage = data;
         }
 
-        // UX Improvement: Suggest GP if referral is invalid
         if (errorMessage.toLowerCase().includes('referral')) {
           errorMessage += " Try booking with a General Practitioner (Dr. Robert General) for an initial consultation.";
         }
@@ -260,7 +244,6 @@ export default function AppointmentBooking({
     }
   };
 
-  // Reset booking flow
   const resetBooking = () => {
     setCurrentStep('doctor');
     setSelectedDoctor(null);
@@ -269,11 +252,9 @@ export default function AppointmentBooking({
     setAvailableSlots([]);
     setReasonForVisit('');
     setBookingResult(null);
-    // Refresh doctors
     appointmentService.getDoctors().then(setDoctors);
   };
 
-  // Render step indicator
   const renderStepIndicator = () => {
     const steps = [
       { id: 'doctor', label: 'Doctor' },
