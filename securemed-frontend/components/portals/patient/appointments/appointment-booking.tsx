@@ -59,23 +59,34 @@ export default function AppointmentBooking({
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
 
-  // Set initial doctor if provided
+  // Track whether the real doctor record has been loaded from the API
+  const [doctorReady, setDoctorReady] = useState(!initialDoctorId);
+
+  // Pre-select doctor from URL param (only doctorId is required; doctorName is optional)
   useEffect(() => {
-    if (initialDoctorId && initialDoctorName) {
-      // We create a partial doctor object sufficient for display until full list loads
-      // Ideally we find it in the full list, but for immediate feedback:
-      setSelectedDoctor({
-        id: parseInt(initialDoctorId),
-        name: initialDoctorName,
-        specialty: 'Specialist', // Placeholder
-        hospital: 'Main Hospital', // Placeholder
-        description: 'Referral Selection',
+    if (!initialDoctorId) return;
+    const numericId = parseInt(initialDoctorId, 10);
+    if (isNaN(numericId)) return;
+    // Set a stub immediately so the date-picker is shown right away.
+    // It will be replaced with the full object once the doctors list loads.
+    setSelectedDoctor((prev) => {
+      if (prev && prev.id === numericId) return prev; // already set
+      return {
+        id: numericId,
+        name: initialDoctorName || 'Selected Doctor',
+        specialty: '',
+        specialization: '',
+        hospital: '',
+        department_name: '',
+        experience: '',
+        user_id: 0,
+        description: '',
         consultation_fee: 0,
-        image: '',
-        rating: 5.0,
-        specialization: 'Specialist'
-      } as Doctor);
-    }
+        rating: 0,
+        reviews: 0,
+        available: true,
+      } as Doctor;
+    });
   }, [initialDoctorId, initialDoctorName]);
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -90,47 +101,64 @@ export default function AppointmentBooking({
   const [specialtyFilter, setSpecialtyFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load doctors on mount
+  // Load doctors on mount; once loaded, replace any URL-seeded stub with the real record
   useEffect(() => {
     const fetchDoctors = async () => {
       setIsLoading(true);
       try {
         const data = await appointmentService.getDoctors();
         setDoctors(data);
+        // Replace partial stub with the real doctor object so availability calls use correct data
+        if (initialDoctorId) {
+          const numericId = parseInt(initialDoctorId, 10);
+          const match = data.find((d: Doctor) => d.id === numericId);
+          if (match) {
+            setSelectedDoctor(match);
+          }
+          // Mark doctor as ready whether or not we found a match —
+          // the stub is sufficient; we don't want to block the user forever.
+          setDoctorReady(true);
+        }
       } catch (error) {
         toast({
           title: 'Error',
           description: 'Could not load doctors.',
           variant: 'destructive',
         });
+        // Allow progression even if doctors failed to load
+        if (initialDoctorId) setDoctorReady(true);
       } finally {
         setIsLoading(false);
       }
     };
     fetchDoctors();
-  }, [toast]);
+  }, [toast, initialDoctorId]);
 
   // Load available slots when doctor and date are selected
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
       setIsLoading(true);
       const dateStr = selectedDate.toISOString().split('T')[0];
+      let cancelled = false;
 
       const fetchAvailability = async () => {
         try {
           const slots = await appointmentService.getDoctorAvailability(selectedDoctor.id, dateStr);
-          setAvailableSlots(slots);
+          if (!cancelled) setAvailableSlots(slots);
         } catch (error) {
-          toast({
-            title: 'Error',
-            description: 'Could not load availability.',
-            variant: 'destructive',
-          });
+          if (!cancelled) {
+            toast({
+              title: 'Error',
+              description: 'Could not load availability.',
+              variant: 'destructive',
+            });
+          }
         } finally {
-          setIsLoading(false);
+          if (!cancelled) setIsLoading(false);
         }
       };
       fetchAvailability();
+      return () => { cancelled = true; };
     }
   }, [selectedDoctor, selectedDate, toast]);
 
@@ -456,10 +484,17 @@ export default function AppointmentBooking({
               <Button
                 className="w-full h-16 rounded-2xl text-lg font-black shadow-xl"
                 size="lg"
-                disabled={!selectedDate}
+                disabled={!selectedDate || !doctorReady}
                 onClick={() => setCurrentStep('time')}
               >
-                Find Available Slots
+                {!doctorReady ? (
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Loading doctor info...</span>
+                  </div>
+                ) : (
+                  'Find Available Slots'
+                )}
               </Button>
             </div>
           </div>
