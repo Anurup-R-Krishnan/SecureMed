@@ -219,7 +219,7 @@ def patient_timeline(request):
             "details": {
                 "doctor": appointment.doctor.user.get_full_name() if appointment.doctor else "Unknown",
                 "specialization": appointment.doctor.specialization if appointment.doctor else None,
-                "appointment_type": appointment.appointment_type,
+                "appointment_type": getattr(appointment, "appointment_type", None),
                 "reason": appointment.reason,
                 "notes": appointment.notes
             }
