@@ -15,7 +15,6 @@ function AppointmentsContent() {
     const { isAuthenticated } = useAuth();
     const searchParams = useSearchParams();
     const initialDoctorId = searchParams.get('doctorId') || undefined;
-    const initialDoctorName = searchParams.get('doctorName') || undefined;
 
     const [nextAppointment, setNextAppointment] = useState<any>(null);
 
@@ -116,7 +115,6 @@ function AppointmentsContent() {
                 </div>
                 <AppointmentBooking
                     initialDoctorId={initialDoctorId}
-                    initialDoctorName={initialDoctorName}
                 />
             </div>
         </div>

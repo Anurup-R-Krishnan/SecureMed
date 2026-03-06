@@ -6,11 +6,23 @@ import socket as _socket
 
 # httpx (used by google-genai) tries IPv6 first; Docker containers typically
 # have no IPv6 route, causing immediate ENETUNREACH before any IPv4 fallback.
-# Force IPv4-only resolution for all outbound connections in this process.
+# Restrict IPv4-only resolution to Google AI hosts to avoid global side effects.
 _orig_getaddrinfo = _socket.getaddrinfo
-def _ipv4_only_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    return _orig_getaddrinfo(host, port, _socket.AF_INET, type, proto, flags)
-_socket.getaddrinfo = _ipv4_only_getaddrinfo
+_GEMINI_HOST_HINTS = (
+    "googleapis.com",
+    "generativelanguage.googleapis.com",
+    "google.com",
+)
+
+
+def _ipv4_prefer_gemini_hosts_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    host_str = (host or "").lower() if isinstance(host, str) else ""
+    if any(hint in host_str for hint in _GEMINI_HOST_HINTS):
+        return _orig_getaddrinfo(host, port, _socket.AF_INET, type, proto, flags)
+    return _orig_getaddrinfo(host, port, family, type, proto, flags)
+
+
+_socket.getaddrinfo = _ipv4_prefer_gemini_hosts_getaddrinfo
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes

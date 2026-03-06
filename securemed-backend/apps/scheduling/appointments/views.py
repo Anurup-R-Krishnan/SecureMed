@@ -112,14 +112,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     'appointment_date': 'Cannot book appointments more than 6 months in advance'
                 })
               
-
-        patient_profile = self.request.user.patient_profile
-        if not patient_profile.insurance_provider or not patient_profile.insurance_number:
-            pass 
-        else:
-
-            pass
-
         # Prevent double booking
         appointment_time = serializer.validated_data.get('appointment_time')
         appointment_date = serializer.validated_data.get('appointment_date')

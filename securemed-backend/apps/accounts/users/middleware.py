@@ -18,7 +18,7 @@ class RoleMiddleware:
                 if auth_result:
                     request.user = auth_result[0]
             except Exception:
-                pass
+                logger.exception("RoleMiddleware JWT authentication failed")
 
         if not request.user.is_authenticated:
             return self.get_response(request)
