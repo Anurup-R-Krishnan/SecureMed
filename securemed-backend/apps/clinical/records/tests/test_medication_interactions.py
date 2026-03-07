@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 from apps.accounts.patients.models import Patient
 from apps.clinical.pharmacy.models import Drug
 from apps.clinical.records.interaction_service import evaluate_medication_safety, generate_and_store_report
+from apps.clinical.records.tasks import generate_interaction_report_job
 from apps.clinical.records.models import (
     MedicalRecord,
     MedicationInteractionKnowledge,
@@ -297,3 +298,7 @@ class MedicationInteractionApiTests(TestCase):
         self.assertEqual(status_response.status_code, status.HTTP_200_OK)
         self.assertEqual(status_response.data["task_id"], task_id)
         self.assertIn(status_response.data["status"], {"queued", "running", "succeeded", "failed"})
+
+    def test_missing_async_job_is_safe_noop(self):
+        payload = generate_interaction_report_job.run(999999)
+        self.assertEqual(payload["status"], "missing")

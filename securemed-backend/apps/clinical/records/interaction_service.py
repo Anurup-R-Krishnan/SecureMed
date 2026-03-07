@@ -1,4 +1,3 @@
-import time
 from uuid import uuid4
 from itertools import combinations
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -224,7 +223,7 @@ def _safety_cache_namespace() -> str:
 
 
 def bump_safety_cache_namespace() -> str:
-    version = f"v{int(time.time())}"
+    version = f"v{uuid4().hex}"
     try:
         cache.set(SAFETY_CACHE_NAMESPACE_KEY, version, None)
     except Exception:
