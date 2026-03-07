@@ -40,6 +40,7 @@ services:
   backend:
     build: .
     restart: unless-stopped
+    command: sh -c "mkdir -p /tmp/staticfiles /app/media && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --timeout 120 --workers 2"
     env_file:
       - .env
     environment:
@@ -47,6 +48,7 @@ services:
       DB_PORT: 5432
       REDIS_URL: redis://redis:6379/0
       NEO4J_URI: bolt://neo4j:7687
+      STATIC_ROOT: /tmp/staticfiles
       ALLOWED_HOSTS: "localhost,127.0.0.1,host.docker.internal,backend"
     depends_on:
       db:
@@ -62,7 +64,7 @@ services:
   celery:
     build: .
     restart: unless-stopped
-    command: celery -A config worker --loglevel=info
+    command: sh -c "mkdir -p /tmp/staticfiles /app/media && celery -A config worker --loglevel=info --uid=app --gid=app"
     env_file:
       - .env
     environment:
@@ -70,6 +72,7 @@ services:
       DB_PORT: 5432
       REDIS_URL: redis://redis:6379/0
       NEO4J_URI: bolt://neo4j:7687
+      STATIC_ROOT: /tmp/staticfiles
     depends_on:
       db:
         condition: service_healthy

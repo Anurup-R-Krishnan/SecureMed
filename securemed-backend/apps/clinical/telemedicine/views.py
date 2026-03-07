@@ -46,7 +46,7 @@ try:
     GEMINI_AVAILABLE = bool(_genai_client)
 except Exception as _e:
     import logging as _logging
-    _logging.getLogger(__name__).error(f"[GEMINI INIT] failed: {_e}")
+    _logging.getLogger(__name__).warning(f"[GEMINI INIT] unavailable: {_e}")
     _genai_client = None
     GEMINI_AVAILABLE = False
 
