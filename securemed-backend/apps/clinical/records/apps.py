@@ -6,3 +6,6 @@ class RecordsConfig(AppConfig):
     name = 'apps.clinical.records'
     label = 'medical_records'
     verbose_name = 'Medical Records'
+
+    def ready(self):
+        from . import signals  # noqa: F401

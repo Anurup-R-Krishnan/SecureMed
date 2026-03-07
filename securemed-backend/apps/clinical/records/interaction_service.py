@@ -1,12 +1,16 @@
+import time
+from uuid import uuid4
 from itertools import combinations
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from django.core.cache import cache
 from django.db.models import Q
 
 from .models import (
     DrugInteraction,
     MedicationInteractionKnowledge,
     MedicationInteractionReport,
+    MedicationInteractionReportJob,
     MedicationInteractionReportItem,
     MedicationReference,
     MedicationSideEffect,
@@ -22,6 +26,8 @@ SEVERITY_ORDER = {
     "low": 3,
 }
 MAX_EVALUATED_COMBINATION_SIZE = 3
+SAFETY_CACHE_TTL_SECONDS = 600
+SAFETY_CACHE_NAMESPACE_KEY = "interaction_safety_cache_namespace"
 
 
 def normalize_medication_name(value: str) -> str:
@@ -144,7 +150,7 @@ def _fallback_pair_findings(pair_groups: Iterable[Tuple[str, str]]) -> List[Dict
     return findings
 
 
-def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
+def _compute_medication_safety(medications: Sequence[str]) -> Dict:
     normalized = resolve_medications_for_knowledge(medications)
     if not normalized:
         return {
@@ -152,7 +158,9 @@ def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
             "pairs_checked": 0,
             "triplets_checked": 0,
             "evaluated_combination_depth": MAX_EVALUATED_COMBINATION_SIZE,
+            "max_supported_combination_size": MAX_EVALUATED_COMBINATION_SIZE,
             "not_evaluated_depths": [],
+            "coverage_gap": False,
             "findings": [],
             "totals": {"critical": 0, "high": 0, "moderate": 0, "low": 0},
         }
@@ -198,12 +206,52 @@ def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
         "pairs_checked": len(pairs),
         "triplets_checked": len(triplets),
         "evaluated_combination_depth": MAX_EVALUATED_COMBINATION_SIZE,
+        "max_supported_combination_size": MAX_EVALUATED_COMBINATION_SIZE,
         "not_evaluated_depths": list(range(MAX_EVALUATED_COMBINATION_SIZE + 1, len(normalized) + 1))
         if len(normalized) > MAX_EVALUATED_COMBINATION_SIZE
         else [],
+        "coverage_gap": len(normalized) > MAX_EVALUATED_COMBINATION_SIZE,
         "findings": unique_findings,
         "totals": totals,
     }
+
+
+def _safety_cache_namespace() -> str:
+    try:
+        return str(cache.get(SAFETY_CACHE_NAMESPACE_KEY) or "v1")
+    except Exception:
+        return "v1"
+
+
+def bump_safety_cache_namespace() -> str:
+    version = f"v{int(time.time())}"
+    try:
+        cache.set(SAFETY_CACHE_NAMESPACE_KEY, version, None)
+    except Exception:
+        pass
+    return version
+
+
+def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
+    normalized = resolve_medications_for_knowledge(medications)
+    signature = canonical_signature(normalized)
+    if not signature:
+        return _compute_medication_safety([])
+
+    key = f"med-safety:{_safety_cache_namespace()}:{signature}"
+    try:
+        cached = cache.get(key)
+    except Exception:
+        cached = None
+    if cached is not None:
+        return cached
+
+    result = _compute_medication_safety(normalized)
+    try:
+        cache.set(key, result, SAFETY_CACHE_TTL_SECONDS)
+    except Exception:
+        pass
+    return result
 
 
 def generate_and_store_report(
@@ -239,6 +287,10 @@ def generate_and_store_report(
         high_count=result["totals"]["high"],
         moderate_count=result["totals"]["moderate"],
         low_count=result["totals"]["low"],
+        evaluated_combination_depth=result["evaluated_combination_depth"],
+        max_supported_combination_size=result["max_supported_combination_size"],
+        not_evaluated_depths=result["not_evaluated_depths"],
+        coverage_gap=result["coverage_gap"],
         source_version=source_version,
     )
 
@@ -261,3 +313,61 @@ def generate_and_store_report(
     )
 
     return report
+
+
+def enqueue_report_generation(
+    *,
+    patient,
+    generated_by=None,
+    trigger_event: str = "manual_refresh",
+    candidate_medications: Optional[Sequence[str]] = None,
+) -> MedicationInteractionReportJob:
+    from .tasks import generate_interaction_report_job
+
+    task_id = uuid4().hex
+    candidate_meds = [normalize_medication_name(m) for m in (candidate_medications or []) if m]
+    job = MedicationInteractionReportJob.objects.create(
+        task_id=task_id,
+        patient=patient,
+        generated_by=generated_by,
+        trigger_event=trigger_event,
+        candidate_medications=candidate_meds,
+        status="queued",
+    )
+    try:
+        generate_interaction_report_job.delay(job.id)
+    except Exception as exc:
+        job.status = "failed"
+        job.error_message = str(exc)
+        job.save(update_fields=["status", "error_message"])
+    return job
+
+
+def run_report_job(job_id: int) -> MedicationInteractionReportJob:
+    from django.utils import timezone
+
+    job = MedicationInteractionReportJob.objects.select_related("patient", "generated_by").get(pk=job_id)
+    job.status = "running"
+    job.started_at = timezone.now()
+    job.error_message = ""
+    job.save(update_fields=["status", "started_at", "error_message"])
+
+    try:
+        report = generate_and_store_report(
+            patient=job.patient,
+            generated_by=job.generated_by,
+            trigger_event=job.trigger_event,
+            candidate_medications=job.candidate_medications,
+        )
+        job.status = "succeeded"
+        job.report = report
+        job.completed_at = timezone.now()
+        job.save(update_fields=["status", "report", "completed_at"])
+    except Exception as exc:
+        job.status = "failed"
+        job.error_message = str(exc)
+        job.completed_at = timezone.now()
+        job.save(update_fields=["status", "error_message", "completed_at"])
+        raise
+
+    return job

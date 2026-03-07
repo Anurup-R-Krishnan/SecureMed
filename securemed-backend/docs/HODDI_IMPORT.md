@@ -115,11 +115,14 @@ After import + migration, use:
 
 - `POST /api/medical-records/drug-interactions/check/`
   - body: `{ "medications": ["Aspirin", "Warfarin", "Ibuprofen"] }`
-  - response includes `evaluated_combination_depth` and `not_evaluated_depths`
+  - response includes `evaluated_combination_depth`, `max_supported_combination_size`, `not_evaluated_depths`, `coverage_gap`
 - `GET /api/medical-records/drug-interactions/search/?q=asp`
 - `GET /api/medical-records/drug-interactions/reports/latest/?patient_id=<id>`
 - `GET /api/medical-records/drug-interactions/reports/?patient_id=<id>`
 - `POST /api/medical-records/drug-interactions/reports/generate/`
   - body: `{ "patient_id": <id> }` for doctor/admin, empty body for patient self
+  - async response: `202 Accepted` with `task_id`, `status`
+- `GET /api/medical-records/drug-interactions/reports/status/?task_id=<task_id>`
+  - returns current async generation state and `report_id` once completed
 
 Report regeneration also happens automatically on prescription create/sign/cancel/dispense events.

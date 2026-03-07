@@ -11,8 +11,8 @@ from apps.accounts.users.permissions import IsPatient
 from apps.accounts.patients.models import Patient
 from apps.clinical.pharmacy.models import Drug
 from .interaction_service import (
+    enqueue_report_generation,
     evaluate_medication_safety,
-    generate_and_store_report,
     get_active_medications_for_patient,
 )
 
@@ -420,7 +420,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         prescription = serializer.save(medical_record=record)
         patient = Patient.objects.get(pk=patient_id)
         # Regenerate report whenever medication set changes.
-        generate_and_store_report(
+        enqueue_report_generation(
             patient=patient,
             generated_by=self.request.user,
             trigger_event='prescription_created',
@@ -476,7 +476,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 prescription=prescription,
                 defaults={'pickup_code': secrets.token_hex(6).upper()}
             )
-            generate_and_store_report(
+            enqueue_report_generation(
                 patient=prescription.medical_record.patient,
                 generated_by=request.user,
                 trigger_event='prescription_signed',
@@ -503,7 +503,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             event_type='cancelled',
             changed_by=request.user
         )
-        generate_and_store_report(
+        enqueue_report_generation(
             patient=prescription.medical_record.patient,
             generated_by=request.user,
             trigger_event='prescription_cancelled',
@@ -512,7 +512,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
 
 
 class DrugInteractionViewSet(viewsets.ModelViewSet):
-    from .models import DrugInteraction, MedicationInteractionReport
+    from .models import DrugInteraction, MedicationInteractionReport, MedicationInteractionReportJob
     from .serializers import DrugInteractionSerializer, MedicationInteractionReportSerializer
     queryset = DrugInteraction.objects.all()
     serializer_class = DrugInteractionSerializer
@@ -546,6 +546,25 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             if has_access:
                 return patient
         raise PermissionDenied("No permission to access this patient.")
+
+    def _has_patient_access(self, request, patient):
+        if request.user.is_staff or request.user.role == 'admin':
+            return True
+        if hasattr(request.user, 'patient_profile'):
+            return request.user.patient_profile.id == patient.id
+        if hasattr(request.user, 'doctor_profile'):
+            has_access = MedicalRecord.objects.filter(
+                patient=patient,
+                doctor=request.user.doctor_profile,
+            ).exists()
+            if not has_access:
+                from .models import EmergencyAccessLog
+                has_access = EmergencyAccessLog.objects.filter(
+                    patient=patient,
+                    accessed_by=request.user
+                ).exists()
+            return has_access
+        return False
 
     def get_queryset(self):
         if self.request.user.is_staff or self.request.user.role == 'admin':
@@ -635,13 +654,45 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         patient = self._resolve_patient(request)
         if not patient:
             raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
-        report = generate_and_store_report(
+        job = enqueue_report_generation(
             patient=patient,
             generated_by=request.user,
             trigger_event='manual_refresh',
         )
-        serializer = self.MedicationInteractionReportSerializer(report)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                "task_id": job.task_id,
+                "status": job.status,
+                "patient_id": job.patient_id,
+                "trigger_event": job.trigger_event,
+                "created_at": job.created_at,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=False, methods=['get'], url_path='reports/status')
+    def report_status(self, request):
+        task_id = (request.query_params.get('task_id') or '').strip()
+        if not task_id:
+            raise ValidationError({"task_id": "task_id is required."})
+        job = self.MedicationInteractionReportJob.objects.select_related('patient').filter(task_id=task_id).first()
+        if not job:
+            return Response({"detail": "Job not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not self._has_patient_access(request, job.patient):
+            raise PermissionDenied("No permission to access this patient.")
+        return Response(
+            {
+                "task_id": job.task_id,
+                "status": job.status,
+                "patient_id": job.patient_id,
+                "trigger_event": job.trigger_event,
+                "error_message": job.error_message,
+                "report_id": job.report_id,
+                "created_at": job.created_at,
+                "started_at": job.started_at,
+                "completed_at": job.completed_at,
+            }
+        )
 
 
 class PharmacyOrderViewSet(viewsets.ModelViewSet):
@@ -699,7 +750,7 @@ class PharmacyOrderViewSet(viewsets.ModelViewSet):
             event_type='dispensed',
             changed_by=request.user
         )
-        generate_and_store_report(
+        enqueue_report_generation(
             patient=prescription.medical_record.patient,
             generated_by=request.user,
             trigger_event='prescription_dispensed',

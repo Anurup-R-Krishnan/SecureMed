@@ -259,6 +259,10 @@ class MedicationInteractionReport(models.Model):
     high_count = models.IntegerField(default=0)
     moderate_count = models.IntegerField(default=0)
     low_count = models.IntegerField(default=0)
+    evaluated_combination_depth = models.IntegerField(default=3)
+    max_supported_combination_size = models.IntegerField(default=3)
+    not_evaluated_depths = models.JSONField(default=list, blank=True)
+    coverage_gap = models.BooleanField(default=False)
     source_version = models.CharField(max_length=50, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -271,6 +275,51 @@ class MedicationInteractionReport(models.Model):
 
     def __str__(self):
         return f"Report#{self.id} patient={self.patient_id} findings={self.total_findings}"
+
+
+class MedicationInteractionReportJob(models.Model):
+    STATUS_CHOICES = [
+        ("queued", "Queued"),
+        ("running", "Running"),
+        ("succeeded", "Succeeded"),
+        ("failed", "Failed"),
+    ]
+
+    task_id = models.CharField(max_length=64, unique=True, db_index=True)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="interaction_report_jobs")
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="generated_interaction_report_jobs",
+    )
+    trigger_event = models.CharField(max_length=50, default="manual_refresh")
+    candidate_medications = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="queued", db_index=True)
+    error_message = models.TextField(blank=True)
+    report = models.ForeignKey(
+        MedicationInteractionReport,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="jobs",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "medication_interaction_report_jobs"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["task_id"]),
+            models.Index(fields=["patient", "created_at"]),
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"ReportJob#{self.id} patient={self.patient_id} status={self.status}"
 
 
 class MedicationInteractionReportItem(models.Model):

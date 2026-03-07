@@ -8,7 +8,13 @@ from rest_framework.test import APIClient
 from apps.accounts.patients.models import Patient
 from apps.clinical.pharmacy.models import Drug
 from apps.clinical.records.interaction_service import evaluate_medication_safety, generate_and_store_report
-from apps.clinical.records.models import MedicalRecord, MedicationInteractionKnowledge, MedicationSideEffect, Prescription
+from apps.clinical.records.models import (
+    MedicalRecord,
+    MedicationInteractionKnowledge,
+    MedicationInteractionReportJob,
+    MedicationSideEffect,
+    Prescription,
+)
 from apps.scheduling.availability.models import Department, Doctor
 
 User = get_user_model()
@@ -40,7 +46,9 @@ class MedicationInteractionServiceTests(TestCase):
         self.assertEqual(result["pairs_checked"], 3)
         self.assertEqual(result["triplets_checked"], 1)
         self.assertEqual(result["evaluated_combination_depth"], 3)
+        self.assertEqual(result["max_supported_combination_size"], 3)
         self.assertEqual(result["not_evaluated_depths"], [])
+        self.assertFalse(result["coverage_gap"])
         self.assertTrue(any(f["finding_type"] == "side_effect" for f in result["findings"]))
         self.assertTrue(any(f["combination_size"] == 3 for f in result["findings"]))
 
@@ -81,7 +89,9 @@ class MedicationInteractionServiceTests(TestCase):
     def test_marks_not_evaluated_depths_beyond_triplets(self):
         result = evaluate_medication_safety(["a", "b", "c", "d", "e"])
         self.assertEqual(result["evaluated_combination_depth"], 3)
+        self.assertEqual(result["max_supported_combination_size"], 3)
         self.assertEqual(result["not_evaluated_depths"], [4, 5])
+        self.assertTrue(result["coverage_gap"])
 
 
 class MedicationInteractionApiTests(TestCase):
@@ -150,6 +160,8 @@ class MedicationInteractionApiTests(TestCase):
         self.assertIn("findings", response.data)
         self.assertGreaterEqual(len(response.data["findings"]), 1)
         self.assertIn("evaluated_combination_depth", response.data)
+        self.assertIn("max_supported_combination_size", response.data)
+        self.assertIn("coverage_gap", response.data)
         self.assertIn("requested_medications", response.data)
 
     def test_patient_check_merges_active_medications(self):
@@ -262,5 +274,26 @@ class MedicationInteractionApiTests(TestCase):
             {},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("id", response.data)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertIn("task_id", response.data)
+        self.assertIn("status", response.data)
+        self.assertEqual(response.data["status"], "queued")
+
+    def test_patient_can_check_report_status_endpoint(self):
+        self.client.force_authenticate(user=self.patient_user)
+        response = self.client.post(
+            "/api/medical-records/drug-interactions/reports/generate/",
+            {},
+            format="json",
+        )
+        task_id = response.data["task_id"]
+        job = MedicationInteractionReportJob.objects.get(task_id=task_id)
+        self.assertEqual(job.patient_id, self.patient.id)
+
+        status_response = self.client.get(
+            "/api/medical-records/drug-interactions/reports/status/",
+            {"task_id": task_id},
+        )
+        self.assertEqual(status_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(status_response.data["task_id"], task_id)
+        self.assertIn(status_response.data["status"], {"queued", "running", "succeeded", "failed"})

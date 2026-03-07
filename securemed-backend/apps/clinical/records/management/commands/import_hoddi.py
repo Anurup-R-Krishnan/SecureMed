@@ -5,7 +5,11 @@ from typing import Dict
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.clinical.records.interaction_service import canonical_signature, normalize_medication_name
+from apps.clinical.records.interaction_service import (
+    bump_safety_cache_namespace,
+    canonical_signature,
+    normalize_medication_name,
+)
 from apps.clinical.records.hoddi_import.helpers import (
     DESCRIPTION_COLUMNS,
     DRUG_MAP_ID_COLUMNS,
@@ -304,3 +308,5 @@ class Command(BaseCommand):
                 f"version={dataset_version or 'auto'}"
             )
         )
+        cache_ns = bump_safety_cache_namespace()
+        self.stdout.write(f"Safety cache namespace bumped: {cache_ns}")
