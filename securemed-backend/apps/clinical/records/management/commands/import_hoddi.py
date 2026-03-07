@@ -1,11 +1,25 @@
-import ast
 import csv
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict
 
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.clinical.records.interaction_service import canonical_signature, normalize_medication_name
+from apps.clinical.records.hoddi_import.helpers import (
+    DESCRIPTION_COLUMNS,
+    DRUG_MAP_ID_COLUMNS,
+    DRUG_MAP_NAME_COLUMNS,
+    INTERACTION_COLUMNS,
+    LABEL_COLUMNS,
+    SEVERITY_COLUMNS,
+    SIDE_EFFECT_COLUMNS,
+    SIDE_EFFECT_MAP_CODE_COLUMNS,
+    SIDE_EFFECT_MAP_LABEL_COLUMNS,
+    detect_column,
+    infer_dataset_version,
+    iter_csv_files,
+    parse_interaction_row_with_reason,
+)
 from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationReference, MedicationSideEffect
 
 
@@ -14,9 +28,18 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--path", required=True, help="Path to CSV file")
-        parser.add_argument("--version", default="", help="Dataset version label")
+        parser.add_argument(
+            "--dataset-version",
+            default="",
+            help="Dataset version label (e.g. HODDI_v2)",
+        )
         parser.add_argument("--truncate", action="store_true", help="Delete existing imported data first")
         parser.add_argument("--include-negative", action="store_true", help="Import rows with hyperedge_label != 1")
+        parser.add_argument(
+            "--strict",
+            action="store_true",
+            help="Fail import when rows are skipped due to malformed data.",
+        )
         parser.add_argument("--source", default="HODDI", help="Source name label (default: HODDI)")
         parser.add_argument(
             "--side-effect-map",
@@ -28,33 +51,6 @@ class Command(BaseCommand):
             default="",
             help="Optional CSV mapping DrugBank IDs to medication names for name->ID resolution.",
         )
-
-    @staticmethod
-    def _detect_column(header: Iterable[str], candidates: Iterable[str]) -> Optional[str]:
-        normalized = {col.lower().strip(): col for col in header}
-        for cand in candidates:
-            if cand in normalized:
-                return normalized[cand]
-        return None
-
-    @staticmethod
-    def _parse_medication_list(raw_value: str) -> List[str]:
-        value = (raw_value or "").strip()
-        if not value:
-            return []
-        if value.startswith("[") and value.endswith("]"):
-            try:
-                parsed = ast.literal_eval(value)
-                meds = [normalize_medication_name(str(item)) for item in parsed if str(item).strip()]
-                return sorted(set(meds))
-            except Exception:
-                pass
-        meds = [
-            normalize_medication_name(part)
-            for part in value.replace(";", "|").replace(",", "|").split("|")
-            if part.strip()
-        ]
-        return sorted(set(meds))
 
     def _load_side_effect_map(self, map_path: str) -> Dict[str, str]:
         if not map_path:
@@ -68,14 +64,12 @@ class Command(BaseCommand):
             header = [h for h in (reader.fieldnames or []) if h]
             if not header:
                 return mapping
-            code_col = self._detect_column(
-                header, ["umls_cui_from_meddra", "umls_cui", "se_above_0.9", "side_effect_code", "cui", "code"]
-            )
-            label_col = self._detect_column(header, ["recommended_meddra_term", "term", "side_effect", "label", "name"])
+            code_col = detect_column(header, SIDE_EFFECT_MAP_CODE_COLUMNS)
+            label_col = detect_column(header, SIDE_EFFECT_MAP_LABEL_COLUMNS)
             if not code_col or not label_col:
                 raise CommandError(
                     "side-effect-map requires recognizable code and label columns "
-                    "(e.g. umls_cui_from_meddra + recommended_meddra_term)."
+                    "(e.g. umls_cui_from_meddra + side_effect_name)."
                 )
             for row in reader:
                 code = (row.get(code_col) or "").strip()
@@ -83,11 +77,6 @@ class Command(BaseCommand):
                 if code and label:
                     mapping[code] = label
         return mapping
-
-    def _iter_csv_files(self, root_path: Path) -> List[Path]:
-        if root_path.is_file():
-            return [root_path]
-        return sorted([p for p in root_path.rglob("*.csv") if p.is_file()])
 
     def _load_drug_map(self, map_path: str, source_name: str) -> int:
         if not map_path:
@@ -101,8 +90,8 @@ class Command(BaseCommand):
             header = [h for h in (reader.fieldnames or []) if h]
             if not header:
                 return created
-            id_col = self._detect_column(header, ["drugbank_id", "drugbank id", "drugbankid", "id", "identifier"])
-            name_col = self._detect_column(header, ["name", "drug_name", "generic_name", "drug"])
+            id_col = detect_column(header, DRUG_MAP_ID_COLUMNS)
+            name_col = detect_column(header, DRUG_MAP_NAME_COLUMNS)
             if not id_col or not name_col:
                 raise CommandError(
                     "drug-map requires recognizable ID and name columns "
@@ -126,42 +115,6 @@ class Command(BaseCommand):
                     created += 1
         return created
 
-    def _parse_row(
-        self,
-        row: Dict[str, str],
-        *,
-        meds_col: str,
-        side_effect_col: str,
-        severity_col: Optional[str],
-        description_col: Optional[str],
-        label_col: Optional[str],
-        include_negative: bool,
-    ) -> Optional[Dict[str, str]]:
-        if label_col:
-            label_val = str(row.get(label_col, "")).strip()
-            if label_val and label_val != "1" and not include_negative:
-                return None
-
-        meds = self._parse_medication_list(row.get(meds_col, ""))
-        if not meds:
-            return None
-
-        raw_side_effect = (row.get(side_effect_col) or "").strip()
-        if not raw_side_effect:
-            return None
-
-        severity = ((row.get(severity_col) if severity_col else "") or "moderate").strip().lower()
-        if severity not in {"low", "moderate", "high", "critical"}:
-            severity = "moderate"
-
-        description = ((row.get(description_col) if description_col else "") or "").strip()
-        return {
-            "medications": meds,
-            "side_effect": raw_side_effect,
-            "severity": severity,
-            "description": description,
-        }
-
     def handle(self, *args, **options):
         input_path = Path(options["path"]).expanduser()
         if not input_path.exists():
@@ -176,13 +129,17 @@ class Command(BaseCommand):
         created_side_effects = 0
         processed_rows = 0
         processed_files = 0
-        dataset_version = options["version"]
+        skipped_rows = 0
+        severity_normalized_count = 0
+        skip_reasons: Dict[str, int] = {}
+        dataset_version = options.get("dataset_version", "") or options.get("version", "")
         include_negative = options["include_negative"]
+        strict = options["strict"]
         source_name = options["source"]
         side_effect_map = self._load_side_effect_map(options["side_effect_map"])
         reference_count = self._load_drug_map(options["drug_map"], source_name)
 
-        csv_files = self._iter_csv_files(input_path)
+        csv_files = iter_csv_files(input_path)
         if not csv_files:
             raise CommandError(f"No CSV files found under {input_path}")
 
@@ -193,23 +150,18 @@ class Command(BaseCommand):
                 if not header:
                     continue
 
-                meds_col = self._detect_column(header, ["drugs", "drugbankid", "drugbank_id", "medications", "drug_ids"])
-                side_effect_col = self._detect_column(header, ["side_effect", "se_above_0.9", "se", "umls_cui", "cui"])
+                meds_col = detect_column(header, INTERACTION_COLUMNS)
+                side_effect_col = detect_column(header, SIDE_EFFECT_COLUMNS)
                 if not meds_col or not side_effect_col:
                     continue
 
-                severity_col = self._detect_column(header, ["severity", "risk_level"])
-                description_col = self._detect_column(header, ["description", "detail", "notes"])
-                label_col = self._detect_column(header, ["hyperedge_label", "label", "is_positive"])
-
-                inferred_version = dataset_version
-                if not inferred_version:
-                    parts = [part for part in csv_path.parts if part.lower().startswith("hoddi_v")]
-                    if parts:
-                        inferred_version = parts[0]
+                severity_col = detect_column(header, SEVERITY_COLUMNS)
+                description_col = detect_column(header, DESCRIPTION_COLUMNS)
+                label_col = detect_column(header, LABEL_COLUMNS)
+                inferred_version = infer_dataset_version(csv_path, dataset_version)
 
                 for row in reader:
-                    parsed = self._parse_row(
+                    parsed_outcome = parse_interaction_row_with_reason(
                         row,
                         meds_col=meds_col,
                         side_effect_col=side_effect_col,
@@ -218,11 +170,17 @@ class Command(BaseCommand):
                         label_col=label_col,
                         include_negative=include_negative,
                     )
-                    if not parsed:
+                    if not parsed_outcome.row:
+                        skipped_rows += 1
+                        if parsed_outcome.skip_reason:
+                            skip_reasons[parsed_outcome.skip_reason] = skip_reasons.get(parsed_outcome.skip_reason, 0) + 1
                         continue
+                    if parsed_outcome.severity_normalized:
+                        severity_normalized_count += 1
                     processed_rows += 1
-                    meds = parsed["medications"]
-                    side_effect_code = parsed["side_effect"]
+                    parsed = parsed_outcome.row
+                    meds = parsed.medications
+                    side_effect_code = parsed.side_effect
                     side_effect = side_effect_map.get(side_effect_code, side_effect_code)
 
                     if len(meds) == 1:
@@ -231,8 +189,8 @@ class Command(BaseCommand):
                             side_effect=side_effect,
                             source_version=inferred_version,
                             defaults={
-                                "severity": parsed["severity"],
-                                "description": parsed["description"],
+                                "severity": parsed.severity,
+                                "description": parsed.description,
                                 "source": source_name,
                             },
                         )
@@ -248,8 +206,8 @@ class Command(BaseCommand):
                         defaults={
                             "medications": meds,
                             "combination_size": len(meds),
-                            "severity": parsed["severity"],
-                            "description": parsed["description"],
+                            "severity": parsed.severity,
+                            "description": parsed.description,
                             "source": source_name,
                             "evidence": {},
                         },
@@ -259,12 +217,21 @@ class Command(BaseCommand):
 
                 processed_files += 1
 
+        if strict and skipped_rows > 0:
+            reason_summary = ", ".join(f"{k}={v}" for k, v in sorted(skip_reasons.items()))
+            raise CommandError(
+                "Strict import failed: "
+                f"skipped_rows={skipped_rows}"
+                f"{'; reasons: ' + reason_summary if reason_summary else ''}"
+            )
+
         self.stdout.write(
             self.style.SUCCESS(
                 "Imported "
                 f"files={processed_files}, rows={processed_rows}, "
                 f"knowledge={created_knowledge}, side_effects={created_side_effects}, "
                 f"references={reference_count}, "
+                f"skipped_rows={skipped_rows}, severity_normalized={severity_normalized_count}, "
                 f"version={dataset_version or 'auto'}"
             )
         )

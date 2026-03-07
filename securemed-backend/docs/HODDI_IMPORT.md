@@ -16,7 +16,7 @@ git clone https://github.com/TIML-Group/HODDI.git /tmp/HODDI
 cd securemed-backend
 python manage.py import_hoddi \
   --path /tmp/HODDI/dataset/HODDI_v2/.../2024Q1_positive_samples_condition123_SE_above_0.9.csv \
-  --version HODDI_v2
+  --dataset-version HODDI_v2
 ```
 
 ## 3) Import an entire folder recursively
@@ -24,7 +24,7 @@ python manage.py import_hoddi \
 ```bash
 python manage.py import_hoddi \
   --path /tmp/HODDI/dataset/HODDI_v2 \
-  --version HODDI_v2
+  --dataset-version HODDI_v2
 ```
 
 ## 4) Optional side-effect label mapping
@@ -34,13 +34,13 @@ If the input has coded side effects (for example `SE_above_0.9` CUI values), pas
 ```bash
 python manage.py import_hoddi \
   --path /tmp/HODDI/dataset/HODDI_v2 \
-  --version HODDI_v2 \
+  --dataset-version HODDI_v2 \
   --side-effect-map /tmp/HODDI/dataset/HODDI_v2/dictionary/Side_effects_unique.csv
 ```
 
 The map CSV should include recognizable columns like:
 - code: `umls_cui_from_meddra` / `umls_cui` / `SE_above_0.9`
-- label: `recommended_meddra_term` / `term` / `side_effect`
+- label: `side_effect_name` / `recommended_meddra_term` / `term` / `side_effect`
 
 ## 5) Optional DrugBank ID -> Name map
 
@@ -49,7 +49,7 @@ To let the checker resolve UI names (e.g. `Aspirin`) to imported DrugBank IDs (e
 ```bash
 python manage.py import_hoddi \
   --path /tmp/HODDI/dataset/HODDI_v2 \
-  --version HODDI_v2 \
+  --dataset-version HODDI_v2 \
   --drug-map /path/to/drugbank_id_to_name.csv
 ```
 
@@ -75,6 +75,17 @@ The importer auto-detects common schemas:
 
 - Use `--truncate` to clear existing imported knowledge before reloading.
 - Use `--include-negative` only if you intentionally want `hyperedge_label != 1` rows imported.
+- Use `--strict` to fail import when rows are skipped due to malformed or filtered input.
+
+## Import QA Summary
+
+After import, generate an operational summary report:
+
+```bash
+python manage.py hoddi_import_qa --source-version HODDI_v2
+```
+
+This prints JSON with counts, combination-size distribution, severity distribution, and top side effects.
 
 ## Report and Check APIs
 
@@ -82,6 +93,7 @@ After import + migration, use:
 
 - `POST /api/medical-records/drug-interactions/check/`
   - body: `{ "medications": ["Aspirin", "Warfarin", "Ibuprofen"] }`
+  - response includes `evaluated_combination_depth` and `not_evaluated_depths`
 - `GET /api/medical-records/drug-interactions/search/?q=asp`
 - `GET /api/medical-records/drug-interactions/reports/latest/?patient_id=<id>`
 - `GET /api/medical-records/drug-interactions/reports/?patient_id=<id>`

@@ -8,7 +8,7 @@ from rest_framework.test import APIClient
 from apps.accounts.patients.models import Patient
 from apps.clinical.pharmacy.models import Drug
 from apps.clinical.records.interaction_service import evaluate_medication_safety, generate_and_store_report
-from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationSideEffect
+from apps.clinical.records.models import MedicalRecord, MedicationInteractionKnowledge, MedicationSideEffect, Prescription
 from apps.scheduling.availability.models import Department, Doctor
 
 User = get_user_model()
@@ -39,6 +39,8 @@ class MedicationInteractionServiceTests(TestCase):
 
         self.assertEqual(result["pairs_checked"], 3)
         self.assertEqual(result["triplets_checked"], 1)
+        self.assertEqual(result["evaluated_combination_depth"], 3)
+        self.assertEqual(result["not_evaluated_depths"], [])
         self.assertTrue(any(f["finding_type"] == "side_effect" for f in result["findings"]))
         self.assertTrue(any(f["combination_size"] == 3 for f in result["findings"]))
 
@@ -75,6 +77,11 @@ class MedicationInteractionServiceTests(TestCase):
 
         result = evaluate_medication_safety(["Aspirin", "Warfarin"])
         self.assertEqual(result["totals"]["high"], 1)
+
+    def test_marks_not_evaluated_depths_beyond_triplets(self):
+        result = evaluate_medication_safety(["a", "b", "c", "d", "e"])
+        self.assertEqual(result["evaluated_combination_depth"], 3)
+        self.assertEqual(result["not_evaluated_depths"], [4, 5])
 
 
 class MedicationInteractionApiTests(TestCase):
@@ -142,6 +149,91 @@ class MedicationInteractionApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("findings", response.data)
         self.assertGreaterEqual(len(response.data["findings"]), 1)
+        self.assertIn("evaluated_combination_depth", response.data)
+        self.assertIn("requested_medications", response.data)
+
+    def test_patient_check_merges_active_medications(self):
+        MedicationInteractionKnowledge.objects.create(
+            combination_signature="metformin|warfarin",
+            medications=["metformin", "warfarin"],
+            combination_size=2,
+            side_effect="Bleeding risk",
+            severity="high",
+            source="HODDI",
+            source_version="v1",
+        )
+        record = MedicalRecord.objects.create(
+            record_id="REC-CHECK-AGG-1",
+            patient=self.patient,
+            doctor=self.doctor,
+            record_type="prescription",
+            record_date=date(2026, 1, 1),
+            diagnosis="test",
+        )
+        Prescription.objects.create(
+            medical_record=record,
+            medication_name="Warfarin",
+            dosage="5mg",
+            frequency="OD",
+            duration="7 days",
+            status="signed",
+            is_signed=True,
+        )
+
+        self.client.force_authenticate(user=self.patient_user)
+        response = self.client.post(
+            "/api/medical-records/drug-interactions/check/",
+            {"medications": ["Metformin"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["totals"]["high"], 1)
+        self.assertIn("warfarin", response.data["active_medications_added"])
+
+    def test_prescription_create_returns_interaction_check_payload(self):
+        MedicationInteractionKnowledge.objects.create(
+            combination_signature="aspirin|warfarin",
+            medications=["aspirin", "warfarin"],
+            combination_size=2,
+            side_effect="Bleeding risk",
+            severity="high",
+            source="HODDI",
+            source_version="v1",
+        )
+        record = MedicalRecord.objects.create(
+            record_id="REC-CREATE-WARN-1",
+            patient=self.patient,
+            doctor=self.doctor,
+            record_type="prescription",
+            record_date=date(2026, 1, 1),
+            diagnosis="test",
+        )
+        Prescription.objects.create(
+            medical_record=record,
+            medication_name="Warfarin",
+            dosage="5mg",
+            frequency="OD",
+            duration="7 days",
+            status="signed",
+            is_signed=True,
+        )
+
+        self.client.force_authenticate(user=self.doctor_user)
+        response = self.client.post(
+            "/api/medical-records/prescriptions/",
+            {
+                "patient_id": self.patient.id,
+                "medication_name": "Aspirin",
+                "dosage": "75mg",
+                "frequency": "OD",
+                "duration": "5 days",
+                "instructions": "after food",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("interaction_check", response.data)
+        self.assertTrue(response.data["interaction_check"]["has_findings"])
 
     def test_report_generation_persists_items(self):
         MedicationInteractionKnowledge.objects.create(

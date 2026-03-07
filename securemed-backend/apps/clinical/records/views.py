@@ -10,7 +10,11 @@ from .serializers import MedicalRecordSerializer
 from apps.accounts.users.permissions import IsPatient
 from apps.accounts.patients.models import Patient
 from apps.clinical.pharmacy.models import Drug
-from .interaction_service import evaluate_medication_safety, generate_and_store_report
+from .interaction_service import (
+    evaluate_medication_safety,
+    generate_and_store_report,
+    get_active_medications_for_patient,
+)
 
 class MedicalRecordViewSet(viewsets.ModelViewSet):
     serializer_class = MedicalRecordSerializer
@@ -368,9 +372,19 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        prescription, interaction_result = self.perform_create(serializer)
+        response_serializer = self.get_serializer(prescription)
+        response_payload = dict(response_serializer.data)
+        response_payload["interaction_check"] = {
+            "has_findings": len(interaction_result.get("findings", [])) > 0,
+            "total_findings": len(interaction_result.get("findings", [])),
+            "totals": interaction_result.get("totals", {}),
+            "evaluated_combination_depth": interaction_result.get("evaluated_combination_depth", 3),
+            "not_evaluated_depths": interaction_result.get("not_evaluated_depths", []),
+            "findings": interaction_result.get("findings", []),
+        }
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_payload, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         from .models import MedicalRecord
@@ -385,22 +399,11 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('Only doctors can create prescriptions.')
         doctor_profile = self.request.user.doctor_profile
 
-        # Drug-drug interaction check (warning-only policy for this workflow).
-        from .models import Prescription as PrescriptionModel, DrugInteraction
+        # Drug-drug interaction check against full active medication set (warning-only policy).
         new_med = serializer.validated_data.get('medication_name', '').strip()
-        interactions = []
-        if new_med:
-            active_rx = PrescriptionModel.objects.filter(
-                medical_record__patient_id=patient_id,
-                status__in=['signed', 'dispensed']
-            )
-            for rx in active_rx:
-                inter = DrugInteraction.objects.filter(
-                    Q(drug_a__iexact=new_med, drug_b__iexact=rx.medication_name) |
-                    Q(drug_a__iexact=rx.medication_name, drug_b__iexact=new_med)
-                ).first()
-                if inter:
-                    interactions.append(inter)
+        candidate_meds = [new_med] if new_med else []
+        active_meds = get_active_medications_for_patient(patient_id)
+        interaction_result = evaluate_medication_safety(active_meds + candidate_meds)
         
         # Create a Medical Record wrapper for this prescription
         # In a real app, we might group them by visit, but for now 1-to-1 or 1-to-many is fine
@@ -423,6 +426,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             trigger_event='prescription_created',
             candidate_medications=[prescription.medication_name],
         )
+        return prescription, interaction_result
 
     def get_queryset(self):
         user = self.request.user
@@ -591,9 +595,19 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         meds = request.data.get('medications') or []
         if not isinstance(meds, list):
             raise ValidationError({"medications": "Must be a list of medication names."})
-        if len(meds) < 1:
+        include_active = request.data.get("include_active", True)
+        include_active = str(include_active).lower() not in {"false", "0", "no"}
+
+        patient = self._resolve_patient(request)
+        active_meds = get_active_medications_for_patient(patient.id) if (patient and include_active) else []
+        merged_meds = sorted(set([m for m in meds if m] + active_meds))
+        if len(merged_meds) < 1:
             raise ValidationError({"medications": "At least one medication is required."})
-        result = evaluate_medication_safety(meds)
+
+        result = evaluate_medication_safety(merged_meds)
+        result["requested_medications"] = meds
+        result["active_medications_added"] = active_meds
+        result["include_active"] = include_active
         return Response(result)
 
     @action(detail=False, methods=['get'], url_path='reports/latest')

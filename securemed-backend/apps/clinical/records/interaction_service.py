@@ -21,6 +21,7 @@ SEVERITY_ORDER = {
     "moderate": 2,
     "low": 3,
 }
+MAX_EVALUATED_COMBINATION_SIZE = 3
 
 
 def normalize_medication_name(value: str) -> str:
@@ -46,9 +47,14 @@ def resolve_medications_for_knowledge(medications: Sequence[str]) -> List[str]:
     # Fallback to pharmacy inventory code if available (useful when drug_code stores canonical IDs).
     unresolved = [name for name in normalized_inputs if name not in by_name and not (name.startswith("db") and name[2:].isdigit())]
     if unresolved:
-        for drug in Drug.objects.filter(name__in=unresolved, is_active=True).only("name", "drug_code"):
-            normalized_name = normalize_medication_name(drug.name)
-            if normalized_name and drug.drug_code:
+        for unresolved_name in unresolved:
+            drug = (
+                Drug.objects.filter(name__iexact=unresolved_name, is_active=True)
+                .only("name", "drug_code")
+                .first()
+            )
+            if drug and drug.name and drug.drug_code:
+                normalized_name = normalize_medication_name(drug.name)
                 by_name.setdefault(normalized_name, normalize_medication_name(drug.drug_code))
 
     resolved: List[str] = []
@@ -68,6 +74,10 @@ def _get_active_medications_for_patient(patient_id: int) -> List[str]:
     meds = resolve_medications_for_knowledge([name for name in rows if name])
     # Preserve stable order for deterministic report payloads.
     return sorted(set(meds))
+
+
+def get_active_medications_for_patient(patient_id: int) -> List[str]:
+    return _get_active_medications_for_patient(patient_id)
 
 
 def _single_drug_findings(medications: Iterable[str]) -> List[Dict]:
@@ -141,6 +151,8 @@ def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
             "medications": [],
             "pairs_checked": 0,
             "triplets_checked": 0,
+            "evaluated_combination_depth": MAX_EVALUATED_COMBINATION_SIZE,
+            "not_evaluated_depths": [],
             "findings": [],
             "totals": {"critical": 0, "high": 0, "moderate": 0, "low": 0},
         }
@@ -185,6 +197,10 @@ def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
         "medications": normalized,
         "pairs_checked": len(pairs),
         "triplets_checked": len(triplets),
+        "evaluated_combination_depth": MAX_EVALUATED_COMBINATION_SIZE,
+        "not_evaluated_depths": list(range(MAX_EVALUATED_COMBINATION_SIZE + 1, len(normalized) + 1))
+        if len(normalized) > MAX_EVALUATED_COMBINATION_SIZE
+        else [],
         "findings": unique_findings,
         "totals": totals,
     }
@@ -202,13 +218,13 @@ def generate_and_store_report(
         current_meds = sorted(set(current_meds + [normalize_medication_name(m) for m in candidate_medications if m]))
 
     result = evaluate_medication_safety(current_meds)
-    source_version = (
-        MedicationInteractionKnowledge.objects.exclude(source_version="")
-        .order_by("-id")
-        .values_list("source_version", flat=True)
-        .first()
-        or ""
-    )
+    finding_versions = sorted({f["source_reference"] for f in result["findings"] if f.get("source_reference")})
+    if len(finding_versions) == 1:
+        source_version = finding_versions[0]
+    elif len(finding_versions) > 1:
+        source_version = "mixed"
+    else:
+        source_version = ""
 
     report = MedicationInteractionReport.objects.create(
         patient=patient,
