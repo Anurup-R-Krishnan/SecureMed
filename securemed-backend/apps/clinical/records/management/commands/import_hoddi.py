@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
 from apps.clinical.records.interaction_service import canonical_signature, normalize_medication_name
 from apps.clinical.records.hoddi_import.helpers import (
@@ -39,6 +40,12 @@ class Command(BaseCommand):
             "--strict",
             action="store_true",
             help="Fail import when rows are skipped due to malformed data.",
+        )
+        parser.add_argument(
+            "--batch-size",
+            type=int,
+            default=10000,
+            help="Chunk size for bulk inserts (default: 10000).",
         )
         parser.add_argument("--source", default="HODDI", help="Source name label (default: HODDI)")
         parser.add_argument(
@@ -84,12 +91,14 @@ class Command(BaseCommand):
         path = Path(map_path).expanduser()
         if not path.exists():
             raise CommandError(f"drug-map file not found: {path}")
-        created = 0
+        before_count = MedicationReference.objects.count()
+        pending_refs = []
+        batch_size = 5000
         with path.open("r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             header = [h for h in (reader.fieldnames or []) if h]
             if not header:
-                return created
+                return 0
             id_col = detect_column(header, DRUG_MAP_ID_COLUMNS)
             name_col = detect_column(header, DRUG_MAP_NAME_COLUMNS)
             if not id_col or not name_col:
@@ -103,17 +112,20 @@ class Command(BaseCommand):
                 normalized_name = normalize_medication_name(display_name)
                 if not identifier or not normalized_name:
                     continue
-                _, was_created = MedicationReference.objects.get_or_create(
-                    identifier=identifier,
-                    normalized_name=normalized_name,
-                    defaults={
-                        "display_name": display_name,
-                        "source": source_name,
-                    },
+                pending_refs.append(
+                    MedicationReference(
+                        identifier=identifier,
+                        normalized_name=normalized_name,
+                        display_name=display_name,
+                        source=source_name,
+                    )
                 )
-                if was_created:
-                    created += 1
-        return created
+                if len(pending_refs) >= batch_size:
+                    MedicationReference.objects.bulk_create(pending_refs, ignore_conflicts=True, batch_size=batch_size)
+                    pending_refs = []
+            if pending_refs:
+                MedicationReference.objects.bulk_create(pending_refs, ignore_conflicts=True, batch_size=batch_size)
+        return max(0, MedicationReference.objects.count() - before_count)
 
     def handle(self, *args, **options):
         input_path = Path(options["path"]).expanduser()
@@ -135,9 +147,14 @@ class Command(BaseCommand):
         dataset_version = options.get("dataset_version", "") or options.get("version", "")
         include_negative = options["include_negative"]
         strict = options["strict"]
+        batch_size = max(100, options["batch_size"])
         source_name = options["source"]
         side_effect_map = self._load_side_effect_map(options["side_effect_map"])
         reference_count = self._load_drug_map(options["drug_map"], source_name)
+        knowledge_before = MedicationInteractionKnowledge.objects.count()
+        side_effects_before = MedicationSideEffect.objects.count()
+        knowledge_batch = []
+        side_effect_batch = []
 
         csv_files = iter_csv_files(input_path)
         if not csv_files:
@@ -184,38 +201,67 @@ class Command(BaseCommand):
                     side_effect = side_effect_map.get(side_effect_code, side_effect_code)
 
                     if len(meds) == 1:
-                        _, created = MedicationSideEffect.objects.get_or_create(
-                            medication_name=meds[0],
-                            side_effect=side_effect,
-                            source_version=inferred_version,
-                            defaults={
-                                "severity": parsed.severity,
-                                "description": parsed.description,
-                                "source": source_name,
-                            },
+                        side_effect_batch.append(
+                            MedicationSideEffect(
+                                medication_name=meds[0],
+                                side_effect=side_effect,
+                                source_version=inferred_version,
+                                severity=parsed.severity,
+                                description=parsed.description,
+                                source=source_name,
+                            )
                         )
-                        if created:
-                            created_side_effects += 1
+                        if len(side_effect_batch) >= batch_size:
+                            with transaction.atomic():
+                                MedicationSideEffect.objects.bulk_create(
+                                    side_effect_batch,
+                                    ignore_conflicts=True,
+                                    batch_size=batch_size,
+                                )
+                            side_effect_batch = []
                         continue
 
                     signature = canonical_signature(meds)
-                    _, created = MedicationInteractionKnowledge.objects.get_or_create(
-                        combination_signature=signature,
-                        side_effect=side_effect,
-                        source_version=inferred_version,
-                        defaults={
-                            "medications": meds,
-                            "combination_size": len(meds),
-                            "severity": parsed.severity,
-                            "description": parsed.description,
-                            "source": source_name,
-                            "evidence": {},
-                        },
+                    knowledge_batch.append(
+                        MedicationInteractionKnowledge(
+                            combination_signature=signature,
+                            side_effect=side_effect,
+                            source_version=inferred_version,
+                            medications=meds,
+                            combination_size=len(meds),
+                            severity=parsed.severity,
+                            description=parsed.description,
+                            source=source_name,
+                            evidence={},
+                        )
                     )
-                    if created:
-                        created_knowledge += 1
+                    if len(knowledge_batch) >= batch_size:
+                        with transaction.atomic():
+                            MedicationInteractionKnowledge.objects.bulk_create(
+                                knowledge_batch,
+                                ignore_conflicts=True,
+                                batch_size=batch_size,
+                            )
+                        knowledge_batch = []
 
                 processed_files += 1
+
+        if side_effect_batch:
+            with transaction.atomic():
+                MedicationSideEffect.objects.bulk_create(
+                    side_effect_batch,
+                    ignore_conflicts=True,
+                    batch_size=batch_size,
+                )
+        if knowledge_batch:
+            with transaction.atomic():
+                MedicationInteractionKnowledge.objects.bulk_create(
+                    knowledge_batch,
+                    ignore_conflicts=True,
+                    batch_size=batch_size,
+                )
+        created_knowledge = max(0, MedicationInteractionKnowledge.objects.count() - knowledge_before)
+        created_side_effects = max(0, MedicationSideEffect.objects.count() - side_effects_before)
 
         if strict and skipped_rows > 0:
             reason_summary = ", ".join(f"{k}={v}" for k, v in sorted(skip_reasons.items()))
@@ -232,6 +278,7 @@ class Command(BaseCommand):
                 f"knowledge={created_knowledge}, side_effects={created_side_effects}, "
                 f"references={reference_count}, "
                 f"skipped_rows={skipped_rows}, severity_normalized={severity_normalized_count}, "
+                f"batch_size={batch_size}, "
                 f"version={dataset_version or 'auto'}"
             )
         )
