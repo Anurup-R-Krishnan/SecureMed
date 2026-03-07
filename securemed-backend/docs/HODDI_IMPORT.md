@@ -57,6 +57,28 @@ Expected columns include:
 - ID: `drugbank_id` / `DrugBank ID` / `drugbankid`
 - Name: `name` / `drug_name` / `generic_name`
 
+### Auto-detection (HODDI layout)
+
+If `--drug-map` is omitted, importer will auto-detect the official HODDI dictionary map when the input path is under a `HODDI_v*` dataset tree:
+
+- `dictionary/Drugbank_ID_SMILE_all_structure links.csv`
+
+Explicit `--drug-map` always takes precedence over auto-detection.
+
+## Docker-first import command
+
+From `securemed-backend`, run import inside Docker and mount the root `HODDI` clone read-only:
+
+```bash
+docker compose -f docker-compose.runtime.yml run --rm -T \
+  -v /home/anuruprkris/Project/SecureMed/HODDI:/hoddi:ro \
+  backend python manage.py import_hoddi \
+  --path /hoddi/dataset/HODDI_v2/HODDI/HGNN/positive_samples \
+  --dataset-version HODDI_v2 \
+  --side-effect-map /hoddi/dataset/HODDI_v2/dictionary/Side_effects_unique.csv \
+  --truncate --strict --batch-size 20000
+```
+
 ## Supported Input Schemas
 
 The importer auto-detects common schemas:

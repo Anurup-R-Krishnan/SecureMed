@@ -127,6 +127,20 @@ class Command(BaseCommand):
                 MedicationReference.objects.bulk_create(pending_refs, ignore_conflicts=True, batch_size=batch_size)
         return max(0, MedicationReference.objects.count() - before_count)
 
+    def _discover_hoddi_drug_map(self, input_path: Path) -> Path | None:
+        if input_path.is_file():
+            candidates = [input_path.parent, *input_path.parents]
+        else:
+            candidates = [input_path, *input_path.parents]
+
+        filename = "Drugbank_ID_SMILE_all_structure links.csv"
+        for candidate in candidates:
+            if candidate.name.lower().startswith("hoddi_v"):
+                map_path = candidate / "dictionary" / filename
+                if map_path.exists():
+                    return map_path
+        return None
+
     def handle(self, *args, **options):
         input_path = Path(options["path"]).expanduser()
         if not input_path.exists():
@@ -150,7 +164,15 @@ class Command(BaseCommand):
         batch_size = max(100, options["batch_size"])
         source_name = options["source"]
         side_effect_map = self._load_side_effect_map(options["side_effect_map"])
-        reference_count = self._load_drug_map(options["drug_map"], source_name)
+        drug_map_path = options["drug_map"]
+        if not drug_map_path:
+            auto_map = self._discover_hoddi_drug_map(input_path)
+            if auto_map:
+                drug_map_path = str(auto_map)
+                self.stdout.write(f"Auto-detected drug map: {auto_map}")
+            else:
+                self.stdout.write("No auto-detected HODDI drug map found; continuing without references.")
+        reference_count = self._load_drug_map(drug_map_path, source_name)
         knowledge_before = MedicationInteractionKnowledge.objects.count()
         side_effects_before = MedicationSideEffect.objects.count()
         knowledge_batch = []

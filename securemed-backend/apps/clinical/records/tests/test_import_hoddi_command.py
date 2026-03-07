@@ -155,6 +155,96 @@ class ImportHoddiCommandTests(TestCase):
             result = evaluate_medication_safety(["Aspirin", "Warfarin"])
             self.assertEqual(result["totals"]["moderate"], 1)
 
+    def test_auto_detects_hoddi_v2_drug_map_when_not_explicitly_provided(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "dataset" / "HODDI_v2"
+            data_dir = root / "HODDI" / "HGNN" / "positive_samples"
+            dictionary_dir = root / "dictionary"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            dictionary_dir.mkdir(parents=True, exist_ok=True)
+
+            data_path = data_dir / "2_drug.csv"
+            with data_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["DrugBankID", "SE_above_0.9", "hyperedge_label"])
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "DrugBankID": "['DB00001', 'DB00002']",
+                        "SE_above_0.9": "Bleeding risk",
+                        "hyperedge_label": "1",
+                    }
+                )
+
+            auto_map_path = dictionary_dir / "Drugbank_ID_SMILE_all_structure links.csv"
+            with auto_map_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["DrugBank ID", "Name"])
+                writer.writeheader()
+                writer.writerow({"DrugBank ID": "DB00001", "Name": "Aspirin"})
+                writer.writerow({"DrugBank ID": "DB00002", "Name": "Warfarin"})
+
+            call_command("import_hoddi", path=str(root), dataset_version="HODDI_v2")
+            self.assertEqual(MedicationReference.objects.count(), 2)
+
+    def test_explicit_drug_map_takes_precedence_over_auto_detected_map(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "dataset" / "HODDI_v2"
+            data_dir = root / "HODDI" / "HGNN" / "positive_samples"
+            dictionary_dir = root / "dictionary"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            dictionary_dir.mkdir(parents=True, exist_ok=True)
+
+            data_path = data_dir / "2_drug.csv"
+            with data_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["DrugBankID", "SE_above_0.9", "hyperedge_label"])
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "DrugBankID": "['DB00001', 'DB00002']",
+                        "SE_above_0.9": "Bleeding risk",
+                        "hyperedge_label": "1",
+                    }
+                )
+
+            auto_map_path = dictionary_dir / "Drugbank_ID_SMILE_all_structure links.csv"
+            with auto_map_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["DrugBank ID", "Name"])
+                writer.writeheader()
+                writer.writerow({"DrugBank ID": "DB00001", "Name": "Aspirin"})
+                writer.writerow({"DrugBank ID": "DB00002", "Name": "Warfarin"})
+
+            explicit_map_path = Path(tmp) / "explicit_drug_map.csv"
+            with explicit_map_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["drugbank_id", "name"])
+                writer.writeheader()
+                writer.writerow({"drugbank_id": "DB00001", "name": "Aspirin"})
+
+            call_command(
+                "import_hoddi",
+                path=str(root),
+                dataset_version="HODDI_v2",
+                drug_map=str(explicit_map_path),
+            )
+            self.assertEqual(MedicationReference.objects.count(), 1)
+
+    def test_missing_auto_detected_drug_map_does_not_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_path = Path(tmp) / "hoddi.csv"
+            with data_path.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["DrugBankID", "SE_above_0.9", "hyperedge_label"])
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "DrugBankID": "['DB00001', 'DB00002']",
+                        "SE_above_0.9": "Bleeding risk",
+                        "hyperedge_label": "1",
+                    }
+                )
+
+            out = StringIO()
+            call_command("import_hoddi", path=str(data_path), dataset_version="HODDI_v2", stdout=out)
+            self.assertEqual(MedicationReference.objects.count(), 0)
+            self.assertIn("continuing without references", out.getvalue().lower())
+
     def test_strict_mode_fails_when_rows_are_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
             csv_path = Path(tmp) / "strict_mode.csv"
