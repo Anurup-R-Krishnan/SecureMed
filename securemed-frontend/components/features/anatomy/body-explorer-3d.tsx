@@ -103,35 +103,29 @@ function painOpacity(level: number): number {
   return 0.5 + (level / 10) * 0.5;
 }
 
-// Map condition severity string → pain level number
-function severityToPain(severity?: string): number {
-  if (severity === 'low') return 2;
-  if (severity === 'high') return 9;
-  return 5; // medium / default
-}
-
 const BASE_FILL = '#60a5fa';  // blue-400
 const BASE_STROKE = '#93c5fd';  // blue-300
 const HOVER_FILL = '#93c5fd';  // blue-300  (lighter on hover)
 const HOVER_STROKE = '#bfdbfe';  // blue-200
+const COND_FILL = '#fb923c';  // orange-400
+const COND_FOCUSED = '#f97316';  // orange-500
 
 function getRegionFill(
   selected: boolean,
   hovered: boolean,
   painLevel: number,
-  conditionPain: number,  // 0 if not a condition region
+  conditionHighlight: boolean,
   conditionFocused: boolean,
 ): string {
   if (selected) return painColor(painLevel);
-  if (conditionFocused) return painColor(conditionPain);
-  if (conditionPain > 0) return painColor(conditionPain);
+  if (conditionFocused) return COND_FOCUSED;
+  if (conditionHighlight) return COND_FILL;
   if (hovered) return HOVER_FILL;
   return BASE_FILL;
 }
 
-function getRegionStroke(selected: boolean, hovered: boolean, conditionPain: number): string {
-  if (selected) return '#fecaca';
-  if (conditionPain > 0) return painColor(conditionPain);
+function getRegionStroke(selected: boolean, hovered: boolean): string {
+  if (selected) return '#fecaca';  // red-200
   if (hovered) return HOVER_STROKE;
   return BASE_STROKE;
 }
@@ -139,14 +133,10 @@ function getRegionStroke(selected: boolean, hovered: boolean, conditionPain: num
 function getRegionOpacity(
   selected: boolean,
   painLevel: number,
-  conditionPain: number,
-  conditionFocused: boolean,
   conditionDimmed: boolean,
 ): number {
   if (selected) return painOpacity(painLevel);
-  if (conditionFocused) return painOpacity(conditionPain) + 0.15;  // brighter when focused
-  if (conditionPain > 0) return painOpacity(conditionPain) - 0.1;
-  if (conditionDimmed) return 0.15;
+  if (conditionDimmed) return 0.2;
   return 0.65;
 }
 
@@ -238,20 +228,15 @@ export default function BodyExplorer3D({
             const isInteractive = mode === 'selection' || isCondition;
             const pain = intensityByRegion[region.id] ?? 5;
 
-            // Condition severity for this specific region
-            const condPain = isCondition ? severityToPain(
-              conditionPins.find((p) => p.region_id === region.id)?.severity
-            ) : 0;
-
             return (
               <path
                 key={region.id}
                 d={region.d}
-                fill={getRegionFill(isSelected, isHovered, pain, condPain, isFocused)}
-                stroke={getRegionStroke(isSelected, isHovered, condPain)}
+                fill={getRegionFill(isSelected, isHovered, pain, isCondition, isFocused)}
+                stroke={getRegionStroke(isSelected, isHovered)}
                 strokeWidth={isSelected || isFocused ? 2.5 : 1.5}
                 strokeLinejoin="round"
-                opacity={getRegionOpacity(isSelected, pain, condPain, isFocused, isDimmed)}
+                opacity={getRegionOpacity(isSelected, pain, isDimmed)}
                 style={{
                   cursor: isInteractive ? 'pointer' : 'default',
                   transition: 'fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease, stroke-width 0.2s ease',
