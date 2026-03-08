@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +15,21 @@ import {
     FlaskConical,
 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/urls';
+import { AnatomySelectionPayload } from '@/components/features/anatomy/region-map';
+import {
+    AnatomyRegionExplainer,
+    ConditionCatalogItem,
+    ConditionVisualization,
+    fetchConditionCatalog,
+    fetchConditionVisualization,
+    fetchRegionExplainer,
+} from '@/services/anatomy-content';
+
+const BodyExplorer3D = dynamic(
+    () => import('@/components/features/anatomy/body-explorer-3d'),
+    { ssr: false }
+);
+const ENABLE_3D_BODY = process.env.NEXT_PUBLIC_ENABLE_3D_BODY !== 'false';
 
 // Backend API URL
 
@@ -49,12 +65,82 @@ export default function AIDecisionSupport({
     const [error, setError] = useState<string | null>(null);
     const [symptomInput, setSymptomInput] = useState('');
     const [showSuggestionList, setShowSuggestionList] = useState(false);
+    const [anatomySelection, setAnatomySelection] = useState<AnatomySelectionPayload>({
+        selectedRegions: [],
+        selectedSymptoms: [],
+        intensityByRegion: {},
+    });
+    const [activeRegion, setActiveRegion] = useState<string | null>(null);
+    const [explainer, setExplainer] = useState<AnatomyRegionExplainer | null>(null);
+    const [conditionCatalog, setConditionCatalog] = useState<ConditionCatalogItem[]>([]);
+    const [activeConditionId, setActiveConditionId] = useState('');
+    const [conditionVisualization, setConditionVisualization] = useState<ConditionVisualization | null>(null);
+    const [conditionRegion, setConditionRegion] = useState<string | null>(null);
+    const [contentLoading, setContentLoading] = useState(false);
+    const [contentError, setContentError] = useState<string | null>(null);
 
     const filteredSymptoms = commonSymptoms.filter(
         (symptom) =>
             symptom.toLowerCase().includes(symptomInput.toLowerCase()) &&
             !selectedSymptoms.includes(symptom)
     );
+
+    const mergedSymptoms = Array.from(new Set([
+        ...selectedSymptoms,
+        ...anatomySelection.selectedSymptoms,
+    ]));
+    const patientFocusScore = Math.min(
+        100,
+        (anatomySelection.selectedRegions.length * 20) + (mergedSymptoms.length * 8)
+    );
+
+    React.useEffect(() => {
+        fetchConditionCatalog('top20', 'doctor')
+            .then((items) => setConditionCatalog(items))
+            .catch(() => setContentError('Unable to load condition catalog.'));
+    }, []);
+
+    React.useEffect(() => {
+        if (!activeRegion) {
+            setExplainer(null);
+            return;
+        }
+        fetchRegionExplainer(activeRegion, 'doctor')
+            .then((data) => {
+                setExplainer(data);
+                setContentError(null);
+            })
+            .catch(() => {
+                setExplainer(null);
+                setContentError('Unable to load anatomy explainer.');
+            });
+    }, [activeRegion]);
+
+    React.useEffect(() => {
+        if (!activeConditionId) {
+            setConditionVisualization(null);
+            setConditionRegion(null);
+            return;
+        }
+        setContentLoading(true);
+        fetchConditionVisualization(activeConditionId, 'doctor')
+            .then((data) => {
+                setConditionVisualization(data);
+                setConditionRegion(data.regions[0] ?? null);
+                setContentError(null);
+            })
+            .catch(() => {
+                setConditionVisualization(null);
+                setConditionRegion(null);
+                setContentError('Unable to load condition visualization.');
+            })
+            .finally(() => setContentLoading(false));
+    }, [activeConditionId]);
+
+    const handleAnatomySelectionChange = (payload: AnatomySelectionPayload) => {
+        setAnatomySelection(payload);
+        setActiveRegion(payload.selectedRegions[payload.selectedRegions.length - 1] || null);
+    };
 
     const handleAddSymptom = (symptom: string) => {
         if (!selectedSymptoms.includes(symptom)) {
@@ -69,7 +155,7 @@ export default function AIDecisionSupport({
     };
 
     const handleGetSuggestions = async () => {
-        if (selectedSymptoms.length === 0) {
+        if (mergedSymptoms.length === 0) {
             setError('Please select at least one symptom');
             return;
         }
@@ -85,7 +171,9 @@ export default function AIDecisionSupport({
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    symptoms: selectedSymptoms,
+                    symptoms: mergedSymptoms,
+                    regions: anatomySelection.selectedRegions,
+                    intensityByRegion: anatomySelection.intensityByRegion,
                 }),
             });
 
@@ -159,6 +247,81 @@ export default function AIDecisionSupport({
                     Enter Symptoms
                 </h3>
 
+                <div className="mb-4 rounded-lg border p-3 bg-slate-50 dark:bg-slate-900/40">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                        Active Patient Focus
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-primary">
+                            Focus Score {patientFocusScore}%
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            Regions {anatomySelection.selectedRegions.length}
+                        </span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                            Symptoms {mergedSymptoms.length}
+                        </span>
+                        {activeConditionId && (
+                            <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                Condition {activeConditionId}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {ENABLE_3D_BODY && (
+                    <div className="space-y-3 mb-4">
+                        <BodyExplorer3D onSelectionChange={handleAnatomySelectionChange} />
+                        {activeRegion && explainer && (
+                            <div className="rounded-lg border p-3 space-y-2">
+                                <p className="text-sm font-semibold text-foreground">{explainer.title}</p>
+                                <p className="text-xs text-muted-foreground">{explainer.summary}</p>
+                                <div className="flex flex-wrap gap-1">
+                                    {explainer.warning_signals.map((signal) => (
+                                        <span
+                                            key={signal}
+                                            className="text-[11px] px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        >
+                                            {signal}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div className="rounded-lg border p-3 space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Condition Visualization
+                            </p>
+                            <select
+                                value={activeConditionId}
+                                onChange={(e) => setActiveConditionId(e.target.value)}
+                                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                            >
+                                <option value="">Select condition</option>
+                                {conditionCatalog.map((item) => (
+                                    <option key={item.condition_id} value={item.condition_id}>
+                                        {item.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {conditionVisualization && (
+                                <>
+                                    <BodyExplorer3D
+                                        mode="condition"
+                                        compact
+                                        activeCondition={conditionVisualization}
+                                        activeConditionRegion={conditionRegion}
+                                        onConditionRegionSelect={setConditionRegion}
+                                    />
+                                    <p className="text-xs text-muted-foreground">{conditionVisualization.overview}</p>
+                                </>
+                            )}
+                            {contentLoading && <p className="text-xs text-muted-foreground">Loading condition visualization...</p>}
+                            {contentError && <p className="text-xs text-destructive">{contentError}</p>}
+                        </div>
+                    </div>
+                )}
+
                 {/* Selected Symptoms */}
                 <div className="flex flex-wrap gap-2 mb-4">
                     {selectedSymptoms.map((symptom) => (
@@ -176,6 +339,24 @@ export default function AIDecisionSupport({
                         </span>
                     ))}
                 </div>
+
+                {anatomySelection.selectedSymptoms.length > 0 && (
+                    <div className="mb-4">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+                            Region-Derived Symptoms
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {anatomySelection.selectedSymptoms.map((symptom) => (
+                                <span
+                                    key={symptom}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-sm"
+                                >
+                                    {symptom}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Symptom Input */}
                 <div className="relative">
@@ -218,7 +399,7 @@ export default function AIDecisionSupport({
                 {/* Get Suggestions Button */}
                 <Button
                     onClick={handleGetSuggestions}
-                    disabled={loading || selectedSymptoms.length === 0}
+                    disabled={loading || mergedSymptoms.length === 0}
                     className="mt-4 flex items-center gap-2"
                 >
                     {loading ? (

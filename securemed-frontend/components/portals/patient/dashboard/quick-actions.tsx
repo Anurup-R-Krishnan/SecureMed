@@ -22,21 +22,21 @@ export default function QuickActions({ onNavigate }: QuickActionsProps) {
                 <span className="font-medium text-sm">Book Appointment</span>
             </Button>
 
-            <Button
+            {/* <Button
                 variant="ghost"
                 className="h-auto py-4 flex flex-col items-center gap-3 bg-white/5 border border-white/10 hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all group"
-                onClick={() => onNavigate('medical-records')}
+                onClick={() => onNavigate('records')}
             >
                 <div className="p-3 bg-emerald-500/10 rounded-full group-hover:bg-emerald-500/20 transition-colors">
                     <Pill className="h-6 w-6 text-emerald-500" />
                 </div>
                 <span className="font-medium text-sm">Renew Prescription</span>
-            </Button>
+            </Button> */}
 
             <Button
                 variant="ghost"
                 className="h-auto py-4 flex flex-col items-center gap-3 bg-white/5 border border-white/10 hover:bg-purple-500/10 hover:border-purple-500/20 transition-all group"
-                onClick={() => onNavigate('telemedicine')}
+                onClick={() => onNavigate('messaging')}
             >
                 <div className="p-3 bg-purple-500/10 rounded-full group-hover:bg-purple-500/20 transition-colors">
                     <MessageSquareMore className="h-6 w-6 text-purple-500" />

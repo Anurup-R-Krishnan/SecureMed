@@ -6,8 +6,10 @@ import HospitalManager from '@/components/portals/admin/hospitals/hospital-manag
 import StaffManager from '@/components/portals/admin/staff/staff-manager';
 import PatientManager from '@/components/portals/admin/patients/patient-manager';
 import AuditLogViewer from '@/components/portals/admin/security/audit-log-viewer';
+import InfectionTrackingPortal, { type InfectionTrackingCacheData } from '@/components/portals/admin/infection-tracking/infection-tracking-portal';
 import { Button } from '@/components/ui/button';
-import { adminService, Hospital, StaffMember, DashboardStats } from '@/services/admin';
+import { adminService, Hospital, StaffMember, DashboardStats, SystemAlert } from '@/services/admin';
+import InsuranceVerification from './admin/billing/insurance-verification';
 import {
   BarChart3,
   Users,
@@ -24,247 +26,195 @@ import {
 } from 'lucide-react';
 import { NotificationCenter } from '@/components/ui/notification-center';
 
-type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing' | 'audit-logs';
+type AdminTab = 'dashboard' | 'analytics' | 'hospitals' | 'staff' | 'patients' | 'billing' | 'infection-tracking' | 'audit-logs';
 
 interface AdminPortalProps {
   onLogout: () => void;
   onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
+  currentTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
 }
 
-export default function AdminPortal({ onLogout, onSwitchRole }: AdminPortalProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabChange }: AdminPortalProps) {
+  const [activeTab, setActiveTabState] = useState<AdminTab>(currentTab || 'dashboard');
+
+  // Sync tab with URL when currentTab prop changes
+  useEffect(() => {
+    if (currentTab && currentTab !== activeTab) {
+      setActiveTabState(currentTab);
+    }
+  }, [currentTab, activeTab]);
+
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [infectionTrackingCache, setInfectionTrackingCache] = useState<InfectionTrackingCacheData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Fetch data on mount
+  // Lazy-load tab data only when needed to reduce network + render pressure.
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchTabData = async () => {
       setIsLoading(true);
+      setLoadError(null);
       try {
-        const [hospitalsData, staffData, statsData, patientsData] = await Promise.all([
-          adminService.getHospitals(),
-          adminService.getStaff(),
-          adminService.getDashboardStats(),
-          adminService.getPatients(),
-        ]);
-        setHospitals(hospitalsData);
-        setStaff(staffData);
-        setPatients(patientsData);
-        setStats(statsData);
+        if (activeTab === 'dashboard') {
+          const [statsData, alertsData] = await Promise.all([
+            adminService.getDashboardStats(),
+            adminService.getAlerts(),
+          ]);
+          setStats(statsData);
+          setAlerts(alertsData);
+        } else if (activeTab === 'hospitals') {
+          setHospitals(await adminService.getHospitals());
+        } else if (activeTab === 'staff') {
+          setStaff(await adminService.getStaff());
+        } else if (activeTab === 'patients') {
+          setPatients(await adminService.getPatients());
+        }
       } catch (error) {
         console.error('Error fetching admin data:', error);
+        setLoadError('Failed to load admin data from backend.');
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
-  }, []);
-
-  const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="h-5 w-5" /> },
-    { id: 'analytics', label: 'Analytics', icon: <Activity className="h-5 w-5" /> },
-    { id: 'hospitals', label: 'Hospitals', icon: <Building2 className="h-5 w-5" /> },
-    { id: 'staff', label: 'Staff', icon: <Users className="h-5 w-5" /> },
-    { id: 'patients', label: 'Patients', icon: <Users className="h-5 w-5" /> },
-    { id: 'billing', label: 'Billing', icon: <DollarSign className="h-5 w-5" /> },
-    { id: 'audit-logs', label: 'Audit Logs', icon: <ShieldAlert className="h-5 w-5" /> },
-  ];
+    fetchTabData();
+  }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-4 left-4 z-40 md:hidden p-2 bg-card border border-border rounded-lg"
-      >
-        {sidebarOpen ? (
-          <X className="h-6 w-6 text-foreground" />
-        ) : (
-          <Menu className="h-6 w-6 text-foreground" />
-        )}
-      </button>
-
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-      >
-        <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-2xl font-bold text-sidebar-primary">Fortis Admin</h1>
-          <p className="text-sm text-sidebar-foreground/70 mt-1">Administration Panel</p>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-center bg-card p-6 rounded-[24px] border border-border/60 shadow-sm transition-all hover:shadow-md">
+        <div className="flex items-center gap-5">
+          <div className="bg-primary/10 p-4 rounded-2xl ring-1 ring-primary/20">
+            <ShieldAlert className="h-7 w-7 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black tracking-tight capitalize text-foreground">{activeTab.replace('-', ' ')}</h2>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
+              Hospital Administration Suite
+            </p>
+          </div>
         </div>
-
-        {/* Admin Info */}
-        <div className="px-6 py-4 border-b border-sidebar-border">
-          <p className="text-sm text-sidebar-foreground/70">System Administrator</p>
-          <p className="font-semibold text-sidebar-primary">Admin User</p>
-          <p className="text-xs text-sidebar-foreground/60">Super Admin</p>
+        <div className="flex gap-3 mt-4 md:mt-0">
+          <NotificationCenter />
         </div>
+      </div>
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === tab.id
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent/10'
-                }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Footer Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border space-y-2">
-          <button
-            onClick={() => onSwitchRole(null)}
-            className="w-full px-4 py-2 rounded-lg border border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent/10 text-sm font-medium transition-colors"
-          >
-            Back to Home
-          </button>
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 font-medium transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
+      {loadError && (
+        <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {loadError}
         </div>
-      </aside>
+      )}
 
-      {/* Main Content */}
-      <main className="md:ml-64 min-h-screen">
-        {/* Top Bar */}
-        <div className="bg-card border-b border-border p-6">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground">
-                {tabs.find((t) => t.id === activeTab)?.label}
-              </h2>
-              <p className="text-muted-foreground mt-1">Manage hospital operations and resources</p>
+      {/* Tab Content */}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Key Metrics */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-card p-6 rounded-lg border border-border">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">Total Patients</p>
+                  <p className="text-3xl font-bold text-foreground mt-2">
+                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalPatients?.toLocaleString() || '—')}
+                  </p>
+                </div>
+                <Users className="h-8 w-8 text-primary opacity-20" />
+              </div>
             </div>
-            <NotificationCenter />
+            <div className="bg-card p-6 rounded-lg border border-border">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">Hospital Occupancy</p>
+                  <p className="text-3xl font-bold text-primary mt-2">
+                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.hospitalOccupancy || '—')}
+                  </p>
+                </div>
+                <Activity className="h-8 w-8 text-primary opacity-20" />
+              </div>
+            </div>
+            <div className="bg-card p-6 rounded-lg border border-border">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">Total Revenue</p>
+                  <p className="text-3xl font-bold text-primary mt-2">
+                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalRevenue || '—')}
+                  </p>
+                </div>
+                <DollarSign className="h-8 w-8 text-primary opacity-20" />
+              </div>
+            </div>
+            <div className="bg-card p-6 rounded-lg border border-border">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">Active Doctors</p>
+                  <p className="text-3xl font-bold text-primary mt-2">
+                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.activeDoctors || '0')}
+                  </p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-primary opacity-20" />
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-card p-6 rounded-lg border border-border">
+            <h3 className="text-xl font-bold text-foreground mb-6">System Alerts</h3>
+            <div className="space-y-3">
+              {alerts.length > 0 ? (
+                alerts.map((alert) => (
+                  <div key={alert.id} className={`flex items-start gap-4 p-4 border rounded-lg ${alert.type === 'warning' ? 'border-yellow-200 bg-yellow-50' :
+                    alert.type === 'error' ? 'border-red-200 bg-red-50' :
+                      alert.type === 'success' ? 'border-green-200 bg-green-50' :
+                        'border-blue-200 bg-blue-50'
+                    }`}>
+                    {alert.type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />}
+                    {alert.type === 'error' && <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />}
+                    {alert.type === 'success' && <Activity className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />}
+                    {alert.type === 'info' && <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />}
+                    <div>
+                      <p className="font-semibold text-foreground">{alert.title}</p>
+                      <p className="text-sm text-muted-foreground">{alert.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1 opacity-70">{new Date(alert.timestamp).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No system alerts at this time.
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Tab Content */}
-        <div className="p-6">
-          <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && (
-              <div className="space-y-6">
-                {/* Key Metrics */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-muted-foreground text-sm">Total Patients</p>
-                        <p className="text-3xl font-bold text-foreground mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalPatients?.toLocaleString() || '0')}
-                        </p>
-                      </div>
-                      <Users className="h-8 w-8 text-primary opacity-20" />
-                    </div>
-                  </div>
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-muted-foreground text-sm">Hospital Occupancy</p>
-                        <p className="text-3xl font-bold text-primary mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.hospitalOccupancy || '0%')}
-                        </p>
-                      </div>
-                      <Activity className="h-8 w-8 text-primary opacity-20" />
-                    </div>
-                  </div>
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-muted-foreground text-sm">Total Revenue</p>
-                        <p className="text-3xl font-bold text-primary mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.totalRevenue || '₹0')}
-                        </p>
-                      </div>
-                      <DollarSign className="h-8 w-8 text-primary opacity-20" />
-                    </div>
-                  </div>
-                  <div className="bg-card p-6 rounded-lg border border-border">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-muted-foreground text-sm">Active Doctors</p>
-                        <p className="text-3xl font-bold text-primary mt-2">
-                          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.activeDoctors || '0')}
-                        </p>
-                      </div>
-                      <TrendingUp className="h-8 w-8 text-primary opacity-20" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="bg-card p-6 rounded-lg border border-border">
-                  <h3 className="text-xl font-bold text-foreground mb-6">System Alerts</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-4 p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-foreground">High Occupancy - Fortis Mumbai</p>
-                        <p className="text-sm text-muted-foreground">Occupancy at 82%, consider adding capacity</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4 p-4 border border-blue-200 bg-blue-50 rounded-lg">
-                      <Activity className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-foreground">Staff Performance Report Available</p>
-                        <p className="text-sm text-muted-foreground">Monthly staff performance review ready for review</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'analytics' && (
-              <ClinicalAnalytics />
-            )}
-
-            {activeTab === 'hospitals' && (
-              <HospitalManager hospitals={hospitals} />
-            )}
-
-            {activeTab === 'staff' && (
-              <StaffManager staff={staff} />
-            )}
-
-            {activeTab === 'patients' && (
-              <PatientManager patients={patients} />
-            )}
-
-            {activeTab === 'billing' && (
-              <div className="bg-card p-6 rounded-lg border border-border text-center">
-                <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-foreground font-semibold mb-2">Billing Management</p>
-                <p className="text-muted-foreground mb-6">Manage invoices and payments</p>
-                <Button>View Billing Reports</Button>
-              </div>
-            )}
-
-            {activeTab === 'audit-logs' && (
-              <AuditLogViewer />
-            )}
-          </div>
-        </div>
-      </main>
+      {activeTab === 'analytics' && <ClinicalAnalytics />}
+      {activeTab === 'hospitals' && <HospitalManager hospitals={hospitals} />}
+      {activeTab === 'staff' && (
+        <StaffManager
+          staff={staff}
+          onCreateUser={async (payload) => {
+            await adminService.createUser(payload);
+            const staffData = await adminService.getStaff();
+            setStaff(staffData);
+          }}
+        />
+      )}
+      {activeTab === 'patients' && <PatientManager patients={patients} />}
+      {activeTab === 'billing' && <InsuranceVerification />}
+      {activeTab === 'infection-tracking' && (
+        <InfectionTrackingPortal
+          isActive={activeTab === 'infection-tracking'}
+          initialData={infectionTrackingCache}
+          onDataLoaded={setInfectionTrackingCache}
+        />
+      )}
+      {activeTab === 'audit-logs' && <AuditLogViewer />}
     </div>
   );
 }

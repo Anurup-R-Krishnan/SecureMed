@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Plus, Filter } from 'lucide-react';
+import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Plus } from 'lucide-react';
 import api from '@/lib/api';
 
 interface DoctorMedicalRecordsProps {
@@ -16,44 +16,59 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
 
-  const fetchRecords = async () => {
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const fetchRecords = useCallback(async (search?: string) => {
     setLoading(true);
     try {
-      const params = patientId ? { patient_id: patientId } : {};
-      
-      const [recordsRes, prescriptionsRes] = await Promise.all([
+      const params: Record<string, string> = {};
+      if (search?.trim()) {
+        params.search = search.trim();
+      }
+      if (patientId?.trim()) {
+        params.patient_id = patientId.trim();
+      }
+
+      const [recordsResponse, prescriptionsResponse] = await Promise.all([
         api.get('/medical-records/records/', { params }),
-        api.get('/medical-records/prescriptions/', { params })
+        api.get('/medical-records/prescriptions/'),
       ]);
 
-      const recordsData = Array.isArray(recordsRes.data) ? recordsRes.data : (recordsRes.data.results || []);
-      const prescriptionsData = Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : (prescriptionsRes.data.results || []);
+      const records = Array.isArray(recordsResponse.data)
+        ? recordsResponse.data
+        : (recordsResponse.data?.results ?? []);
+      const rx = Array.isArray(prescriptionsResponse.data)
+        ? prescriptionsResponse.data
+        : (prescriptionsResponse.data?.results ?? []);
 
-      setMedicalRecords(recordsData);
-      setPrescriptions(prescriptionsData);
+      setMedicalRecords(records);
+      setPrescriptions(rx);
     } catch (error) {
-      console.error("Failed to fetch data", error);
+      console.error('Failed to fetch doctor medical records', error);
+      setMedicalRecords([]);
+      setPrescriptions([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchRecords();
   }, [patientId]);
 
+  useEffect(() => {
+    fetchRecords(debouncedSearch);
+  }, [patientId, debouncedSearch, fetchRecords]);
+
   const filteredRecords = medicalRecords.filter(record => {
-    const matchesSearch = searchTerm === '' || 
-      record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.patient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.record_type_display?.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesFilter = filterType === 'all' || record.record_type === filterType;
-    
-    return matchesSearch && matchesFilter;
+    return matchesFilter;
   });
 
   const recordTypes = [...new Set(medicalRecords.map(r => r.record_type))];
@@ -139,7 +154,7 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by patient, diagnosis, or record type..."
+                  placeholder="Search by patient name, patient ID (e.g. P-0008), diagnosis..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -167,24 +182,25 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
                 <FileText className="h-12 w-12 mx-auto mb-3 opacity-20" />
                 <p>No medical records found</p>
                 {!patientId && (
-                  <p className="text-sm mt-2">Select a patient from the Patients tab to view their timeline</p>
+                  <p className="text-sm mt-2">
+                    {searchTerm ? `No records matching "${searchTerm}"` : 'Search for a patient by name or ID to view their records'}
+                  </p>
                 )}
               </div>
             ) : (
               <div className="space-y-3">
                 {filteredRecords.map((record) => (
-                  <div 
-                    key={record.id} 
-                    className={`border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors cursor-pointer ${
-                      selectedRecord?.id === record.id ? 'bg-muted/50 border-primary' : ''
-                    }`}
+                  <div
+                    key={record.id}
+                    className={`border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors cursor-pointer ${selectedRecord?.id === record.id ? 'bg-muted/50 border-primary' : ''
+                      }`}
                     onClick={() => setSelectedRecord(record)}
                   >
                     <div className="flex items-start gap-4">
                       <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
                         <Stethoscope className="h-5 w-5 text-primary" />
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4 mb-2">
                           <div>
@@ -192,9 +208,9 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
                             <p className="text-sm text-muted-foreground mt-1">{record.diagnosis}</p>
                           </div>
                           {record.file && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 window.open(record.file, '_blank');
@@ -209,9 +225,12 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
 
                         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                           {!patientId && record.patient_name && (
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1 font-medium text-foreground">
                               <User className="h-3 w-3" />
                               {record.patient_name}
+                              {record.patient_display_id && (
+                                <span className="text-muted-foreground font-normal ml-1">({record.patient_display_id})</span>
+                              )}
                             </span>
                           )}
                           <span className="flex items-center gap-1">
@@ -286,11 +305,10 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
                     {rx.patient_name && (
                       <p className="text-xs text-muted-foreground mt-1">Patient: {rx.patient_name}</p>
                     )}
-                    <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full ${
-                      rx.status === 'active' || rx.status === 'signed' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full ${rx.status === 'active' || rx.status === 'signed'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-700'
+                      }`}>
                       {rx.status}
                     </span>
                   </div>

@@ -1,0 +1,18 @@
+# Core dependencies
+Django>=6.0.1
+djangorestframework>=3.14.0
+djangorestframework-simplejwt>=5.3.0
+django-cors-headers>=4.3.0
+pyotp>=2.9.0
+psycopg2-binary>=2.9.9
+python-decouple>=3.8
+whitenoise>=6.6.0
+celery>=5.3.4
+redis>=5.0.1
+django-redis>=5.4.0
+pillow>=10.1.0
+requests>=2.31.0
+django-ratelimit>=4.1.0
+cryptography>=42.0.0
+reportlab>=4.0.0
+google-generativeai>=0.8.0

@@ -1,0 +1,24 @@
+services:
+  frontend:
+    build:
+      context: .
+      target: dev          # use the 'dev' Dockerfile stage (hot-reload, not prod build)
+      args:
+        - BACKEND_URL=${BACKEND_URL:-http://host.docker.internal:8000}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Bind-mount only source directories so hot-reload works.
+    # node_modules stays inside the image (not overwritten by the host).
+    volumes:
+      - ./app:/app/app
+      - ./components:/app/components
+      - ./services:/app/services
+      - ./lib:/app/lib
+      - ./public:/app/public
+      - ./styles:/app/styles

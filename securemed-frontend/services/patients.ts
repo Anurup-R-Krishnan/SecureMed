@@ -12,6 +12,17 @@ export interface TimelineEvent {
 }
 
 export const patientService = {
+    getPatients: async (): Promise<any[]> => {
+        try {
+            const response = await api.get('/patients/');
+            if (Array.isArray(response.data)) return response.data;
+            return response.data?.results || [];
+        } catch (error) {
+            console.error('Error fetching patients:', error);
+            return [];
+        }
+    },
+
     getPatientTimeline: async (patientId?: string): Promise<TimelineEvent[]> => {
         try {
             const params = patientId ? { patient_id: patientId } : {};
@@ -38,6 +49,28 @@ export const patientService = {
         } catch (error) {
             console.error('Error fetching insurance info:', error);
             return null;
+        }
+    },
+
+    getPatientOverview: async (patientId: string) => {
+        try {
+            const response = await api.get(`/medical-records/dashboard/stats/?patient_id=${patientId}`);
+            return response.data;
+        } catch (error) {
+            return null;
+        }
+    },
+
+    getActiveMedications: async () => {
+        try {
+            // Fetch from pharmacy orders or a dedicated endpoint if available.
+            // Falling back to dashboard stats of the current user (as a doctor viewing broad context) 
+            // is not ideal. Instead, we'll try to hit the pharmacy-orders endpoint to get *all* fulfilled orders.
+            const response = await api.get('/medical-records/pharmacy-orders/');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching medications:', error);
+            return [];
         }
     }
 };

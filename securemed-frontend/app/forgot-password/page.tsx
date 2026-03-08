@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
 
                             <p className="mt-6 text-center text-sm text-muted-foreground">
                                 Remember your password?{' '}
-                                <Link href="/" className="font-semibold text-primary hover:underline">
+                                <Link href="/login" className="font-semibold text-primary hover:underline">
                                     Sign in
                                 </Link>
                             </p>
@@ -135,7 +135,7 @@ export default function ForgotPasswordPage() {
                                 >
                                     Try Another Email
                                 </Button>
-                                <Link href="/">
+                                <Link href="/login">
                                     <Button className="w-full">
                                         Back to Sign In
                                     </Button>

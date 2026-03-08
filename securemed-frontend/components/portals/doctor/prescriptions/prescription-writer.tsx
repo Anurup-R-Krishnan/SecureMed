@@ -41,6 +41,7 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
     const [frequency, setFrequency] = useState('');
     const [duration, setDuration] = useState('');
     const [instructions, setInstructions] = useState('');
+    const [overrideReason, setOverrideReason] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
@@ -57,6 +58,7 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                 frequency: frequency.trim() || 'As directed',
                 duration: duration.trim() || 'As prescribed',
                 instructions: instructions.trim() || '',
+                override_reason: overrideReason.trim() || '',
             };
 
             await api.post('/medical-records/prescriptions/', payload);
@@ -69,6 +71,7 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
             setFrequency('');
             setDuration('');
             setInstructions('');
+            setOverrideReason('');
 
         } catch (error: any) {
             const detail = error?.response?.data;
@@ -149,8 +152,17 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                                     placeholder="e.g. Amoxicillin"
                                     value={medicationName}
                                     onChange={(e) => setMedicationName(e.target.value)}
+                                    list="medications-list"
                                     required
                                 />
+                                <datalist id="medications-list">
+                                    <option value="Amoxicillin" />
+                                    <option value="Lisinopril" />
+                                    <option value="Metformin" />
+                                    <option value="Atorvastatin" />
+                                    <option value="Ibuprofen" />
+                                    <option value="Aspirin" />
+                                </datalist>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -204,6 +216,16 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                                     className="h-[180px] resize-none"
                                     value={instructions}
                                     onChange={(e) => setInstructions(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="override">Interaction Override Reason (if needed)</Label>
+                                <Textarea
+                                    id="override"
+                                    placeholder="Provide justification if overriding an interaction warning..."
+                                    className="h-[90px] resize-none"
+                                    value={overrideReason}
+                                    onChange={(e) => setOverrideReason(e.target.value)}
                                 />
                             </div>
                         </div>

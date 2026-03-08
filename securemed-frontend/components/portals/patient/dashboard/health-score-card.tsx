@@ -63,7 +63,7 @@ export default function HealthScoreCard({ score, trend = 'stable' }: HealthScore
                     </div>
                 </div>
 
-                <div className="mt-4 text-center">
+                <div className="mt-4 text-center p-10">
                     <p className="text-sm font-medium" style={{ color }}>
                         {score >= 80 ? 'Excellent Status' : score >= 60 ? 'Needs Attention' : 'Critical Status'}
                     </p>

@@ -140,3 +140,11 @@ frontend/node_modules/
 backend/venv/
 backend/.env
 backend/db.sqlite3
+
+# Local Credentials
+handy.txt
+
+# Data Exports
+*.csv
+
+HODDI/

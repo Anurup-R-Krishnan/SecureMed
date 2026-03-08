@@ -1,54 +1,41 @@
-# SecureMed Frontend Dockerfile
-# Multi-stage build for optimized production image
+FROM oven/bun:1 AS deps
 
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
 WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install
 
-# Copy package files
-COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+# ── production build ──────────────────────────────────────────────────────────
+FROM deps AS builder
 
-# Stage 2: Build
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL
+RUN bun run build
 
-# Set environment variables for build
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
+# ── production runtime ────────────────────────────────────────────────────────
+FROM oven/bun:1 AS runner
 
-# Build the application
-RUN npm run build
-
-# Stage 3: Production
-FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 nextjs
 
-# Copy built assets
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/public        ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static     ./.next/static
 
 USER nextjs
-
 EXPOSE 3000
+CMD ["bun", "run", "server.js"]
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+# ── dev (default) ─────────────────────────────────────────────────────────────
+FROM deps AS dev
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
-
-CMD ["node", "server.js"]
+WORKDIR /app
+COPY . .
+ARG BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL
+EXPOSE 3000
+CMD ["bun", "run", "dev"]

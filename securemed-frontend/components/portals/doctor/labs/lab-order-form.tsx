@@ -68,12 +68,15 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
         const fetchTests = async () => {
             try {
                 const response = await api.get('/labs/tests/');
-                setLabTests(response.data);
-                // Extract unique categories
-                const uniqueCategories = Array.from(new Set(response.data.map((t: LabTest) => t.category))) as string[];
+                const data = Array.isArray(response.data) ? response.data : 
+                            (response.data.results || []);
+                setLabTests(data);
+                const uniqueCategories = Array.from(new Set(data.map((t: LabTest) => t.category))) as string[];
                 setCategories(uniqueCategories);
             } catch (error) {
                 console.error("Failed to fetch lab tests", error);
+                setLabTests([]);
+                setCategories([]);
             }
         };
         fetchTests();
@@ -245,34 +248,47 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
 
                     {/* Test List */}
                     <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
-                        {filteredTests.map(test => {
-                            const isSelected = selectedTests.find(t => t.id === test.id);
-                            return (
-                                <div
-                                    key={test.id}
-                                    className={`p-3 flex items-center justify-between hover:bg-slate-50 ${isSelected ? 'bg-blue-50' : ''
-                                        }`}
-                                >
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-medium text-slate-800">{test.name}</p>
-                                            <span className="text-xs bg-slate-100 px-2 py-0.5 rounded">{test.code}</span>
-                                        </div>
-                                        <p className="text-sm text-slate-500">{test.description}</p>
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            {test.category} • {test.turnaroundTime}
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant={isSelected ? "default" : "outline"}
-                                        size="sm"
-                                        onClick={() => isSelected ? removeTest(test.id) : addTest(test)}
+                        {labTests.length === 0 ? (
+                            <div className="p-8 text-center text-muted-foreground">
+                                <FlaskConical className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                                <p>No lab tests available in the system.</p>
+                                <p className="text-xs mt-1">Please contact your administrator to configure lab tests.</p>
+                            </div>
+                        ) : filteredTests.length === 0 ? (
+                            <div className="p-8 text-center text-muted-foreground">
+                                <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p>No tests match your search.</p>
+                            </div>
+                        ) : (
+                            filteredTests.map(test => {
+                                const isSelected = selectedTests.find(t => t.id === test.id);
+                                return (
+                                    <div
+                                        key={test.id}
+                                        className={`p-3 flex items-center justify-between hover:bg-slate-50 ${isSelected ? 'bg-blue-50' : ''
+                                            }`}
                                     >
-                                        {isSelected ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                    </Button>
-                                </div>
-                            );
-                        })}
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-medium text-slate-800">{test.name}</p>
+                                                <span className="text-xs bg-slate-100 px-2 py-0.5 rounded">{test.code}</span>
+                                            </div>
+                                            <p className="text-sm text-slate-500">{test.description}</p>
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                {test.category} • {test.turnaroundTime}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            variant={isSelected ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => isSelected ? removeTest(test.id) : addTest(test)}
+                                        >
+                                            {isSelected ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
 
                     {/* Selected Tests Summary */}

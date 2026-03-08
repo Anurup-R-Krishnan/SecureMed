@@ -10,6 +10,7 @@ interface AppointmentManagerProps {
     loading: boolean;
     onOpenReferral: (appt: Appointment) => void;
     onAcceptAppointment: (appt: Appointment) => void;
+    onVideoCall?: (appt: Appointment) => void;
     formatTime: (time: string) => string;
     getStatusBadge: (status: string) => React.ReactNode;
 }
@@ -19,6 +20,7 @@ export default function AppointmentManager({
     loading,
     onOpenReferral,
     onAcceptAppointment,
+    onVideoCall,
     formatTime,
     getStatusBadge
 }: AppointmentManagerProps) {
@@ -55,14 +57,29 @@ export default function AppointmentManager({
                                 )}
 
                                 {apt.status === 'confirmed' && (
-                                    <Button
-                                        size="sm"
-                                        className="font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
-                                        onClick={() => onAcceptAppointment(apt)}
-                                    >
-                                        Start Consult
-                                    </Button>
+                                    <>
+                                        <Button
+                                            size="sm"
+                                            className="font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
+                                            onClick={() => onAcceptAppointment(apt)}
+                                        >
+                                            Start Consult
+                                        </Button>
+                                        {onVideoCall && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="font-bold rounded-xl border-primary/20 text-primary hover:bg-primary/5"
+                                                onClick={() => onVideoCall(apt)}
+                                            >
+                                                Video Call
+                                            </Button>
+                                        )}
+                                    </>
                                 )}
+
+
+
 
                                 {apt.status === 'in_progress' && (
                                     <Button

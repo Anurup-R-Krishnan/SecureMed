@@ -6,12 +6,12 @@ import { Lock, UserX, MoreHorizontal } from "lucide-react"
 
 export type Patient = {
     id: number
-    user: {
+    user?: {
         username: string
         email: string
         first_name?: string
         last_name?: string
-    }
+    } | null
     date_of_birth: string
     phone_number: string
     blood_group?: string
@@ -32,10 +32,11 @@ export const getColumns = ({ onViewPatient }: PatientColumnsProps): ColumnDef<Pa
         header: "Name",
         cell: ({ row }) => {
             const user = row.original.user;
+            const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
+            const fallback = user?.username || `Patient #${row.original.id}`;
             return (
                 <span className="font-medium">
-                    {user.first_name} {user.last_name}
-                    {!user.first_name && !user.last_name && user.username}
+                    {fullName || fallback}
                 </span>
             )
         },

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -53,7 +52,6 @@ export function MessagingInterface() {
     const fetchContacts = async () => {
         setLoadingContacts(true);
         try {
-            // Fetch doctors as contacts
             const doctorsRes = await api.get('/appointments/doctors/');
             const doctors = Array.isArray(doctorsRes.data) ? doctorsRes.data : (doctorsRes.data.results || []);
             const contactList: ContactUser[] = doctors.map((d: any) => ({
@@ -86,125 +84,124 @@ export function MessagingInterface() {
     };
 
     if (!currentUser) {
-        return <div className="p-8 text-center">Please log in to view messages.</div>;
+        return <div className="p-8 text-center text-muted-foreground">Please log in to view messages.</div>;
     }
 
     if (isLoading && conversations.length === 0) {
         return (
             <div className="flex h-[calc(100vh-100px)] w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }
 
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
-    const otherParticipant = selectedConversation?.participants.find(p => p.id !== currentUser.id);
-
-    const filteredContacts = contacts.filter(c =>
-        c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
-        (c.specialization || '').toLowerCase().includes(contactSearch.toLowerCase())
-    );
 
     return (
-        <div className="flex h-[calc(100vh-100px)] w-full max-w-7xl mx-auto border border-border rounded-xl overflow-hidden shadow-sm bg-card">
-            {/* Sidebar */}
-            <div className="w-1/3 min-w-[300px] h-full flex flex-col">
-                {/* New Conversation Button */}
-                <div className="p-3 border-b border-border">
-                    <Button
-                        onClick={() => {
-                            setShowNewChat(!showNewChat);
-                            if (!showNewChat) fetchContacts();
-                        }}
-                        className="w-full font-bold"
-                        variant={showNewChat ? "outline" : "default"}
-                        size="sm"
-                    >
-                        {showNewChat ? (
-                            <><X className="h-4 w-4 mr-2" /> Cancel</>
-                        ) : (
-                            <><Plus className="h-4 w-4 mr-2" /> New Conversation</>
-                        )}
-                    </Button>
+        <div className="h-[calc(100vh-110px)] bg-card border border-border/60 rounded-[24px] shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Conversation List (Master View) */}
+            <div className={`col-span-1 md:col-span-4 lg:col-span-3 border-r border-border/60 bg-muted/10 flex flex-col h-full ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
+                {/* Search Header */}
+                <div className="p-4 border-b border-border/60">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold tracking-tight">Messages</h2>
+                        <Button
+                            onClick={() => {
+                                setShowNewChat(!showNewChat);
+                                if (!showNewChat) fetchContacts();
+                            }}
+                            size="icon"
+                            variant="ghost"
+                            className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                        >
+                            <Plus className="h-5 w-5" />
+                        </Button>
+                    </div>
+                    {/* Search Bar - Minimal Style */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search messages..."
+                            className="pl-9 h-10 rounded-xl bg-background border-border/50 focus:border-primary/50 focus:ring-primary/10 transition-all font-medium"
+                        />
+                    </div>
                 </div>
 
-                {showNewChat ? (
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="p-3">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                {/* List Content */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                    {/* New Chat Selection View */}
+                    {showNewChat ? (
+                        <div className="animate-in fade-in slide-in-from-left-4 duration-300">
+                            <div className="flex items-center justify-between mb-2 px-2">
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">New Chat</h3>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-full" onClick={() => setShowNewChat(false)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            {/* Contact Search */}
+                            <div className="mb-3 px-2">
                                 <Input
-                                    placeholder="Search doctors..."
+                                    placeholder="Find a doctor..."
                                     value={contactSearch}
                                     onChange={(e) => setContactSearch(e.target.value)}
-                                    className="pl-9"
+                                    className="h-9 text-sm rounded-lg bg-background"
+                                    autoFocus
                                 />
                             </div>
-                        </div>
-                        {loadingContacts ? (
-                            <div className="flex items-center justify-center py-8">
-                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+
+                            {/* Contact List */}
+                            <div className="space-y-1">
+                                {loadingContacts ? (
+                                    <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                                ) : contacts.length > 0 ? (
+                                    contacts
+                                        .filter(c => c.name.toLowerCase().includes(contactSearch.toLowerCase()))
+                                        .map(contact => (
+                                            <button
+                                                key={contact.id}
+                                                onClick={() => handleNewConversation(contact.id)}
+                                                className="w-full text-left p-3 rounded-xl hover:bg-primary/5 transition-colors border border-transparent hover:border-primary/10 group"
+                                            >
+                                                <div className="font-bold text-sm group-hover:text-primary transition-colors">{contact.name}</div>
+                                                <div className="text-xs text-muted-foreground">{contact.specialization || contact.role}</div>
+                                            </button>
+                                        ))
+                                ) : (
+                                    <div className="text-center p-4 text-xs text-muted-foreground">No contacts found</div>
+                                )}
                             </div>
-                        ) : filteredContacts.length === 0 ? (
-                            <p className="text-center text-muted-foreground py-8 text-sm">No contacts found.</p>
-                        ) : (
-                            <ul className="divide-y divide-border">
-                                {filteredContacts.map((contact) => (
-                                    <li
-                                        key={contact.id}
-                                        onClick={() => handleNewConversation(contact.id)}
-                                        className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                                                {contact.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-foreground text-sm">{contact.name}</p>
-                                                <p className="text-xs text-muted-foreground">{contact.specialization || contact.role}</p>
-                                            </div>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                ) : (
-                    <ConversationList
-                        conversations={conversations}
-                        currentUserId={currentUser.id}
-                        selectedConversationId={selectedConversationId}
-                        onSelectConversation={handleSelectConversation}
-                    />
-                )}
+                        </div>
+                    ) : (
+                        /* Conversation List Component */
+                        <ConversationList
+                            conversations={conversations}
+                            selectedConversationId={selectedConversationId}
+                            onSelectConversation={handleSelectConversation}
+                            currentUserId={currentUser.id}
+                        />
+                    )}
+                </div>
             </div>
 
-            {/* Chat Area */}
-            <div className="flex-1 h-full bg-muted/20">
-                {selectedConversationId && selectedConversation ? (
+            {/* Chat Window (Detail View) */}
+            <div className={`col-span-1 md:col-span-8 lg:col-span-9 bg-background h-full flex flex-col ${!selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
+                {selectedConversation ? (
                     <ChatWindow
-                        conversationId={selectedConversationId}
+                        conversation={selectedConversation}
                         currentUserId={currentUser.id}
-                        otherParticipant={otherParticipant}
+                        onBack={() => setSelectedConversationId(null)}
                     />
                 ) : (
-                    <div className="flex h-full flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
-                        <div className="h-20 w-20 bg-card rounded-full shadow-sm border border-border flex items-center justify-center mb-6">
+                    <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 animate-in fade-in duration-500">
+                        <div className="w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center mb-6">
+                            {/* <MessageSquare className="h-8 w-8 text-muted-foreground/50" /> */}
                             <span className="text-4xl">💬</span>
                         </div>
                         <h3 className="text-xl font-bold text-foreground mb-2">Select a Conversation</h3>
-                        <p className="text-muted-foreground max-w-sm mx-auto mb-4">
-                            Choose a chat from the sidebar or start a new conversation.
+                        <p className="max-w-xs text-center text-sm">
+                            Choose a conversation from the list or start a new chat to begin messaging.
                         </p>
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setShowNewChat(true);
-                                fetchContacts();
-                            }}
-                        >
-                            <Plus className="h-4 w-4 mr-2" /> Start New Chat
-                        </Button>
                     </div>
                 )}
             </div>

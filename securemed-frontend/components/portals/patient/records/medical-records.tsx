@@ -18,6 +18,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [adherenceLoading, setAdherenceLoading] = useState<number | null>(null);
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -39,18 +40,40 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
     fetchRecords();
   }, []);
 
+  /* Pagination / Infinite Scroll State */
+  const [displayCount, setDisplayCount] = useState(5);
   const filteredRecords = medicalRecords.filter(record => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.doctor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.record_type_display?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesFilter = filterType === 'all' || record.record_type === filterType;
-    
+
     return matchesSearch && matchesFilter;
   });
 
+  const visibleRecords = filteredRecords.slice(0, displayCount);
+  const hasMore = displayCount < filteredRecords.length;
+
+  const loadMore = () => {
+    setDisplayCount(prev => prev + 5);
+  };
+
   const recordTypes = [...new Set(medicalRecords.map(r => r.record_type))];
+  const activePrescriptions = prescriptions.filter((rx) => ['signed', 'dispensed'].includes(rx.status));
+  const pastPrescriptions = prescriptions.filter((rx) => ['cancelled'].includes(rx.status));
+
+  const handleMarkTaken = async (rxId: number) => {
+    setAdherenceLoading(rxId);
+    try {
+      await medicalRecordService.logMedicationTaken(rxId);
+    } catch (error) {
+      console.error('Failed to log adherence', error);
+    } finally {
+      setAdherenceLoading(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -82,7 +105,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Active Medications</p>
-              <p className="text-2xl font-bold text-foreground">{prescriptions.length}</p>
+              <p className="text-2xl font-bold text-foreground">{activePrescriptions.length}</p>
             </div>
           </div>
         </Card>
@@ -108,7 +131,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
           <h3 className="text-lg font-bold text-foreground">Current Prescriptions</h3>
         </div>
 
-        {prescriptions.length === 0 ? (
+        {activePrescriptions.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Pill className="h-12 w-12 mx-auto mb-3 opacity-20" />
             <p>No active prescriptions</p>
@@ -122,26 +145,46 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Dosage</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Frequency</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Duration</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Refill</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Status</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Adherence</th>
                 </tr>
               </thead>
               <tbody>
-                {prescriptions.map((rx) => (
+                {activePrescriptions.map((rx) => (
                   <tr key={rx.id} className="border-b border-border hover:bg-muted/30">
                     <td className="py-3 px-4 font-medium text-foreground">{rx.medication_name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{rx.dosage}</td>
                     <td className="py-3 px-4 text-muted-foreground">{rx.frequency}</td>
                     <td className="py-3 px-4 text-muted-foreground">{rx.duration}</td>
                     <td className="py-3 px-4">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        rx.status === 'active' || rx.status === 'signed' 
-                          ? 'bg-green-100 text-green-700' 
-                          : rx.status === 'cancelled' 
-                          ? 'bg-red-100 text-red-700' 
+                      {rx.is_refill_needed ? (
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                          Refill Needed
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{rx.end_date || 'N/A'}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${rx.status === 'active' || rx.status === 'signed'
+                        ? 'bg-green-100 text-green-700'
+                        : rx.status === 'cancelled'
+                          ? 'bg-red-100 text-red-700'
                           : 'bg-gray-100 text-gray-700'
-                      }`}>
+                        }`}>
                         {rx.status}
                       </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={adherenceLoading === rx.id}
+                        onClick={() => handleMarkTaken(rx.id)}
+                      >
+                        {adherenceLoading === rx.id ? 'Logging...' : 'Mark Taken'}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -150,6 +193,26 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
           </div>
         )}
       </Card>
+
+      {pastPrescriptions.length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Pill className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-bold text-foreground">Past Medications</h3>
+          </div>
+          <div className="space-y-2">
+            {pastPrescriptions.map((rx) => (
+              <div key={rx.id} className="flex items-center justify-between border border-border rounded-lg p-3">
+                <div>
+                  <p className="font-medium text-foreground">{rx.medication_name}</p>
+                  <p className="text-xs text-muted-foreground">{rx.dosage} · {rx.frequency} · {rx.duration}</p>
+                </div>
+                <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-700">Cancelled</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-6">
@@ -191,13 +254,13 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredRecords.map((record) => (
+            {visibleRecords.map((record) => (
               <div key={record.id} className="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
                     <Stethoscope className="h-5 w-5 text-primary" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
@@ -205,9 +268,9 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                         <p className="text-sm text-muted-foreground mt-1">{record.diagnosis}</p>
                       </div>
                       {record.file && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => window.open(record.file, '_blank')}
                           className="flex-shrink-0"
                         >
@@ -255,6 +318,14 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                 </div>
               </div>
             ))}
+
+            {hasMore && (
+              <div className="pt-4 text-center">
+                <Button variant="ghost" onClick={loadMore} className="text-muted-foreground hover:text-primary">
+                  Load More Records...
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Card>

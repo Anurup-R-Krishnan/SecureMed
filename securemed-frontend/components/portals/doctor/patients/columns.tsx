@@ -41,9 +41,10 @@ export const getPatientsColumns = ({ onSelectPatient }: PatientColumnsProps): Co
         header: "Patient",
         cell: ({ row }) => {
             const patient = row.original;
+            const displayName = patient.name?.trim() || patient.id.toString() || 'Unknown Patient';
             return (
                 <div>
-                    <p className="font-medium text-foreground">{patient.name}</p>
+                    <p className="font-medium text-foreground">{displayName}</p>
                     <p className="text-xs text-muted-foreground">{patient.condition}</p>
                 </div>
             )

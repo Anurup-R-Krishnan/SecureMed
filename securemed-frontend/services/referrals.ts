@@ -46,6 +46,25 @@ export interface CreateReferralData {
     clinical_notes?: string;
 }
 
+export interface PatientReferral {
+    id: number;
+    referral_id: string;
+    referring_doctor_name: string;
+    referring_doctor_specialization: string;
+    specialist_id: number | null;
+    specialist_name: string;
+    specialist_specialization: string;
+    specialist_department: string;
+    status: string;
+    status_display: string;
+    priority: string;
+    priority_display: string;
+    reason: string;
+    clinical_notes?: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export const referralService = {
     /**
      * Get all referrals (made by or received by current doctor)
@@ -53,6 +72,14 @@ export const referralService = {
     getReferrals: async (): Promise<Referral[]> => {
         const response = await api.get('/appointments/referrals/');
         return Array.isArray(response.data) ? response.data : response.data.results || [];
+    },
+
+    /**
+     * Get referrals for the current patient
+     */
+    getPatientReferrals: async (): Promise<PatientReferral[]> => {
+        const response = await api.get('/appointments/my-referrals/');
+        return Array.isArray(response.data) ? response.data : [];
     },
 
     /**

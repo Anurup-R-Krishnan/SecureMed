@@ -12,7 +12,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 interface WorklistItem {
     id: number;
@@ -223,76 +225,85 @@ export default function LabTechnicianWorklist() {
             <div className="grid lg:grid-cols-3 gap-6">
                 {/* Worklist Table */}
                 <div className="lg:col-span-2">
-                    <Card className="overflow-hidden">
-                        <div className="grid grid-cols-5 gap-4 border-b border-border bg-muted p-4">
-                            <div className="font-semibold text-foreground">Sample ID</div>
-                            <div className="font-semibold text-foreground">Test</div>
-                            <div className="font-semibold text-foreground">Category</div>
-                            <div className="font-semibold text-foreground">Priority</div>
-                            <div className="font-semibold text-foreground">Action</div>
-                        </div>
-
-                        <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
-                            {filteredWorklist.length === 0 ? (
-                                <div className="p-8 text-center text-muted-foreground">
-                                    <Check className="h-12 w-12 mx-auto mb-4 text-green-500" />
-                                    <p className="font-medium">All samples processed!</p>
-                                    <p className="text-sm">No pending tests in the queue.</p>
-                                </div>
-                            ) : (
-                                filteredWorklist.map((item, index) => (
-                                    <div
-                                        key={`${item.id}-${item.test_code}-${index}`}
-                                        className={`grid grid-cols-5 gap-4 p-4 hover:bg-muted/50 transition-colors items-center cursor-pointer ${selectedItem?.id === item.id && selectedItem?.test_code === item.test_code
-                                                ? 'bg-primary/10'
-                                                : ''
-                                            }`}
-                                        onClick={() => setSelectedItem(item)}
-                                    >
-                                        <div>
-                                            <p className="font-mono font-bold text-foreground">{item.sample_id}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {new Date(item.ordered_at).toLocaleTimeString()}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-foreground">{item.test_code}</p>
-                                            <p className="text-xs text-muted-foreground">{item.test_name}</p>
-                                        </div>
-                                        <div>
-                                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${categoryColors[item.category] || categoryColors.Other
-                                                }`}>
-                                                {item.category}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${priorityColors[item.priority]
-                                                }`}>
-                                                {item.priority_display}
-                                            </span>
-                                            {item.fasting_required && (
-                                                <span className="text-xs text-orange-500" title="Fasting Required">
-                                                    🍽️
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <Button
-                                                size="sm"
-                                                variant={selectedItem?.id === item.id ? 'default' : 'outline'}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedItem(item);
-                                                }}
+                    <div className="rounded-[24px] border border-border/60 overflow-hidden shadow-sm bg-card flex flex-col h-[600px]">
+                        <div className="overflow-y-auto custom-scrollbar flex-1">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border/60 sticky top-0 backdrop-blur-md z-10">
+                                    <tr>
+                                        <th className="px-6 py-4">Sample Details</th>
+                                        <th className="px-6 py-4">Test Info</th>
+                                        <th className="px-6 py-4">Category</th>
+                                        <th className="px-6 py-4">Priority</th>
+                                        <th className="px-6 py-4 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                    {filteredWorklist.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="p-12 text-center text-muted-foreground">
+                                                <Check className="h-12 w-12 mx-auto mb-4 text-green-500 opacity-50" />
+                                                <p className="font-bold text-lg">All samples processed!</p>
+                                                <p className="text-sm opacity-70">No pending tests in the queue.</p>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredWorklist.map((item, index) => (
+                                            <tr
+                                                key={`${item.id}-${item.test_code}-${index}`}
+                                                className={`transition-all duration-200 cursor-pointer group ${selectedItem?.id === item.id && selectedItem?.test_code === item.test_code
+                                                    ? 'bg-primary/5 border-l-4 border-l-primary'
+                                                    : 'hover:bg-muted/30 border-l-4 border-l-transparent'
+                                                    }`}
+                                                onClick={() => setSelectedItem(item)}
                                             >
-                                                Enter Result
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                                                <td className="px-6 py-4">
+                                                    <div className="font-mono font-bold text-foreground group-hover:text-primary transition-colors">{item.sample_id}</div>
+                                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                        <Clock className="w-3 h-3" />
+                                                        {new Date(item.ordered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-medium text-foreground">{item.test_code}</div>
+                                                    <div className="text-xs text-muted-foreground max-w-[150px] truncate" title={item.test_name}>{item.test_name}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <Badge variant="secondary" className={cn("rounded-md font-medium px-2", categoryColors[item.category] || categoryColors.Other)}>
+                                                        {item.category}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className={cn("rounded-md border-0 uppercase text-[10px] tracking-wider", priorityColors[item.priority], item.priority === 'stat' && "animate-pulse ring-1 ring-red-400/50 shadow-[0_0_8px_rgba(248,113,113,0.3)]")}>
+                                                            {item.priority_display}
+                                                        </Badge>
+                                                        {item.fasting_required && (
+                                                            <span className="text-xs text-orange-500 animate-pulse" title="Fasting Required">
+                                                                🍽️
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Button
+                                                        size="sm"
+                                                        variant={selectedItem?.id === item.id ? 'default' : 'ghost'}
+                                                        className={cn("rounded-full h-8 px-4", selectedItem?.id !== item.id && "hover:bg-primary/10 hover:text-primary")}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedItem(item);
+                                                        }}
+                                                    >
+                                                        Result
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
-                    </Card>
+                    </div>
                 </div>
 
                 {/* Result Entry Form */}

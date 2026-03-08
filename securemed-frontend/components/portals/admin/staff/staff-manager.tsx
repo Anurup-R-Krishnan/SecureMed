@@ -1,20 +1,77 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { StaffMember } from '@/services/admin';
 import { Lock, UserX } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
 
 interface StaffManagerProps {
     staff: StaffMember[];
+    onCreateUser: (payload: {
+        username: string;
+        email: string;
+        first_name: string;
+        last_name: string;
+        role: string;
+        password: string;
+        password_confirm: string;
+    }) => Promise<void>;
 }
 
-export default function StaffManager({ staff }: StaffManagerProps) {
+export default function StaffManager({ staff, onCreateUser }: StaffManagerProps) {
+    const [open, setOpen] = useState(false);
+    const [form, setForm] = useState({
+        username: '',
+        email: '',
+        first_name: '',
+        last_name: '',
+        role: 'pharmacist',
+        password: '',
+        password_confirm: ''
+    });
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleChange = (key: string, value: string) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const handleSubmit = async () => {
+        setSaving(true);
+        setError(null);
+        try {
+            await onCreateUser(form);
+            setOpen(false);
+            setForm({
+                username: '',
+                email: '',
+                first_name: '',
+                last_name: '',
+                role: 'pharmacist',
+                password: '',
+                password_confirm: ''
+            });
+        } catch (e: any) {
+            setError('Failed to create user. Please check inputs and try again.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-foreground">Staff Directory</h3>
-                <Button>Add Staff Member</Button>
+                <Button onClick={() => setOpen(true)}>Add Staff Member</Button>
             </div>
 
             <div className="bg-card rounded-lg border border-border overflow-x-auto">
@@ -68,6 +125,68 @@ export default function StaffManager({ staff }: StaffManagerProps) {
                     </tbody>
                 </table>
             </div>
+
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Create Staff User</DialogTitle>
+                        <DialogDescription>
+                            Admin-only creation. Users cannot self-register.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">First Name</label>
+                            <Input value={form.first_name} onChange={(e) => handleChange('first_name', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Last Name</label>
+                            <Input value={form.last_name} onChange={(e) => handleChange('last_name', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Username</label>
+                            <Input value={form.username} onChange={(e) => handleChange('username', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Email</label>
+                            <Input value={form.email} onChange={(e) => handleChange('email', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Role</label>
+                            <select
+                                value={form.role}
+                                onChange={(e) => handleChange('role', e.target.value)}
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                            >
+                                <option value="doctor">Doctor</option>
+                                <option value="provider">Provider</option>
+                                <option value="pharmacist">Pharmacist</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Password</label>
+                            <Input type="password" value={form.password} onChange={(e) => handleChange('password', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Confirm Password</label>
+                            <Input type="password" value={form.password_confirm} onChange={(e) => handleChange('password_confirm', e.target.value)} />
+                        </div>
+                    </div>
+
+                    {error && <p className="text-sm text-destructive">{error}</p>}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSubmit} disabled={saving}>
+                            {saving ? 'Creating...' : 'Create User'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

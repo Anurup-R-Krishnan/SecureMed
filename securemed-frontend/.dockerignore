@@ -1,0 +1,32 @@
+# Version control
+.git/
+.gitignore
+
+# Dependencies (rebuilt in container)
+node_modules/
+
+# Next.js build output (rebuilt in container)
+.next/
+out/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Misc
+*.log
+*.pid
+coverage/
+.nyc_output/

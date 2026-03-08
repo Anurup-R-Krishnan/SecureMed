@@ -32,3 +32,7 @@ API will be available at [http://localhost:8000](http://localhost:8000)
 ## Frontend Repository
 
 This backend serves the SecureMed frontend application. Configure CORS settings to allow requests from your frontend URL.
+
+## HODDI Integration
+
+See [HODDI_IMPORT.md](./HODDI_IMPORT.md) for importing HODDI-style multi-drug interaction data into the medication safety engine.

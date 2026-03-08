@@ -9,13 +9,12 @@ export default function RegisterRoute() {
   const router = useRouter();
 
   const handleSuccess = (role: 'patient' | 'doctor') => {
-    // After successful registration, user needs to login
-    // Redirect to home page where they can login
-    router.push('/');
+    // After successful registration, redirect to login
+    router.push('/login');
   };
 
   const handleBackToLogin = () => {
-    router.push('/');
+    router.push('/login');
   };
 
   return (

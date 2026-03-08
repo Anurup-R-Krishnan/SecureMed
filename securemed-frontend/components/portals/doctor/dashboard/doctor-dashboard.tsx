@@ -8,7 +8,8 @@ import {
     Clock,
     UserPlus,
     CheckCircle,
-    Activity
+    Activity,
+    Video
 } from 'lucide-react';
 
 interface DoctorDashboardProps {
@@ -20,6 +21,7 @@ interface DoctorDashboardProps {
     onAcceptAppointment: (appt: Appointment) => void;
     formatTime: (time: string) => string;
     getStatusBadge: (status: string) => React.ReactNode;
+    onStartVideoCall?: (roomId: string) => void;
 }
 
 export default function DoctorDashboard({
@@ -30,7 +32,8 @@ export default function DoctorDashboard({
     onOpenReferral,
     onAcceptAppointment,
     formatTime,
-    getStatusBadge
+    getStatusBadge,
+    onStartVideoCall
 }: DoctorDashboardProps) {
 
     return (
@@ -96,6 +99,17 @@ export default function DoctorDashboard({
                                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-2" onClick={() => onOpenReferral(apt)}>
                                         <UserPlus className="h-4 w-4 text-muted-foreground" />
                                     </Button>
+                                    {onStartVideoCall && (apt.status === 'confirmed' || apt.status === 'scheduled') && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 w-8 p-0 ml-2 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400"
+                                            onClick={() => onStartVideoCall('demo-room-1')}
+                                            title="Start Telehealth Session"
+                                        >
+                                            <Video className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         ))}
