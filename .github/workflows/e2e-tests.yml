@@ -1,0 +1,29 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  cypress:
+    name: Cypress E2E
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start full environment
+        run: docker compose -f docker-compose.yml up -d
+
+      - name: Install Cypress dependencies
+        working-directory: ./securemed-frontend
+        run: bun install
+
+      - name: Run Cypress tests
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: ./securemed-frontend
+          install: false
+          wait-on: "http://localhost:3000"
+          wait-on-timeout: 120
