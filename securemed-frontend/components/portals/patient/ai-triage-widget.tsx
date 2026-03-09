@@ -233,7 +233,7 @@ export default function AiTriageWidget() {
             const enrichedMessage = contextLines.length > 0
                 ? `${text}\n\n[Anatomy Context]\n${contextLines.join('\n')}`
                 : text;
-            const { data } = await api.post('/telemedicine/api/triage/chat/', {
+            const { data } = await api.post('/telemedicine/triage/chat/', {
                 message: enrichedMessage,
                 history,
             }, { timeout: 120000 }); // 120s: up to 3 model attempts × 30s + headroom

@@ -4,12 +4,12 @@ services:
       context: .
       target: dev          # use the 'dev' Dockerfile stage (hot-reload, not prod build)
       args:
-        - BACKEND_URL=${BACKEND_URL:-http://host.docker.internal:8000}
+        - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
-      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
+      BACKEND_URL: ${BACKEND_URL:-http://backend:8000}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -18,7 +18,10 @@ router.register(r'messages', MessageViewSet, basename='message')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('api/triage/chat/', ai_triage_chat, name='ai-triage-chat'),
+    # Canonical endpoint
+    path('triage/chat/', ai_triage_chat, name='ai-triage-chat'),
+    # Backward-compatible alias for older frontend builds.
+    path('api/triage/chat/', ai_triage_chat, name='ai-triage-chat-legacy'),
     path('triage/submit/', submit_triage_request, name='triage-submit'),
     path('triage/inbox/', doctor_triage_inbox, name='triage-inbox'),
     path('triage/approve/', approve_triage_request, name='triage-approve'),

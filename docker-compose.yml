@@ -45,12 +45,13 @@ services:
       retries: 5
 
   backend:
-    build: .
+    build:
+      context: ./securemed-backend
     restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - ./securemed-backend/.env
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -66,15 +67,16 @@ services:
       neo4j:
         condition: service_healthy
     volumes:
-      - .:/app
+      - ./securemed-backend:/app
       - media_data:/app/media
 
   celery:
-    build: .
+    build:
+      context: ./securemed-backend
     restart: unless-stopped
     command: celery -A config worker --loglevel=info
     env_file:
-      - .env
+      - ./securemed-backend/.env
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -89,8 +91,31 @@ services:
       neo4j:
         condition: service_healthy
     volumes:
-      - .:/app
+      - ./securemed-backend:/app
       - media_data:/app/media
+
+  frontend:
+    build:
+      context: ./securemed-frontend
+      target: dev
+      args:
+        - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://backend:8000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./securemed-frontend/app:/app/app
+      - ./securemed-frontend/components:/app/components
+      - ./securemed-frontend/services:/app/services
+      - ./securemed-frontend/lib:/app/lib
+      - ./securemed-frontend/public:/app/public
+      - ./securemed-frontend/styles:/app/styles
 
 volumes:
   postgres_data:

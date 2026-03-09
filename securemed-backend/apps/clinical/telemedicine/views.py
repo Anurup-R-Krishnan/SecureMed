@@ -67,7 +67,7 @@ TRIAGE_SYSTEM_PROMPT = (
 def ai_triage_chat(request):
     """
     AI-powered pre-consultation triage chat.
-    POST /api/telemedicine/api/triage/chat/
+    POST /api/telemedicine/triage/chat/
     Body: {"message": "...", "history": [...]}
     """
     if not GEMINI_AVAILABLE:
