@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertOctagon, CheckCircle2, ChevronDown, Pill, Search, X } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, ChevronDown, Pill, Plus, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { drugInteractionService, type InteractionCheckResult, type InteractionReport } from '@/services/drug-interactions';
 
@@ -145,31 +145,61 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                     <div className="text-xs text-muted-foreground">{selected.length} selected</div>
                 </div>
 
-                <div className="mt-4 relative">
-                    <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                    <input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search medicine names..."
-                        className="w-full rounded-lg border bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
+                <div className="mt-4 relative flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && query.trim().length > 0) {
+                                    addMedication(query.trim());
+                                }
+                            }}
+                            placeholder="Search or type any drug name, press Enter to add…"
+                            className="w-full rounded-lg border bg-background pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => { if (query.trim()) addMedication(query.trim()); }}
+                        disabled={!query.trim()}
+                        className="shrink-0 flex items-center gap-1.5 rounded-lg border bg-primary text-primary-foreground px-3 py-2 text-sm font-medium hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="Add drug to checker"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add
+                    </button>
                 </div>
 
                 {(loadingSearch || results.length > 0) && (
-                    <div className="mt-2 rounded-lg border bg-background max-h-40 overflow-auto">
+                    <div className="mt-2 rounded-lg border bg-background max-h-40 overflow-auto shadow-sm">
                         {loadingSearch ? (
-                            <div className="p-3 text-xs text-muted-foreground">Searching...</div>
+                            <div className="p-3 text-xs text-muted-foreground">Searching…</div>
                         ) : (
-                            results.map((name) => (
-                                <button
-                                    key={name}
-                                    type="button"
-                                    onClick={() => addMedication(name)}
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                                >
-                                    {name}
-                                </button>
-                            ))
+                            <>
+                                {results.map((name) => (
+                                    <button
+                                        key={name}
+                                        type="button"
+                                        onClick={() => addMedication(name)}
+                                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+                                    >
+                                        <Pill className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                        {name}
+                                    </button>
+                                ))}
+                                {query.trim().length > 0 && !results.some(r => r.toLowerCase() === query.trim().toLowerCase()) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => addMedication(query.trim())}
+                                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 border-t border-dashed"
+                                    >
+                                        <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                                        <span>Add <span className="font-medium">"{query.trim()}"</span> as custom drug</span>
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
                 )}

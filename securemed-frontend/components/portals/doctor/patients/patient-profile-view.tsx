@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, Download, Pill, MessageSquare, UserPlus } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Download, Pill, ShieldAlert, CheckCircle2, TrendingUp, Clock, RefreshCw } from 'lucide-react';
 import PatientTimeline from './patient-timeline';
 import PatientNotes from './patient-notes';
 import PatientAnatomyCard from './patient-anatomy-card';
@@ -9,7 +9,7 @@ import EmergencyAccessModal from '@/components/portals/doctor/shared/emergency-a
 import { PatientInfoCard } from '@/components/ui/patient-info-card';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
-import { drugInteractionService } from '@/services/drug-interactions';
+import { drugInteractionService, type InteractionReport } from '@/services/drug-interactions';
 
 interface Patient {
   id: string;
@@ -25,12 +25,23 @@ interface PatientProfileViewProps {
   onBack: () => void;
 }
 
+const STATUS_STYLES: Record<string, string> = {
+  signed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  dispensed: 'bg-blue-100 text-blue-700 border-blue-200',
+  active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  draft: 'bg-amber-100 text-amber-700 border-amber-200',
+  cancelled: 'bg-red-100 text-red-700 border-red-200',
+};
+
 export default function PatientProfileView({ patient, onBack }: PatientProfileViewProps) {
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [interactionReport, setInteractionReport] = useState<InteractionReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   const handleDownloadReport = async () => {
     setDownloadingPDF(true);
@@ -52,22 +63,48 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
     }
   };
 
+  const handleRegenerateReport = async () => {
+    setRegenerating(true);
+    try {
+      await drugInteractionService.regenerateReport(parseInt(patient.id));
+      const report = await drugInteractionService.getLatestReport(parseInt(patient.id));
+      setInteractionReport(report);
+    } catch {
+      // silently fail
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   useEffect(() => {
-    async function fetchPatientPrescriptions() {
+    async function fetchData() {
       try {
-        const res = await api.get(`/medical-records/prescriptions/`, {
-          params: { patient_id: patient.id }
-        });
-        const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
+        setReportLoading(true);
+        const [rxRes, report] = await Promise.all([
+          api.get(`/medical-records/prescriptions/`, { params: { patient_id: patient.id } }),
+          drugInteractionService.getLatestReport(parseInt(patient.id)).catch(() => null),
+        ]);
+        const data = Array.isArray(rxRes.data) ? rxRes.data : (rxRes.data.results || []);
         setPrescriptions(data);
+        setInteractionReport(report);
       } catch (err) {
-        console.error('Failed to fetch prescriptions', err);
+        console.error('Failed to fetch data', err);
       } finally {
         setLoading(false);
+        setReportLoading(false);
       }
     }
-    fetchPatientPrescriptions();
+    fetchData();
   }, [patient.id]);
+
+  const activePrescriptions = prescriptions.filter(rx => ['signed', 'dispensed', 'active'].includes(rx.status));
+  const riskLevel = interactionReport
+    ? interactionReport.critical_count > 0 ? 'critical'
+      : interactionReport.high_count > 0 ? 'high'
+      : interactionReport.moderate_count > 0 ? 'moderate'
+      : interactionReport.total_findings > 0 ? 'low'
+      : 'safe'
+    : null;
 
   return (
     <div className="space-y-6">
@@ -83,20 +120,6 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
           </button>
 
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadReport}
-              disabled={downloadingPDF}
-              title={pdfError ?? undefined}
-              className="border-primary/30 hover:bg-primary/10 text-primary font-medium"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {downloadingPDF ? 'Downloading…' : 'Download Interaction Report'}
-            </Button>
-            {pdfError && (
-              <span className="text-xs text-destructive self-center">{pdfError}</span>
-            )}
             <Button
               variant="outline"
               size="sm"
@@ -126,31 +149,163 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
         <div className="lg:col-span-1 space-y-6">
           <PatientAnatomyCard />
 
-          <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <Pill className="h-5 w-5 text-primary" />
-              Current Medications
-            </h2>
+          {/* Prescriptions card */}
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <Pill className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-bold text-foreground">Current Medications</h2>
+              {!loading && (
+                <span className="ml-auto text-xs text-muted-foreground">{activePrescriptions.length} active</span>
+              )}
+            </div>
+
             {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="h-6 w-6 rounded-full border-2 border-muted border-t-primary animate-spin" />
+              <div className="flex items-center justify-center py-10">
+                <div className="h-5 w-5 rounded-full border-2 border-muted border-t-primary animate-spin" />
               </div>
-            ) : prescriptions.length > 0 ? (
-              <div className="space-y-3">
-                {prescriptions.map((rx) => (
-                  <div key={rx.id} className="rounded-lg border border-border bg-background p-3">
-                    <p className="font-medium text-foreground">{rx.medication_name}</p>
-                    <p className="text-xs text-muted-foreground">{rx.dosage} - {rx.frequency}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {rx.duration} • <span className={rx.is_signed ? 'text-green-600' : 'text-amber-600'}>
-                        {rx.is_signed ? 'Signed' : 'Draft'}
-                      </span>
-                    </p>
-                  </div>
-                ))}
+            ) : activePrescriptions.length > 0 ? (
+              <div className="divide-y divide-border">
+                {activePrescriptions.map((rx) => {
+                  const statusKey = rx.status?.toLowerCase() ?? 'draft';
+                  const adherence = rx.adherence_count ?? null;
+                  return (
+                    <div key={rx.id} className="px-5 py-3.5 flex items-start gap-3">
+                      <div className="mt-0.5 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Pill className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-foreground truncate">{rx.medication_name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{rx.dosage} · {rx.frequency}</p>
+                        <p className="text-xs text-muted-foreground">{rx.duration}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLES[statusKey] ?? 'bg-muted text-muted-foreground border-border'}`}>
+                          {statusKey.charAt(0).toUpperCase() + statusKey.slice(1)}
+                        </span>
+                        {adherence !== null ? (
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            {adherence} taken
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground/50">No adherence data</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">No prescriptions found.</p>
+              <div className="py-10 text-center text-sm text-muted-foreground">No active prescriptions.</div>
+            )}
+          </div>
+
+          {/* Interaction Report Card */}
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-bold text-foreground">Interaction Report</h2>
+              <button
+                type="button"
+                onClick={handleRegenerateReport}
+                disabled={regenerating}
+                className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                title="Regenerate report"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${regenerating ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {reportLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="h-5 w-5 rounded-full border-2 border-muted border-t-primary animate-spin" />
+              </div>
+            ) : interactionReport ? (
+              <div className="p-5 space-y-4">
+                {/* Risk banner */}
+                {riskLevel === 'safe' ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-medium text-emerald-700">No significant interactions detected</span>
+                  </div>
+                ) : riskLevel === 'critical' ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+                    <ShieldAlert className="h-4 w-4 text-red-600 shrink-0" />
+                    <span className="text-xs font-medium text-red-700">Critical interactions detected — review required</span>
+                  </div>
+                ) : riskLevel === 'high' ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-orange-50 border border-orange-200 px-3 py-2">
+                    <ShieldAlert className="h-4 w-4 text-orange-600 shrink-0" />
+                    <span className="text-xs font-medium text-orange-700">High severity interactions present</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                    <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-xs font-medium text-amber-700">Some interactions found — monitor patient</span>
+                  </div>
+                )}
+
+                {/* Severity counts grid */}
+                <div className="grid grid-cols-4 gap-1.5 text-center">
+                  {[
+                    { label: 'Critical', count: interactionReport.critical_count, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
+                    { label: 'High', count: interactionReport.high_count, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-100' },
+                    { label: 'Moderate', count: interactionReport.moderate_count, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+                    { label: 'Low', count: interactionReport.low_count, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
+                  ].map(({ label, count, color, bg }) => (
+                    <div key={label} className={`rounded-lg border p-2 ${bg}`}>
+                      <p className={`text-base font-bold leading-none ${color}`}>{count}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 leading-none">{label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Medications evaluated */}
+                {Array.isArray(interactionReport.items) && interactionReport.items.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Medications evaluated</p>
+                    <div className="flex flex-wrap gap-1">
+                      {[...new Set(interactionReport.items.flatMap(i => i.medications))].map(med => (
+                        <span key={med} className="text-[11px] px-2 py-0.5 rounded-full bg-muted border border-border text-foreground">
+                          {med}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer: date + download */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {new Date(interactionReport.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDownloadReport}
+                    disabled={downloadingPDF}
+                    className="h-7 text-xs px-2 gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                  >
+                    <Download className="h-3 w-3" />
+                    {downloadingPDF ? 'Downloading…' : 'Export PDF'}
+                  </Button>
+                </div>
+                {pdfError && <p className="text-xs text-destructive">{pdfError}</p>}
+              </div>
+            ) : (
+              <div className="py-10 text-center space-y-2">
+                <ShieldAlert className="h-8 w-8 mx-auto text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No interaction report yet.</p>
+                <button
+                  type="button"
+                  onClick={handleRegenerateReport}
+                  disabled={regenerating}
+                  className="text-xs text-primary hover:underline"
+                >
+                  {regenerating ? 'Generating…' : 'Generate now'}
+                </button>
+              </div>
             )}
           </div>
 
@@ -158,7 +313,7 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
             id: patient.id,
             name: patient.name,
             age: patient.age,
-            gender: 'Unknown', // Default as these aren't in the slim patient object
+            gender: 'Unknown',
             dateOfBirth: 'Unknown',
             bloodType: 'Unknown',
             allergies: [],
