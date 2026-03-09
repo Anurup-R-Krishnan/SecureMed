@@ -24,15 +24,19 @@ export function WardMap() {
                 const patients = await adminService.getPatients();
 
                 const generatedRooms = Array.from({ length: 12 }, (_, i) => {
-                    const roomNum = `30${i + 1}`;
+                    const roomNum = (300 + i + 1).toString();
                     const assignedPatient = patients[i];
 
                     if (assignedPatient) {
                         // Determine acuity based on recent vitals if available, otherwise random or stable
+                        const firstName = assignedPatient.user_first_name || '';
+                        const lastName = assignedPatient.user_last_name || '';
+                        const fullName = assignedPatient.name || `${firstName} ${lastName}`.trim() || 'Anonymous Patient';
+
                         return {
                             id: roomNum,
                             isOccupied: true,
-                            patientName: assignedPatient.name || assignedPatient.first_name + ' ' + assignedPatient.last_name,
+                            patientName: fullName,
                             acuity: (i % 5 === 0 ? 'critical' : 'stable') as 'critical' | 'stable', // Simple logic: every 5th patient is critical
                             isIsolation: false
                         };
