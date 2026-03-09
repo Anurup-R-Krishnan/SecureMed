@@ -151,10 +151,50 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                         </kbd>
                     </Button>
 
-                    <Button variant="ghost" size="icon" className="text-muted-foreground relative h-10 w-10 hover:bg-muted/30 rounded-full">
-                        <Bell className="h-5 w-5" />
-                        <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-background ring-1 ring-red-500/20"></span>
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground relative h-10 w-10 hover:bg-muted/30 rounded-full">
+                                <Bell className="h-5 w-5" />
+                                <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-background ring-1 ring-red-500/20"></span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-80">
+                            <DropdownMenuLabel className="flex justify-between items-center">
+                                Notifications
+                                <span className="text-[10px] font-normal text-muted-foreground">Mark all as read</span>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <div className="max-h-80 overflow-y-auto">
+                                <DropdownMenuItem className="flex flex-col items-start gap-1 p-3 cursor-default">
+                                    <div className="flex justify-between w-full">
+                                        <span className="font-bold text-sm">Appointment Confirmed</span>
+                                        <span className="text-[10px] text-muted-foreground">2m ago</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Your visit with Dr. Smith is confirmed for tomorrow at 10:00 AM.</p>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="flex flex-col items-start gap-1 p-3 cursor-default">
+                                    <div className="flex justify-between w-full">
+                                        <span className="font-bold text-sm">New Lab Result</span>
+                                        <span className="text-[10px] text-muted-foreground">1h ago</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Your Blood Test results from yesterday are now available for viewing.</p>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="flex flex-col items-start gap-1 p-3 cursor-default opacity-60">
+                                    <div className="flex justify-between w-full">
+                                        <span className="font-medium text-sm">Prescription Ready</span>
+                                        <span className="text-[10px] text-muted-foreground">5h ago</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Your prescription for Metformin has been sent to Central Pharmacy.</p>
+                                </DropdownMenuItem>
+                            </div>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="justify-center text-primary font-bold text-xs cursor-pointer">
+                                View All Notifications
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     {/* User Profile */}
                     <DropdownMenu>
