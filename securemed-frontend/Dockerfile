@@ -34,10 +34,6 @@ EXPOSE 8080
 CMD ["node", "server.js"]
 
 # ── dev ───────────────────────────────────────────────────────────────────────
-FROM deps AS dev
-
-COPY . .
-ARG BACKEND_URL
-ENV BACKEND_URL=$BACKEND_URL
-EXPOSE 3000
-CMD ["bun", "run", "dev"]
+USER nextjs
+EXPOSE 8080
+CMD ["node", "server.js"]
