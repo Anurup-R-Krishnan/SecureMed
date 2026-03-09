@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, Pill, MessageSquare, UserPlus } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Download, Pill, MessageSquare, UserPlus } from 'lucide-react';
 import PatientTimeline from './patient-timeline';
 import PatientNotes from './patient-notes';
 import PatientAnatomyCard from './patient-anatomy-card';
@@ -9,6 +9,7 @@ import EmergencyAccessModal from '@/components/portals/doctor/shared/emergency-a
 import { PatientInfoCard } from '@/components/ui/patient-info-card';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
+import { drugInteractionService } from '@/services/drug-interactions';
 
 interface Patient {
   id: string;
@@ -28,6 +29,28 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const handleDownloadReport = async () => {
+    setDownloadingPDF(true);
+    setPdfError(null);
+    try {
+      const blob = await drugInteractionService.downloadReportPDF(parseInt(patient.id));
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `interaction_report_${patient.name.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setPdfError('No interaction report found for this patient.');
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchPatientPrescriptions() {
@@ -60,6 +83,20 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
           </button>
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={downloadingPDF}
+              title={pdfError ?? undefined}
+              className="border-primary/30 hover:bg-primary/10 text-primary font-medium"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {downloadingPDF ? 'Downloading…' : 'Download Interaction Report'}
+            </Button>
+            {pdfError && (
+              <span className="text-xs text-destructive self-center">{pdfError}</span>
+            )}
             <Button
               variant="outline"
               size="sm"

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertOctagon, CheckCircle2, Pill, Search, X } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, ChevronDown, Pill, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { drugInteractionService, type InteractionCheckResult, type InteractionReport } from '@/services/drug-interactions';
 
@@ -29,6 +29,16 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const [latestReport, setLatestReport] = useState<InteractionReport | null>(null);
     const [reportHistory, setReportHistory] = useState<InteractionReport[]>([]);
     const [error, setError] = useState<string>('');
+    const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(['critical']));
+
+    const toggleTier = (severity: string) => {
+        setExpandedTiers(prev => {
+            const next = new Set(prev);
+            if (next.has(severity)) next.delete(severity);
+            else next.add(severity);
+            return next;
+        });
+    };
 
     const reloadReports = async () => {
         try {
@@ -263,13 +273,19 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">
                                         Combination Risks
                                     </p>
-                                    {groupedInteractionFindings.map((group, idx) => (
-                                        <FindingGroupCard
-                                            key={`${group.title}-${idx}`}
-                                            group={group}
-                                            severityTone={severityTone}
-                                        />
-                                    ))}
+                                    {SEVERITY_TIERS.map((severity) => {
+                                        const tierGroups = groupedInteractionFindings.filter(g => g.severity === severity);
+                                        return (
+                                            <SeverityTierSection
+                                                key={severity}
+                                                severity={severity}
+                                                groups={tierGroups}
+                                                isExpanded={expandedTiers.has(severity)}
+                                                onToggle={() => toggleTier(severity)}
+                                                severityTone={severityTone}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             )}
 
@@ -278,13 +294,19 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-700">
                                         Single Medication Effects
                                     </p>
-                                    {groupedSingleDrugFindings.slice(0, 6).map((group, idx) => (
-                                        <FindingGroupCard
-                                            key={`${group.title}-${idx}`}
-                                            group={group}
-                                            severityTone={severityTone}
-                                        />
-                                    ))}
+                                    {SEVERITY_TIERS.map((severity) => {
+                                        const tierGroups = groupedSingleDrugFindings.filter(g => g.severity === severity);
+                                        return (
+                                            <SeverityTierSection
+                                                key={severity}
+                                                severity={severity}
+                                                groups={tierGroups}
+                                                isExpanded={expandedTiers.has(severity)}
+                                                onToggle={() => toggleTier(severity)}
+                                                severityTone={severityTone}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             )}
                         </motion.div>
@@ -304,6 +326,55 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+const SEVERITY_TIERS = ['critical', 'high', 'moderate', 'low'] as const;
+
+function SeverityTierSection({
+    severity,
+    groups,
+    isExpanded,
+    onToggle,
+    severityTone,
+}: {
+    severity: string;
+    groups: FindingGroup[];
+    isExpanded: boolean;
+    onToggle: () => void;
+    severityTone: Record<string, string>;
+}) {
+    if (groups.length === 0) return null;
+    const totalFindings = groups.reduce((sum, g) => sum + g.count, 0);
+    return (
+        <div className="rounded-lg border overflow-hidden">
+            <button
+                type="button"
+                onClick={onToggle}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2 bg-muted/40 hover:bg-muted/70 transition-colors text-left"
+            >
+                <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded border ${severityTone[severity] || severityTone.moderate}`}>
+                        {severity}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {totalFindings} finding{totalFindings !== 1 ? 's' : ''} across {groups.length} combination{groups.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            {isExpanded && (
+                <div className="p-2 space-y-2 bg-background">
+                    {groups.map((group, idx) => (
+                        <FindingGroupCard
+                            key={`${group.title}-${idx}`}
+                            group={group}
+                            severityTone={severityTone}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -374,7 +445,7 @@ function buildFindingGroups(findings: InteractionCheckResult['findings']): Findi
         if (severityDelta !== 0) return severityDelta;
         if (right.combinationSize !== left.combinationSize) return right.combinationSize - left.combinationSize;
         return right.count - left.count;
-    }).slice(0, 8);
+    });
 }
 
 function severityRank(severity: string) {

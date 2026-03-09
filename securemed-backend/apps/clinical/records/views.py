@@ -748,6 +748,33 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=['get'], url_path='reports/latest/pdf')
+    def download_latest_report_pdf(self, request):
+        from django.http import HttpResponse
+        from .pdf_reports import generate_interaction_report_pdf
+
+        patient = self._resolve_patient(request)
+        if not patient:
+            raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
+
+        report = (
+            self.MedicationInteractionReport.objects
+            .filter(patient=patient)
+            .prefetch_related('items')
+            .first()
+        )
+        if not report:
+            return Response({"detail": "No report found."}, status=status.HTTP_404_NOT_FOUND)
+
+        buffer = generate_interaction_report_pdf(report)
+        patient_name = patient.user.get_full_name().replace(' ', '_') or f"patient_{patient.id}"
+        report_date = report.created_at.strftime('%Y%m%d')
+        filename = f"interaction_report_{patient_name}_{report_date}.pdf"
+
+        http_response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        http_response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return http_response
+
 
 class PharmacyOrderViewSet(viewsets.ModelViewSet):
     from .models import PharmacyOrder

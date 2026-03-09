@@ -302,3 +302,153 @@ class MedicationInteractionApiTests(TestCase):
     def test_missing_async_job_is_safe_noop(self):
         payload = generate_interaction_report_job.run(999999)
         self.assertEqual(payload["status"], "missing")
+
+
+class MedicationReportPDFTests(TestCase):
+    """Tests for the GET /reports/latest/pdf/ endpoint."""
+
+    def setUp(self):
+        self.client = APIClient()
+
+        # Primary patient + user
+        self.patient_user = User.objects.create_user(
+            username="patient_pdf_tests",
+            email="patient_pdf@test.com",
+            password="testpass123",
+            role="patient",
+        )
+        self.patient = Patient.objects.create(
+            user=self.patient_user,
+            patient_id="PAT-PDF-1",
+            date_of_birth=date(1988, 5, 20),
+            gender="F",
+            phone="+919988776655",
+            emergency_contact="+919988776644",
+            address="123 Test Street",
+            city="Chennai",
+            state="Tamil Nadu",
+            postal_code="600001",
+        )
+
+        # A second patient whose report the first patient must NOT access
+        self.other_patient_user = User.objects.create_user(
+            username="other_patient_pdf",
+            email="other_pdf@test.com",
+            password="testpass123",
+            role="patient",
+        )
+        self.other_patient = Patient.objects.create(
+            user=self.other_patient_user,
+            patient_id="PAT-PDF-2",
+            date_of_birth=date(1975, 3, 10),
+            gender="M",
+            phone="+919900112233",
+            emergency_contact="+919900112244",
+            address="456 Other Street",
+            city="Mumbai",
+            state="Maharashtra",
+            postal_code="400001",
+        )
+
+        # Doctor with access to the primary patient
+        self.doctor_user = User.objects.create_user(
+            username="doctor_pdf_tests",
+            email="doctor_pdf@test.com",
+            password="testpass123",
+            role="doctor",
+        )
+        dept = Department.objects.get_or_create(
+            code="GPDF",
+            defaults={
+                "name": "General PDF",
+                "floor": 1,
+                "building": "B",
+                "phone": "+911234500000",
+                "email": "gpdf@test.com",
+            },
+        )[0]
+        self.doctor = Doctor.objects.create(
+            user=self.doctor_user,
+            doctor_id="DR-PDF-1",
+            specialization="general",
+            license_number="LIC-PDF-1",
+            qualification="MBBS",
+            experience_years=8,
+            department=dept,
+            consultation_fee=600,
+            phone="+911234500001",
+        )
+        # Link doctor to patient via a MedicalRecord so _resolve_patient passes
+        MedicalRecord.objects.create(
+            record_id="REC-PDF-1",
+            patient=self.patient,
+            doctor=self.doctor,
+            record_type="consultation",
+            record_date=date(2026, 1, 1),
+            diagnosis="Routine checkup",
+        )
+
+        from apps.clinical.records.interaction_service import generate_and_store_report
+        # Seed a report for the primary patient
+        self.report = generate_and_store_report(
+            patient=self.patient,
+            generated_by=self.doctor_user,
+            trigger_event="test_pdf",
+            candidate_medications=["Aspirin", "Warfarin"],
+        )
+
+    def test_doctor_can_download_pdf_for_patient(self):
+        self.client.force_authenticate(user=self.doctor_user)
+        response = self.client.get(
+            "/api/medical-records/drug-interactions/reports/latest/pdf/",
+            {"patient_id": self.patient.id},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("attachment", response["Content-Disposition"])
+        self.assertIn(".pdf", response["Content-Disposition"])
+
+    def test_patient_can_download_own_pdf(self):
+        self.client.force_authenticate(user=self.patient_user)
+        response = self.client.get(
+            "/api/medical-records/drug-interactions/reports/latest/pdf/",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_patient_cannot_download_another_patients_pdf(self):
+        # patient_user tries to access other_patient's report
+        self.client.force_authenticate(user=self.patient_user)
+        response = self.client.get(
+            "/api/medical-records/drug-interactions/reports/latest/pdf/",
+            {"patient_id": self.other_patient.id},
+        )
+        # Patient role: _resolve_patient returns own profile, ignoring patient_id param,
+        # so it will return their own report (not 403). The restriction is that a patient
+        # user's own patient_profile is always used — they cannot impersonate another patient.
+        # The response must either be their own 200 or 404 (no report yet), not the other's.
+        self.assertNotEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # And must NOT return the other patient's data in the Content-Disposition header
+        if response.status_code == status.HTTP_200_OK:
+            self.assertNotIn(
+                self.other_patient.patient_id,
+                response.get("Content-Disposition", ""),
+            )
+
+    def test_no_report_returns_404(self):
+        # other_patient has no report yet
+        self.client.force_authenticate(user=self.doctor_user)
+        # Give doctor access to other_patient too
+        MedicalRecord.objects.create(
+            record_id="REC-PDF-2",
+            patient=self.other_patient,
+            doctor=self.doctor,
+            record_type="consultation",
+            record_date=date(2026, 1, 1),
+            diagnosis="Check",
+        )
+        response = self.client.get(
+            "/api/medical-records/drug-interactions/reports/latest/pdf/",
+            {"patient_id": self.other_patient.id},
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

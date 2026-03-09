@@ -78,4 +78,14 @@ export const drugInteractionService = {
         const response = await api.post('/medical-records/drug-interactions/reports/generate/', payload);
         return response.data;
     },
+
+    async downloadReportPDF(patientId?: number): Promise<Blob> {
+        const params: Record<string, string | number> = {};
+        if (patientId) params.patient_id = patientId;
+        const response = await api.get('/medical-records/drug-interactions/reports/latest/pdf/', {
+            params,
+            responseType: 'blob',
+        });
+        return response.data;
+    },
 };
