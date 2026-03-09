@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-securemed}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-securemed_db_password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-123}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -102,7 +102,7 @@ services:
         - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
       BACKEND_URL: ${BACKEND_URL:-http://backend:8000}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}

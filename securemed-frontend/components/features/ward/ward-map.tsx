@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 import { adminService } from '@/services/admin';
 
-interface RoomData {
+export interface RoomData {
     id: string;
     isOccupied: boolean;
     patientName: string | null;
@@ -14,53 +14,22 @@ interface RoomData {
     isIsolation: boolean;
 }
 
-export function WardMap() {
-    const [rooms, setRooms] = useState<RoomData[]>([]);
-    const [loading, setLoading] = useState(true);
+interface WardMapProps {
+    rooms: RoomData[];
+    loading?: boolean;
+}
 
-    React.useEffect(() => {
-        const fetchWardData = async () => {
-            try {
-                const patients = await adminService.getPatients();
-
-                const generatedRooms = Array.from({ length: 12 }, (_, i) => {
-                    const roomNum = (300 + i + 1).toString();
-                    const assignedPatient = patients[i];
-
-                    if (assignedPatient) {
-                        // Determine acuity based on recent vitals if available, otherwise random or stable
-                        const firstName = assignedPatient.user_first_name || '';
-                        const lastName = assignedPatient.user_last_name || '';
-                        const fullName = assignedPatient.name || `${firstName} ${lastName}`.trim() || 'Anonymous Patient';
-
-                        return {
-                            id: roomNum,
-                            isOccupied: true,
-                            patientName: fullName,
-                            acuity: (i % 5 === 0 ? 'critical' : 'stable') as 'critical' | 'stable', // Simple logic: every 5th patient is critical
-                            isIsolation: false
-                        };
-                    } else {
-                        return {
-                            id: roomNum,
-                            isOccupied: false,
-                            patientName: null,
-                            acuity: null,
-                            isIsolation: false
-                        };
-                    }
-                });
-
-                setRooms(generatedRooms);
-            } catch (error) {
-                console.error("Failed to fetch ward data", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchWardData();
-    }, []);
+export function WardMap({ rooms, loading = false }: WardMapProps) {
+    if (loading) {
+        return (
+            <div className="p-6 bg-card rounded-xl border shadow-sm flex items-center justify-center h-64">
+                <div className="flex flex-col items-center gap-2">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                    <p className="text-sm text-muted-foreground font-medium">Loading ward data...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <TooltipProvider>
@@ -75,7 +44,7 @@ export function WardMap() {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {rooms.map((room) => (
+                    {rooms.map((room: RoomData) => (
                         <Tooltip key={room.id}>
                             <TooltipTrigger asChild>
                                 <div
