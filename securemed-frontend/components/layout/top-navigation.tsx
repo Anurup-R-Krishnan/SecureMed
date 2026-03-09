@@ -36,8 +36,9 @@ export function TopNavigation({ userType }: TopNavigationProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const handleLogout = async () => {
+        const returnTo = encodeURIComponent(pathname);
         await logout();
-        router.push('/login');
+        router.push(`/login?next=${returnTo}`);
     };
 
     // Define navigation items based on user type
@@ -45,7 +46,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
         { name: 'Dashboard', href: '/doctor/dashboard' },
         { name: 'Patients', href: '/doctor/patients' },
         { name: 'Appointments', href: '/doctor/appointments' },
-        { name: 'Triage Requests', href: '/doctor/triage-inbox' },
+        { name: 'Emergency Queue', href: '/doctor/triage-inbox' },
         { name: 'Ward Map', href: '/doctor/ward-map' },
         { name: 'Pharmacology', href: '/doctor/medication-interaction' },
     ];
@@ -109,13 +110,6 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                         </div>
                     </Link>
 
-                    {/* Context Badge (e.g. Ward Name) */}
-                    {userType === 'doctor' && (
-                        <div className="hidden lg:flex items-center px-4 py-1.5 rounded-full bg-slate-900 text-slate-50 text-xs font-bold border border-slate-700 shadow-inner">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
-                            ICU - Ward 3
-                        </div>
-                    )}
                 </div>
 
                 {/* Desktop Navigation */}

@@ -9,7 +9,9 @@ from .views import (
     MedicationAdherenceLogViewSet,
     MedicationHistoryEventViewSet,
     patient_dashboard_stats,
-    patient_access_log
+    patient_access_log,
+    EmergencyCaseCreateView,
+    EmergencyCaseStatusView,
 )
 from .signing import sign_prescription, verify_prescription_signature
 from .timeline_api import patient_timeline
@@ -31,4 +33,8 @@ urlpatterns = [
     # Prescription signing endpoints
     path('prescriptions/<int:prescription_id>/sign/', sign_prescription, name='sign-prescription'),
     path('prescriptions/<int:prescription_id>/verify/', verify_prescription_signature, name='verify-prescription'),
+
+    # Emergency intake – public endpoints (no auth)
+    path('emergency/intake/', EmergencyCaseCreateView.as_view(), name='emergency-intake'),
+    path('emergency/status/<str:case_ref>/', EmergencyCaseStatusView.as_view(), name='emergency-status'),
 ]

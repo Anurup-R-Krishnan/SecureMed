@@ -4,7 +4,7 @@ from .models import LabTest, LabOrder, LabResult, LabResultNotification
 class LabTestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabTest
-        fields = '__all__'
+        fields = ['id', 'name', 'code', 'category', 'description', 'turnaround_time']
 
 class LabResultSerializer(serializers.ModelSerializer):
     is_abnormal = serializers.SerializerMethodField()

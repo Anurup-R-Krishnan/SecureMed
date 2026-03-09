@@ -93,6 +93,18 @@ function buildHighlightSet(trace: InfectionTrace | null): Set<string> {
     return highlighted;
 }
 
+function filterGraphToTrace(data: GraphVisualization, trace: InfectionTrace | null): GraphVisualization {
+    const highlighted = buildHighlightSet(trace);
+    if (highlighted.size === 0) return data;
+
+    return {
+        nodes: data.nodes.filter((node) => highlighted.has(node.id)),
+        links: data.links.filter(
+            (link) => highlighted.has(link.source) && highlighted.has(link.target),
+        ),
+    };
+}
+
 export default function ForceGraph({ data, highlightTrace, isActive }: ForceGraphProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const workerRef = useRef<Worker | null>(null);
@@ -113,6 +125,7 @@ export default function ForceGraph({ data, highlightTrace, isActive }: ForceGrap
     const linksRef = useRef<DrawLink[]>([]);
     const gridRef = useRef<Map<string, PositionedNode[]>>(new Map());
     const nodeByIdRef = useRef<Map<string, PositionedNode>>(new Map());
+    const displayData = useMemo(() => filterGraphToTrace(data, highlightTrace), [data, highlightTrace]);
 
     useEffect(() => {
         latestHighlightRef.current = highlightTrace;
@@ -219,8 +232,8 @@ export default function ForceGraph({ data, highlightTrace, isActive }: ForceGrap
     useEffect(() => {
         if (!isActive) return;
 
-        const nodes = Array.isArray(data?.nodes) ? data.nodes : [];
-        const links = Array.isArray(data?.links) ? data.links : [];
+        const nodes = Array.isArray(displayData?.nodes) ? displayData.nodes : [];
+        const links = Array.isArray(displayData?.links) ? displayData.links : [];
         if (!nodes.length) {
             nodesRef.current = [];
             linksRef.current = [];
@@ -283,7 +296,7 @@ export default function ForceGraph({ data, highlightTrace, isActive }: ForceGrap
             height,
             iterations: 120,
         });
-    }, [data, isActive, canvasSize, scheduleDraw]);
+    }, [displayData, isActive, canvasSize, scheduleDraw]);
 
     useEffect(() => {
         if (!isActive) return;

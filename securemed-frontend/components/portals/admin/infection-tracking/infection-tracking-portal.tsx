@@ -42,6 +42,7 @@ export default function InfectionTrackingPortal({
     const [error, setError] = useState<string | null>(null);
     const [selectedTrace, setSelectedTrace] = useState<InfectionTrace | null>(null);
     const [refreshToken, setRefreshToken] = useState(0);
+    const activeTrace = selectedTrace ?? traces?.[0] ?? null;
 
     const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
 
@@ -100,6 +101,12 @@ export default function InfectionTrackingPortal({
                 setGraphData(nextData.graphData);
                 setTraces(nextData.traces);
                 setStats(nextData.stats);
+                setSelectedTrace((prev) => {
+                    if (prev) {
+                        return nextData.traces.find((trace) => trace.trace_id === prev.trace_id) ?? nextData.traces[0] ?? null;
+                    }
+                    return nextData.traces[0] ?? null;
+                });
                 setError(null);
                 onDataLoaded?.(nextData);
             } catch {
@@ -182,15 +189,22 @@ export default function InfectionTrackingPortal({
             </div>
 
             {graphData && (
-                <ForceGraph data={graphData} highlightTrace={selectedTrace} isActive={isActive} />
+                <div className="space-y-4">
+                    <div className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm">
+                        <h2 className="text-lg font-bold text-foreground">Contact Graph</h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            {activeTrace
+                                ? 'Focused on the selected trace only, so the contact path and timing are easier to read.'
+                                : 'Showing the full hospital contact network. Select a trace above to isolate its chain.'}
+                        </p>
+                    </div>
+                    <ForceGraph data={graphData} highlightTrace={activeTrace} isActive={isActive} />
+                </div>
             )}
 
-            <div className="grid lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <TraceTable traces={traces} selectedTrace={selectedTrace} onSelectTrace={setSelectedTrace} />
-                </div>
-                <GraphLegend />
-            </div>
+            <TraceTable traces={traces} selectedTrace={activeTrace} onSelectTrace={setSelectedTrace} />
+
+            <GraphLegend />
         </div>
     );
 }

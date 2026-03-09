@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import api from '@/lib/api';
 import MyPatientsTable from '@/components/portals/doctor/patients/my-patients-table';
 import { appointmentService } from '@/services/appointments';
 
@@ -15,15 +14,6 @@ interface DoctorPatient {
     lastVisit: string;
     condition: string;
     status: string;
-}
-
-interface RawPatient {
-    id: number;
-    patient_id?: string;
-    user_first_name: string;
-    user_last_name: string;
-    last_visit?: string;
-    chronic_conditions?: string;
 }
 
 export default function PatientsPage() {
@@ -38,38 +28,23 @@ export default function PatientsPage() {
         const fetchPatients = async () => {
             setLoading(true);
             try {
-                // Try dedicated patients endpoint first
-                try {
-                    const patientsRes = await api.get('/patients/');
-                    const patientData: RawPatient[] = Array.isArray(patientsRes.data) ? patientsRes.data :
-                        (patientsRes.data.results || []);
-
-                    setPatients(patientData.map((p) => ({
-                        id: p.id,
-                        displayId: p.patient_id || `P-${p.id}`,
-                        name: `${p.user_first_name} ${p.user_last_name}`.trim(),
-                        lastVisit: p.last_visit || '',
-                        condition: p.chronic_conditions || '',
-                        status: 'Active'
-                    })));
-                } catch {
-                    // Fallback: derive from appointments
-                    const appts = await appointmentService.getAppointments();
-                    const uniquePatients = new Map<number, DoctorPatient>();
-                    appts.forEach((apt) => {
-                        if (!uniquePatients.has(apt.patient) && apt.patient_name) {
-                            uniquePatients.set(apt.patient, {
-                                id: apt.patient,
-                                displayId: `P-${apt.patient}`,
-                                name: apt.patient_name,
-                                lastVisit: apt.appointment_date,
-                                condition: '',
-                                status: 'Active'
-                            });
-                        }
-                    });
-                    setPatients(Array.from(uniquePatients.values()));
-                }
+                // Derive patient list from the doctor's own appointments
+                // to avoid loading the broad /patients/ endpoint (privacy risk)
+                const appts = await appointmentService.getAppointments();
+                const uniquePatients = new Map<number, DoctorPatient>();
+                appts.forEach((apt) => {
+                    if (!uniquePatients.has(apt.patient) && apt.patient_name) {
+                        uniquePatients.set(apt.patient, {
+                            id: apt.patient,
+                            displayId: `P-${apt.patient}`,
+                            name: apt.patient_name,
+                            lastVisit: apt.appointment_date,
+                            condition: '',
+                            status: 'Active'
+                        });
+                    }
+                });
+                setPatients(Array.from(uniquePatients.values()));
             } catch (error) {
                 console.error('Error fetching patients:', error);
             } finally {
@@ -106,6 +81,7 @@ export default function PatientsPage() {
                         if (p.id !== undefined && p.id !== null) {
                             router.push(`/doctor/patients/${p.id}`);
                         } else {
+                            alert('Unable to open patient record — patient ID is missing.');
                             console.error('Patient ID is missing:', p);
                         }
                     }}

@@ -87,6 +87,8 @@ class InfectionReportSerializer(serializers.ModelSerializer):
 
 
 class InfectionTraceSerializer(serializers.ModelSerializer):
+    source_report = serializers.SerializerMethodField()
+    target_report = serializers.SerializerMethodField()
     source_patient_id = serializers.CharField(source='source_report.patient.patient_id', read_only=True)
     source_patient_name = serializers.CharField(source='source_report.patient.user.get_full_name', read_only=True)
     target_patient_id = serializers.CharField(source='target_report.patient.patient_id', read_only=True)
@@ -114,6 +116,32 @@ class InfectionTraceSerializer(serializers.ModelSerializer):
             'infection_name', 'transmission_path', 'path_length',
             'confidence_score', 'vector_type', 'detected_at',
         ]
+
+    def get_source_report(self, obj):
+        return self._report_summary(obj.source_report)
+
+    def get_target_report(self, obj):
+        return self._report_summary(obj.target_report)
+
+    def _report_summary(self, report):
+        if not report:
+            return None
+        patient = getattr(report, 'patient', None)
+        patient_user = getattr(patient, 'user', None)
+        patient_name = patient_user.get_full_name().strip() if patient_user else ''
+        return {
+            'id': report.id,
+            'report_id': report.report_id,
+            'patient': patient.id if patient else None,
+            'patient_id': patient.patient_id if patient else '',
+            'patient_name': patient_name or (patient.patient_id if patient else ''),
+            'infection_name': report.infection_name,
+            'diagnosed_at': report.diagnosed_at,
+            'severity': report.severity,
+            'severity_display': report.get_severity_display(),
+            'specimen_source': report.specimen_source,
+            'antibiotic_resistance': report.antibiotic_resistance,
+        }
 
 
 class RoomRiskScoreSerializer(serializers.ModelSerializer):

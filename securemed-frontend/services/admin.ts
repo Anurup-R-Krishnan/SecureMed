@@ -38,6 +38,41 @@ export interface SystemAlert {
     timestamp: string;
 }
 
+// Audit Log types
+export interface AuditLogEntry {
+    id: number;
+    timestamp: string;
+    actor_email: string;
+    actor_name: string;
+    action: string;
+    action_display: string;
+    category: string;
+    resource_type: string;
+    resource_id: string;
+    description: string;
+    ip_address: string;
+}
+
+export interface AuditLogFilters {
+    action?: string;
+    category?: string;
+    actor_id?: string;
+    resource_type?: string;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+}
+
+export interface AuditLogResponse {
+    logs: AuditLogEntry[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+}
+
 // API Functions
 export const adminService = {
     /**
@@ -125,12 +160,23 @@ export const adminService = {
     },
 
     /**
-     * Get system audit logs
+     * Get system audit logs (structured, paginated, filterable)
      */
-    async getAuditLogs(): Promise<string[]> {
+    async getAuditLogs(filters: AuditLogFilters = {}): Promise<AuditLogResponse> {
         try {
-            const response = await apiClient.get('/admin/audit-logs/');
-            return response.data.logs || [];
+            const params = new URLSearchParams();
+            if (filters.action) params.set('action', filters.action);
+            if (filters.category) params.set('category', filters.category);
+            if (filters.actor_id) params.set('actor_id', filters.actor_id);
+            if (filters.resource_type) params.set('resource_type', filters.resource_type);
+            if (filters.date_from) params.set('date_from', filters.date_from);
+            if (filters.date_to) params.set('date_to', filters.date_to);
+            if (filters.search) params.set('search', filters.search);
+            if (filters.page) params.set('page', String(filters.page));
+            if (filters.page_size) params.set('page_size', String(filters.page_size));
+            const qs = params.toString();
+            const response = await apiClient.get(`/admin/audit-logs/${qs ? '?' + qs : ''}`);
+            return response.data;
         } catch (error) {
             console.error('Error fetching audit logs:', error);
             throw error;

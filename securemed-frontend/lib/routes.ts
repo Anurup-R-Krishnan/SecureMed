@@ -8,14 +8,19 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
   PORTAL: '/portal',
+  EMERGENCY: '/emergency',
+  LAB_TESTS: '/lab-tests',
 
   // Patient
   PATIENT: '/patient',
   PATIENT_DASHBOARD: '/patient/dashboard',
+  PATIENT_APPOINTMENTS: '/patient/appointments',
 
   // Doctor
   DOCTOR: '/doctor',
   DOCTOR_DASHBOARD: '/doctor/dashboard',
+  DOCTOR_PATIENTS: '/doctor/patients',
+  DOCTOR_TRIAGE_INBOX: '/doctor/triage-inbox',
 
   // Admin
   ADMIN: '/admin',

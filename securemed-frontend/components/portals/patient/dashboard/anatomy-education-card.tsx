@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Activity,
     AlertTriangle,
@@ -16,8 +16,10 @@ import { AnatomySelectionPayload, REGION_LOOKUP } from '@/components/features/an
 import {
     AnatomyRegionExplainer,
     ConditionCatalogItem,
+    ConditionMatchResult,
     ConditionVisualization,
     fetchConditionCatalog,
+    fetchConditionMatches,
     fetchConditionVisualization,
     fetchRegionExplainer,
 } from '@/services/anatomy-content';
@@ -48,9 +50,11 @@ export default function AnatomyEducationCard() {
     const [activeConditionId, setActiveConditionId] = useState<string>('');
     const [visualization, setVisualization] = useState<ConditionVisualization | null>(null);
     const [visualRegion, setVisualRegion] = useState<string | null>(null);
+    const [conditionMatches, setConditionMatches] = useState<ConditionMatchResult[]>([]);
 
     // ── ui state ────────────────────────────────────────────────────────────
     const [loading, setLoading] = useState(false);
+    const [matching, setMatching] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Derived: which mode does the canvas operate in?
@@ -105,14 +109,60 @@ export default function AnatomyEducationCard() {
         if (conditionId) {
             setSelection({ selectedRegions: [], selectedSymptoms: [], intensityByRegion: {} });
             setActiveRegion(null);
+            setConditionMatches([]);
         }
     };
+
+    const runConditionMatch = useCallback(async () => {
+        if (selection.selectedRegions.length === 0) {
+            setConditionMatches([]);
+            return;
+        }
+        setMatching(true);
+        try {
+            const matches = await fetchConditionMatches(selection.selectedRegions, selection.intensityByRegion);
+            setConditionMatches(matches);
+            setError(null);
+        } catch (e: any) {
+            setConditionMatches([]);
+            setError(e?.response?.data?.error || 'Unable to match conditions from selected pain profile.');
+        } finally {
+            setMatching(false);
+        }
+    }, [selection.selectedRegions, selection.intensityByRegion]);
+
+    useEffect(() => {
+        if (selection.selectedRegions.length === 0 || activeConditionId) {
+            setConditionMatches([]);
+            return;
+        }
+        const timer = setTimeout(() => {
+            runConditionMatch().catch(() => {});
+        }, 450);
+        return () => clearTimeout(timer);
+    }, [activeConditionId, runConditionMatch, selection.selectedRegions.length]);
 
     // When a region is clicked in condition mode, show explainer for it
     const handleConditionRegionSelect = (regionId: string) => {
         setVisualRegion(regionId);
         setActiveRegion(regionId);
     };
+
+    const currentConditionPain = visualization && visualRegion
+        ? (visualization.region_pain_levels?.[visualRegion] ?? 5)
+        : null;
+    const currentInterpretation = visualization && visualRegion
+        ? (visualization.pain_interpretations?.[visualRegion] || []).find((rule) => {
+            const min = Number(rule.min ?? 1);
+            const max = Number(rule.max ?? 10);
+            const pain = currentConditionPain ?? 5;
+            return pain >= min && pain <= max;
+        }) || null
+        : null;
+    const showEmergencyAlert = Boolean(
+        currentInterpretation?.urgency === 'emergency'
+        || (visualRegion === 'chest' && (currentConditionPain ?? 0) >= 8)
+    );
 
     return (
         <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
@@ -214,8 +264,34 @@ export default function AnatomyEducationCard() {
                                                     }`}
                                             >
                                                 {REGION_LOOKUP[regionId]?.label || regionId}
+                                                {typeof visualization.region_pain_levels?.[regionId] === 'number' && (
+                                                    <span className="ml-1.5 rounded-full bg-black/20 px-1.5 py-0.5 text-[10px]">
+                                                        {visualization.region_pain_levels[regionId]}/10
+                                                    </span>
+                                                )}
                                             </button>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {visualRegion && currentInterpretation && (
+                                <div className={`rounded-xl border p-3 ${showEmergencyAlert ? 'bg-red-500/10 border-red-500/30' : 'bg-orange-500/10 border-orange-500/30'}`}>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Pain interpretation</p>
+                                    <p className="text-sm font-semibold text-foreground mb-1">
+                                        {REGION_LOOKUP[visualRegion]?.label || visualRegion}: {currentConditionPain}/10
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">{currentInterpretation.message}</p>
+                                </div>
+                            )}
+
+                            {showEmergencyAlert && (
+                                <div className="rounded-xl border border-red-500/40 bg-red-500/15 p-3">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5" />
+                                        <p className="text-xs text-red-200">
+                                            High-intensity pain in this pattern may indicate an urgent condition. Seek emergency care immediately.
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -270,6 +346,45 @@ export default function AnatomyEducationCard() {
                     {/* ── Region explainer panel (explore mode) ── */}
                     {!visualization && (
                         <>
+                            {/* AI condition suggestions from body + pain input */}
+                            {selection.selectedRegions.length > 0 && (
+                                <div className="space-y-2 rounded-xl border border-border/50 p-3 bg-white/5">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Suggested Conditions</p>
+                                        <button
+                                            onClick={runConditionMatch}
+                                            disabled={matching}
+                                            className="text-[11px] rounded-md border border-border/60 px-2 py-1 text-muted-foreground hover:text-foreground disabled:opacity-60"
+                                        >
+                                            {matching ? 'Analyzing...' : 'Refresh'}
+                                        </button>
+                                    </div>
+                                    {conditionMatches.length > 0 ? (
+                                        <div className="space-y-1.5">
+                                            {conditionMatches.slice(0, 5).map((m) => (
+                                                <button
+                                                    key={m.condition_id}
+                                                    onClick={() => handleConditionChange(m.condition_id)}
+                                                    className="w-full rounded-lg border border-border/50 px-2.5 py-2 text-left hover:bg-white/5 transition-colors"
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-semibold text-foreground">{m.name}</span>
+                                                        <span className="text-[10px] rounded-full bg-primary/15 px-1.5 py-0.5 text-primary font-semibold">
+                                                            {m.confidence}%
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-1 text-[11px] text-muted-foreground">{m.reasoning}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                            {matching ? 'Generating AI matches...' : 'Select regions and pain levels to get AI-matched conditions.'}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Derived symptoms from selected regions */}
                             {selection.selectedSymptoms.length > 0 && (
                                 <div>

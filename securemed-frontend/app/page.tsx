@@ -1,17 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import Header from '@/components/layout/header';
 import LandingPage from '@/components/landing-page';
-import LoginModal from '@/components/auth/login-modal';
 import { getPortalRouteForRole } from '@/lib/routes';
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // If user is already authenticated, redirect to their portal
   useEffect(() => {
@@ -20,7 +18,7 @@ export default function Home() {
     }
   }, [isAuthenticated, user, router]);
 
-  const handleOpenLogin = (role?: 'patient' | 'doctor' | 'admin') => {
+  const handleOpenLogin = () => {
     router.push('/login');
   };
 
@@ -29,10 +27,6 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Header onLoginClick={handleOpenLogin} />
       <LandingPage onGetStarted={handleOpenLogin} />
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
     </div>
   );
 }

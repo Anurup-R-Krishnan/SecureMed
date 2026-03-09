@@ -287,7 +287,17 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         """
         Emergency Break-Glass Protocol.
         Grants temporary access and logs the security event.
+        Only doctors and nurses may invoke break-glass.
         """
+        # ── Role restriction ───────────────────────────────────────────
+        allowed_roles = {'doctor', 'nurse', 'admin'}
+        user_role = getattr(request.user, 'role', None)
+        if user_role not in allowed_roles:
+            return Response(
+                {"error": "Only clinical staff (doctors / nurses) may invoke break-glass access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         patient_id = request.data.get('patient_id')
         reason = request.data.get('reason')
         emergency_type = request.data.get('emergency_type', 'other')
@@ -300,29 +310,47 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
 
         from apps.accounts.patients.models import Patient
         try:
-            # Try to lookup by patient_id string first (e.g., 'PAT-XXXXXXXX')
+            # Canonical lookup: prefer the human-readable patient_id string
             patient = Patient.objects.filter(patient_id=patient_id).first()
             if not patient:
-                # Try by Patient table PK (numeric)
+                # Fallback: numeric PK
                 try:
                     patient = Patient.objects.get(pk=int(patient_id))
                 except (Patient.DoesNotExist, ValueError, TypeError):
-                    # Fallback to user ID lookup
-                    patient = Patient.objects.get(user__id=patient_id)
+                    raise Patient.DoesNotExist
         except (Patient.DoesNotExist, ValueError):
-            return Response({"error": "Patient not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Patient not found. Use the patient display ID (e.g. PAT-XXXXXXXX) or numeric PK."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         from .models import EmergencyAccessLog
-        
-        # enhance: check if access is already granted?
-        
+
+        # ── Duplicate check: skip if active access already exists ──────
+        from datetime import timedelta
+        recent_cutoff = timezone.now() - timedelta(hours=24)
+        existing = EmergencyAccessLog.objects.filter(
+            patient=patient,
+            accessed_by=request.user,
+            timestamp__gte=recent_cutoff,
+        ).first()
+        if existing:
+            return Response({
+                "status": "already_granted",
+                "message": "Break-glass access is already active for this patient.",
+                "log_id": existing.id,
+            })
+
+        # ── Proxy-aware IP extraction ──────────────────────────────────
+        from apps.platform.analytics.audit import get_client_ip
+
         # Create Log
         log = EmergencyAccessLog.objects.create(
             patient=patient,
             accessed_by=request.user,
             reason=reason,
             emergency_type=emergency_type,
-            ip_address=request.META.get('REMOTE_ADDR'),
+            ip_address=get_client_ip(request),
             # expires_at = timezone.now() + timedelta(hours=24) 
         )
         
@@ -345,15 +373,25 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
                 f"Patient: {patient.patient_id}\n"
                 f"Type: {emergency_type}\n"
                 f"Reason: {reason}\n"
-                f"IP: {request.META.get('REMOTE_ADDR')}\n"
+                f"IP: {get_client_ip(request)}\n"
                 f"Timestamp: {log.timestamp}"
             ),
         )
         
+        expires = log.expires_at.isoformat() if log.expires_at else None
+
         return Response({
             "status": "access_granted",
             "message": "Emergency access logged and granted.",
-            "log_id": log.id
+            "log_id": log.id,
+            "patient": {
+                "id": patient.id,
+                "patient_id": patient.patient_id,
+                "name": patient.user.get_full_name() or patient.user.email,
+            },
+            "expires_at": expires,
+            "emergency_type": emergency_type,
+            "granted_at": log.timestamp.isoformat(),
         })
 
 
@@ -616,6 +654,11 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             raise ValidationError({"medications": "Must be a list of medication names."})
         include_active = request.data.get("include_active", True)
         include_active = str(include_active).lower() not in {"false", "0", "no"}
+        raw_limit = request.data.get("limit_findings", 80)
+        try:
+            limit_findings = max(1, min(int(raw_limit), 200))
+        except (TypeError, ValueError):
+            limit_findings = 80
 
         patient = self._resolve_patient(request)
         active_meds = get_active_medications_for_patient(patient.id) if (patient and include_active) else []
@@ -624,6 +667,17 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             raise ValidationError({"medications": "At least one medication is required."})
 
         result = evaluate_medication_safety(merged_meds)
+        findings = result.get("findings", [])
+        interaction_findings = [finding for finding in findings if finding.get("combination_size", 0) >= 2]
+        side_effect_findings = [finding for finding in findings if finding.get("combination_size", 0) < 2]
+        visible_findings = (interaction_findings + side_effect_findings)[:limit_findings]
+
+        result["findings"] = visible_findings
+        result["interaction_findings_total"] = len(interaction_findings)
+        result["single_medication_findings_total"] = len(side_effect_findings)
+        result["visible_findings_count"] = len(visible_findings)
+        result["findings_truncated"] = len(visible_findings) < len(findings)
+        result["limit_findings"] = limit_findings
         result["requested_medications"] = meds
         result["active_medications_added"] = active_meds
         result["include_active"] = include_active
@@ -1091,3 +1145,77 @@ def patient_access_log(request):
         })
 
     return Response(result)
+
+
+# ---------------------------------------------------------------------------
+# Emergency Case public API (no auth required for create / status lookup)
+# ---------------------------------------------------------------------------
+from .models import EmergencyCase
+import uuid as _uuid
+from rest_framework.views import APIView
+
+
+class EmergencyCaseCreateView(APIView):
+    """Public endpoint – anyone can submit an emergency intake."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        data = request.data
+        patient_name = (data.get('patient_name') or '').strip()
+        chief_complaint = (data.get('chief_complaint') or '').strip()
+
+        if not patient_name or not chief_complaint:
+            return Response(
+                {'error': 'patient_name and chief_complaint are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        case_ref = _uuid.uuid4().hex[:10].upper()
+
+        severity = data.get('severity', 'urgent')
+        valid_severities = {c[0] for c in EmergencyCase.SEVERITY_CHOICES}
+        if severity not in valid_severities:
+            severity = 'urgent'
+
+        case = EmergencyCase.objects.create(
+            case_ref=case_ref,
+            patient_name=patient_name,
+            patient_age=data.get('patient_age') or None,
+            patient_phone=data.get('patient_phone', ''),
+            chief_complaint=chief_complaint,
+            severity=severity,
+            known_conditions=data.get('known_conditions', ''),
+            allergies=data.get('allergies', ''),
+            location_description=data.get('location_description', ''),
+        )
+
+        return Response(
+            {
+                'case_ref': case.case_ref,
+                'status': case.status,
+                'created_at': case.created_at,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class EmergencyCaseStatusView(APIView):
+    """Public lookup by case_ref – no authentication required."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, case_ref):
+        try:
+            case = EmergencyCase.objects.get(case_ref=case_ref)
+        except EmergencyCase.DoesNotExist:
+            return Response({'error': 'Case not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            'case_ref': case.case_ref,
+            'patient_name': case.patient_name,
+            'severity': case.severity,
+            'severity_display': case.get_severity_display(),
+            'status': case.status,
+            'status_display': case.get_status_display(),
+            'created_at': case.created_at,
+            'updated_at': case.updated_at,
+        })

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, AlertTriangle, Pill, MessageSquare, UserPlus } from 'lucide-react';
 import PatientTimeline from './patient-timeline';
 import PatientNotes from './patient-notes';
+import PatientAnatomyCard from './patient-anatomy-card';
 import EmergencyAccessModal from '@/components/portals/doctor/shared/emergency-access-modal';
 import { PatientInfoCard } from '@/components/ui/patient-info-card';
 import { Button } from '@/components/ui/button';
@@ -86,6 +87,8 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Medications & Quick Actions */}
         <div className="lg:col-span-1 space-y-6">
+          <PatientAnatomyCard />
+
           <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <Pill className="h-5 w-5 text-primary" />

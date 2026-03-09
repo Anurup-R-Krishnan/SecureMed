@@ -526,3 +526,62 @@ class VitalSign(models.Model):
     
     def __str__(self):
         return f"Vitals for {self.patient.patient_id} at {self.recorded_at}"
+
+
+# ---------------------------------------------------------------------------
+# Emergency Case – persists triage state from the public intake form
+# ---------------------------------------------------------------------------
+class EmergencyCase(models.Model):
+    SEVERITY_CHOICES = [
+        ('critical', 'Critical – Immediate'),
+        ('urgent', 'Urgent'),
+        ('moderate', 'Moderate'),
+        ('low', 'Low / Non-urgent'),
+    ]
+
+    STATUS_CHOICES = [
+        ('submitted', 'Submitted'),
+        ('triaging', 'Triaging'),
+        ('in_treatment', 'In Treatment'),
+        ('discharged', 'Discharged'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    # Public reference code so the caller can track without auth
+    case_ref = models.CharField(max_length=24, unique=True, db_index=True)
+
+    # Caller-supplied info (may be unauthenticated)
+    patient_name = models.CharField(max_length=200)
+    patient_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    patient_phone = models.CharField(max_length=20, blank=True)
+    chief_complaint = models.TextField()
+    severity = models.CharField(max_length=12, choices=SEVERITY_CHOICES, default='urgent')
+    known_conditions = models.TextField(blank=True)
+    allergies = models.TextField(blank=True)
+    location_description = models.CharField(max_length=255, blank=True)
+
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default='submitted')
+
+    # Linked records (populated later by staff)
+    patient = models.ForeignKey(
+        'patients.Patient', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='emergency_cases',
+    )
+    assigned_doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='assigned_emergency_cases',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'emergency_cases'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['case_ref']),
+            models.Index(fields=['status', 'severity', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"EMG-{self.case_ref} ({self.get_status_display()})"

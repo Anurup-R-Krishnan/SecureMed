@@ -1,21 +1,36 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import LoginModal from '@/components/auth/login-modal';
 import { getPortalRouteForRole } from '@/lib/routes';
 
-export default function LoginPage() {
+function getSafeRedirect(redirectTo: string | null) {
+    if (!redirectTo) return null;
+    if (!redirectTo.startsWith('/')) return null;
+    if (redirectTo.startsWith('//')) return null;
+    return redirectTo;
+}
+
+function LoginPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, isAuthenticated } = useAuth();
+    const redirectTo = getSafeRedirect(searchParams.get('next'));
+    const roleHint = searchParams.get('role');
+
+    // Derive the effective redirect: explicit `next` wins, then role hint, then
+    // the user's own portal.
+    const effectiveRedirect =
+        redirectTo ?? (roleHint ? getPortalRouteForRole(roleHint) : null);
 
     // If already authenticated, redirect to the appropriate portal
     useEffect(() => {
         if (isAuthenticated && user) {
-            router.replace(getPortalRouteForRole(user.role));
+            router.replace(effectiveRedirect || getPortalRouteForRole(user.role));
         }
-    }, [isAuthenticated, user, router]);
+    }, [isAuthenticated, effectiveRedirect, user, router]);
 
     if (isAuthenticated) {
         return (
@@ -28,7 +43,27 @@ export default function LoginPage() {
     return (
         <LoginModal
             isOpen={true}
-            onClose={() => router.push('/')}
+            onClose={() => {
+                // Preserve context: go back if there's history, otherwise go home
+                if (window.history.length > 1) {
+                    router.back();
+                } else {
+                    router.push('/');
+                }
+            }}
+            redirectTo={effectiveRedirect}
         />
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <p className="text-muted-foreground">Loading login...</p>
+            </div>
+        }>
+            <LoginPageContent />
+        </Suspense>
     );
 }

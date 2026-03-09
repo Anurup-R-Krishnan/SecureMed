@@ -16,9 +16,17 @@ import { getPortalRouteForRole } from '@/lib/routes';
 interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
+    redirectTo?: string | null;
 }
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+function getSafeRedirect(redirectTo?: string | null) {
+    if (!redirectTo) return null;
+    if (!redirectTo.startsWith('/')) return null;
+    if (redirectTo.startsWith('//')) return null;
+    return redirectTo;
+}
+
+export default function LoginModal({ isOpen, onClose, redirectTo }: LoginModalProps) {
     const router = useRouter();
     const { login } = useAuth();
 
@@ -38,9 +46,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             const result = await login(email, password);
 
             if (result.status === 'SUCCESS' && result.user) {
-                // Successful login
-                // Redirect logic is often handled by the page, but we can do it here too
-                router.replace(getPortalRouteForRole(result.user.role));
+                router.replace(getSafeRedirect(redirectTo) || getPortalRouteForRole(result.user.role));
             } else {
                 setError(result.error || 'Invalid credentials. Please try again.');
             }
@@ -54,7 +60,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     const handleRegisterClick = () => {
         onClose();
-        router.push('/register');
+        const registerUrl = redirectTo ? `/register?next=${encodeURIComponent(redirectTo)}` : '/register';
+        router.push(registerUrl);
     };
 
     return (
@@ -86,7 +93,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email Address</Label>
+                            <Label htmlFor="email">Email / Username</Label>
                             <div className="relative group">
                                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                 <Input
@@ -104,7 +111,13 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
                                 <Label htmlFor="password">Password</Label>
-                                <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" type="button">
+                                <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
+                                    type="button"
+                                    onClick={() => { onClose(); router.push('/forgot-password'); }}
+                                >
                                     Forgot password?
                                 </Button>
                             </div>

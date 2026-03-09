@@ -1,18 +1,26 @@
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from django.utils import timezone
 from .models import LabTest, LabOrder, LabResult, LabResultNotification
 from .serializers import LabTestSerializer, LabOrderSerializer, LabResultSerializer, LabResultNotificationSerializer
 
 
+class LabCatalogThrottle(AnonRateThrottle):
+    """Rate-limit anonymous access to the public lab test catalog."""
+    rate = '60/minute'
+
+
 class LabTestViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Catalog of available lab tests.
+    Public but rate-limited and trimmed to safe fields.
     """
     queryset = LabTest.objects.filter(is_active=True)
     serializer_class = LabTestSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [LabCatalogThrottle]
 
 
 class LabOrderViewSet(viewsets.ModelViewSet):
@@ -25,9 +33,10 @@ class LabOrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if hasattr(user, 'patient_profile'):
+            # patient FK on LabOrder points to AUTH_USER_MODEL, not Patient
             return LabOrder.objects.filter(patient=user)
         elif hasattr(user, 'doctor_profile') or user.role == 'doctor':
-             return LabOrder.objects.all()
+            return LabOrder.objects.filter(doctor=user)
         elif user.is_staff:
             return LabOrder.objects.all()
         return LabOrder.objects.none()
@@ -42,14 +51,17 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         if not items:
             raise serializers.ValidationError({"items": "At least one test is required"})
         
-        from django.contrib.auth import get_user_model
         from apps.accounts.patients.models import Patient
-        from apps.clinical.diagnostics.models import LabTest
         import uuid
         
         try:
-            # Look up the Patient model first
-            patient_model = Patient.objects.get(id=patient_id)
+            # Accept both numeric PK and human-readable patient_id (e.g. P-0001)
+            try:
+                pk = int(patient_id)
+                patient_model = Patient.objects.get(id=pk)
+            except (ValueError, TypeError):
+                # Non-numeric → treat as the human-readable patient_id field
+                patient_model = Patient.objects.get(patient_id=patient_id)
             patient_user = patient_model.user
         except Patient.DoesNotExist:
             raise serializers.ValidationError({"patient_id": "Invalid patient ID"})

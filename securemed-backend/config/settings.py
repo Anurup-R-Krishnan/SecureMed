@@ -334,4 +334,4 @@ NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
 NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'securemed_graph')
 
 # Google Gemini AI
-GOOGLE_GEMINI_API_KEY = config('GOOGLE_GEMINI_API_KEY', default='')
+GOOGLE_GEMINI_API_KEY = config('GOOGLE_GEMINI_API_KEY', default='AIzaSyCRvp4uUB0M7TaeSiUlgXVNJh7WhvSI-II')

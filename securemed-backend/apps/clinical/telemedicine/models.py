@@ -288,6 +288,11 @@ class ConditionCatalog(models.Model):
     name = models.CharField(max_length=200)
     overview = models.TextField()
     regions = models.JSONField(default=list, blank=True)
+    # Region pain profile used for condition -> body heatmap rendering.
+    region_pain_levels = models.JSONField(default=dict, blank=True)
+    # Region-level interpretation rules keyed by region_id.
+    # Example: {"chest": [{"min": 8, "max": 10, "message": "...", "urgency": "emergency"}]}
+    pain_interpretations = models.JSONField(default=dict, blank=True)
     typical_symptoms = models.JSONField(default=list, blank=True)
     seek_care_rules = models.JSONField(default=list, blank=True)
     scope = models.CharField(max_length=32, default='top20', db_index=True)

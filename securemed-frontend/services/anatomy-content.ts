@@ -34,9 +34,25 @@ export interface ConditionVisualization {
   name: string;
   overview: string;
   regions: string[];
+  region_pain_levels: Record<string, number>;
+  pain_interpretations: Record<string, Array<{
+    min: number;
+    max: number;
+    message: string;
+    urgency?: 'routine' | 'soon' | 'emergency';
+  }>>;
   typical_symptoms: string[];
   seek_care_rules: string[];
   pins: ConditionPin[];
+}
+
+export interface ConditionMatchResult {
+  condition_id: string;
+  name: string;
+  confidence: number;
+  matched_regions: string[];
+  typical_symptoms: string[];
+  reasoning: string;
 }
 
 export async function fetchRegionExplainer(regionId: string, role: 'patient' | 'doctor' = 'patient') {
@@ -58,4 +74,15 @@ export async function fetchConditionVisualization(conditionId: string, role: 'pa
     params: { role },
   });
   return response.data;
+}
+
+export async function fetchConditionMatches(
+  regions: string[],
+  intensityByRegion: Record<string, number>
+) {
+  const response = await api.post<{ matches: ConditionMatchResult[] }>('/telemedicine/conditions/match/', {
+    regions,
+    intensityByRegion,
+  });
+  return response.data.matches || [];
 }

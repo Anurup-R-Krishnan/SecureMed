@@ -42,8 +42,9 @@ export const getColumns = ({ onViewPatient }: PatientColumnsProps): ColumnDef<Pa
         },
     },
     {
-        accessorKey: "user.email",
+        accessorKey: "email",
         header: "Email",
+        cell: ({ row }) => row.original.user?.email || "N/A",
     },
     {
         accessorKey: "phone_number",

@@ -37,6 +37,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     AdminUserCreateSerializer
 )
+from apps.platform.analytics.audit import log_audit, get_client_ip
 
 User = get_user_model()
 
@@ -328,6 +329,16 @@ def register_view(request):
             )
             print(f"Patient profile created: {patient_id}")
         
+        # Audit: registration
+        log_audit(
+            actor=user,
+            action='register',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'New user registered: {user.email} (role: {user.role})',
+            ip_address=get_client_ip(request),
+        )
+        
         print(f"Status: SUCCESS - User registered")
         print(f"User ID: {user.id}")
         print(f"Invitation marked as used")
@@ -414,6 +425,16 @@ def login_view(request):
         # Increment failed attempts
         user.failed_login_attempts += 1
         
+        # Audit: failed login
+        log_audit(
+            actor=user,
+            action='login_failed',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'Failed login attempt for {user.email} (attempt {user.failed_login_attempts})',
+            ip_address=get_client_ip(request),
+        )
+        
         # Lock account if max attempts exceeded
         if user.failed_login_attempts > MAX_FAILED_ATTEMPTS:
             user.locked_until = timezone.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
@@ -444,6 +465,16 @@ def login_view(request):
     
     # No MFA - return tokens immediately
     tokens = get_tokens_for_user(user)
+    
+    # Audit: successful login
+    log_audit(
+        actor=user,
+        action='login',
+        resource_type='User',
+        resource_id=str(user.id),
+        description=f'User {user.email} logged in',
+        ip_address=get_client_ip(request),
+    )
     
     # Check policy version (Story 2.4)
     latest_policy = getattr(settings, 'LATEST_POLICY_VERSION', 1)
@@ -536,6 +567,16 @@ def mfa_verify_view(request):
         
         user.save()
         
+        # Audit: MFA enabled
+        log_audit(
+            actor=user,
+            action='mfa_enabled',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'MFA enabled for {user.email}',
+            ip_address=get_client_ip(request),
+        )
+        
         print(f"[MFA VERIFY] MFA enabled for user {user.username}")
         print(f"[MFA VERIFY] Generated {len(plain_codes)} recovery codes")
         
@@ -619,6 +660,16 @@ def mfa_deactivate_view(request):
     user.mfa_enabled = False
     user.mfa_secret = None
     user.save()
+    
+    # Audit: MFA disabled
+    log_audit(
+        actor=user,
+        action='mfa_disabled',
+        resource_type='User',
+        resource_id=str(user.id),
+        description=f'MFA disabled for {user.email}',
+        ip_address=get_client_ip(request),
+    )
     
     # Audit log
     print(f"[MFA DEACTIVATE] ✅ SUCCESS")
@@ -804,6 +855,17 @@ def mfa_login_view(request):
         print(f"[MFA LOGIN] Access token: {tokens['access'][:40]}...")
         print("="*70 + "\n")
         
+        # Audit: MFA login via recovery code
+        log_audit(
+            actor=user,
+            action='login',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'User {user.email} logged in via MFA recovery code',
+            ip_address=get_client_ip(request),
+            extra={'method': 'mfa_recovery_code'},
+        )
+        
         # Check policy version (Story 2.4)
         latest_policy = getattr(settings, 'LATEST_POLICY_VERSION', 1)
         requires_policy = user.accepted_policy_version < latest_policy
@@ -866,6 +928,17 @@ def mfa_login_view(request):
         tokens = get_tokens_for_user(user)
         print(f"[MFA LOGIN] Access token: {tokens['access'][:40]}...")
         print("="*70 + "\n")
+        
+        # Audit: MFA login via OTP
+        log_audit(
+            actor=user,
+            action='login',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'User {user.email} logged in via MFA OTP',
+            ip_address=get_client_ip(request),
+            extra={'method': 'mfa_otp'},
+        )
         
         # Check policy version (Story 2.4)
         latest_policy = getattr(settings, 'LATEST_POLICY_VERSION', 1)
@@ -971,6 +1044,17 @@ class LogoutView(APIView):
             refresh_token = request.data["refresh"]
             token = RefreshToken(refresh_token)
             token.blacklist()
+            
+            # Audit: logout
+            log_audit(
+                actor=request.user,
+                action='logout',
+                resource_type='User',
+                resource_id=str(request.user.id),
+                description=f'User {request.user.email} logged out',
+                ip_address=get_client_ip(request),
+            )
+            
             return Response({"message": "Successfully logged out"}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1075,6 +1159,15 @@ class PasswordResetConfirmView(APIView):
         user.password_reset_token = None
         user.password_reset_expires = None
         user.save(update_fields=['password', 'password_reset_token', 'password_reset_expires'])
+        
+        # Audit: password reset
+        log_audit(
+            actor=user,
+            action='password_reset',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'Password reset completed for {user.email}',
+        )
         
         return Response({
             'message': 'Password has been reset successfully.'
@@ -1378,6 +1471,17 @@ class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
             updated_user = serializer.save()
             new_role = updated_user.role
             
+            # Audit: role change
+            log_audit(
+                actor=request.user,
+                action='user_role_changed',
+                resource_type='User',
+                resource_id=str(updated_user.id),
+                description=f'Role changed from {old_role} to {new_role} for {updated_user.email}',
+                ip_address=get_client_ip(request),
+                extra={'old_role': old_role, 'new_role': new_role},
+            )
+            
             return Response({
                 'message': f'User role updated from {old_role} to {new_role}',
                 'user': {
@@ -1406,6 +1510,17 @@ class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = AdminUserCreateSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            
+            # Audit: user created by admin
+            log_audit(
+                actor=request.user,
+                action='user_created',
+                resource_type='User',
+                resource_id=str(user.id),
+                description=f'Admin {request.user.email} created user {user.email} (role: {user.role})',
+                ip_address=get_client_ip(request),
+            )
+            
             return Response({
                 'message': 'User created successfully',
                 'user': {

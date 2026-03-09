@@ -15,6 +15,32 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def _compute_room_occupancy_percent(window_days=7):
+    from apps.scheduling.appointments.models import Appointment
+    from apps.clinical.infection_tracking.models import Room
+
+    today = timezone.now().date()
+    window_start = today - timedelta(days=max(window_days - 1, 0))
+    rooms = Room.objects.filter(is_active=True)
+    total_rooms = rooms.count()
+    if total_rooms <= 0:
+        return 0
+
+    used_room_count = (
+        Appointment.objects.filter(
+            appointment_date__gte=window_start,
+            appointment_date__lte=today,
+            room__isnull=False,
+            status__in=['scheduled', 'confirmed', 'in_progress', 'completed'],
+        )
+        .values('room')
+        .distinct()
+        .count()
+    )
+
+    return round((used_room_count / total_rooms) * 100)
+
+
 # ============================================
 # Admin Dashboard API Endpoints
 # ============================================
@@ -51,9 +77,7 @@ def get_dashboard_stats(request):
         logger.exception("Failed to count today's appointments")
         today_appointments = 0
     
-    # Calculate hospital occupancy (placeholder - would need beds/admissions model)
-    # Default to 0 until Bed Management module is implemented
-    occupancy = 0
+    occupancy = _compute_room_occupancy_percent()
     
     # Calculate revenue (placeholder - would need billing integration)
     avg_revenue_per_patient = 2500  # In INR
@@ -227,6 +251,7 @@ def get_analytics(request):
     Uses REAL database counts.
     """
     from apps.clinical.records.models import MedicalRecord
+    from apps.clinical.records.models import EmergencyAccessLog
     from apps.accounts.patients.models import Patient
     from apps.scheduling.appointments.models import Appointment
     from django.db.models import Count
@@ -290,11 +315,20 @@ def get_analytics(request):
     total_patients = Patient.objects.count()
     total_visits = Appointment.objects.filter(status='completed').count()
     
+    recent_window_start = timezone.now() - timedelta(days=30)
+    emergency_appointments = Appointment.objects.filter(
+        appointment_date__gte=recent_window_start.date(),
+        reason__icontains='emergency',
+    ).count()
+    emergency_break_glass = EmergencyAccessLog.objects.filter(
+        timestamp__gte=recent_window_start
+    ).count()
+
     summary = {
         'totalPatients': total_patients,
         'totalVisits': total_visits,
-        'averageOccupancy': 0, # Default until Bed Management module is implemented
-        'emergencyCases': Appointment.objects.filter(reason__icontains='emergency').count(),
+        'averageOccupancy': _compute_room_occupancy_percent(),
+        'emergencyCases': emergency_appointments + emergency_break_glass,
     }
     
     # Department Stats (Real Data - requiring link to Department)
@@ -545,24 +579,108 @@ def health_check(request):
 @permission_classes([IsAuthenticated])
 def get_audit_logs(request):
     """
-    Returns emergency access logs from database.
-    Admin only. GET /api/admin/audit-logs/
+    Paginated, filterable audit log endpoint.
+    Admin only.  GET /api/admin/audit-logs/
+
+    Query params
+    ------------
+    action       – filter by action code (e.g. login, logout, emergency_access)
+    category     – filter by category (auth, admin, consent, clinical)
+    actor_id     – filter by actor user ID
+    resource_type– filter by resource type
+    date_from    – ISO date string (inclusive lower bound)
+    date_to      – ISO date string (inclusive upper bound)
+    search       – case-insensitive substring search on description
+    page         – 1-based page number (default 1)
+    page_size    – items per page (default 50, max 200)
     """
     if request.user.role != 'admin':
         return Response({'error': 'Admin access required'}, status=403)
-    
-    from apps.clinical.records.models import EmergencyAccessLog
-    logs = EmergencyAccessLog.objects.select_related(
-        'accessed_by', 'patient', 'patient__user'
-    ).order_by('-timestamp')[:100]
+
+    from apps.platform.analytics.models import AuditLog
+    from datetime import datetime
+
+    qs = AuditLog.objects.select_related('actor').all()
+
+    # ── Filters ─────────────────────────────────────────────────────────
+    action = request.query_params.get('action')
+    if action:
+        qs = qs.filter(action=action)
+
+    category = request.query_params.get('category')
+    if category:
+        category_actions = [
+            k for k, v in AuditLog.CATEGORY_MAP.items() if v == category
+        ]
+        if category_actions:
+            qs = qs.filter(action__in=category_actions)
+
+    actor_id = request.query_params.get('actor_id')
+    if actor_id:
+        qs = qs.filter(actor_id=actor_id)
+
+    resource_type = request.query_params.get('resource_type')
+    if resource_type:
+        qs = qs.filter(resource_type__iexact=resource_type)
+
+    date_from = request.query_params.get('date_from')
+    if date_from:
+        try:
+            qs = qs.filter(timestamp__date__gte=datetime.fromisoformat(date_from).date())
+        except ValueError:
+            pass
+
+    date_to = request.query_params.get('date_to')
+    if date_to:
+        try:
+            qs = qs.filter(timestamp__date__lte=datetime.fromisoformat(date_to).date())
+        except ValueError:
+            pass
+
+    search = request.query_params.get('search')
+    if search:
+        qs = qs.filter(description__icontains=search)
+
+    # ── Pagination ──────────────────────────────────────────────────────
+    total = qs.count()
+    try:
+        page = max(int(request.query_params.get('page', 1)), 1)
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        page_size = min(max(int(request.query_params.get('page_size', 50)), 1), 200)
+    except (ValueError, TypeError):
+        page_size = 50
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    logs = qs[start:end]
 
     data = []
     for log in logs:
-        actor = log.accessed_by.get_full_name() or log.accessed_by.email or str(log.accessed_by_id)
-        patient_name = getattr(log.patient.user, 'get_full_name', lambda: '')() or log.patient.patient_id
-        data.append(
-            f"[{log.timestamp.isoformat()}] {actor} accessed {patient_name} "
-            f"({log.patient.patient_id}) | {log.emergency_type} | {log.reason}"
-        )
+        actor_email = ''
+        actor_name = ''
+        if log.actor:
+            actor_email = log.actor.email
+            actor_name = log.actor.get_full_name() or log.actor.username
+        data.append({
+            'id': log.id,
+            'timestamp': log.timestamp.isoformat(),
+            'actor_email': actor_email,
+            'actor_name': actor_name,
+            'action': log.action,
+            'action_display': log.get_action_display(),
+            'category': log.category,
+            'resource_type': log.resource_type,
+            'resource_id': log.resource_id,
+            'description': log.description,
+            'ip_address': log.ip_address or '',
+        })
 
-    return Response({'logs': data})
+    return Response({
+        'logs': data,
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': max(1, -(-total // page_size)),  # ceil division
+    })

@@ -16,6 +16,11 @@ export interface InteractionCheckResult {
     pairs_checked: number;
     triplets_checked: number;
     findings: InteractionFinding[];
+    interaction_findings_total: number;
+    single_medication_findings_total: number;
+    visible_findings_count: number;
+    findings_truncated: boolean;
+    limit_findings: number;
     totals: {
         critical: number;
         high: number;
@@ -47,6 +52,7 @@ export const drugInteractionService = {
     async checkInteractions(medications: string[], patientId?: number): Promise<InteractionCheckResult> {
         const response = await api.post('/medical-records/drug-interactions/check/', {
             medications,
+            limit_findings: 80,
             ...(patientId ? { patient_id: patientId } : {}),
         });
         return response.data;

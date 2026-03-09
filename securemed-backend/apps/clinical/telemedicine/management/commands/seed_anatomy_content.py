@@ -151,6 +151,71 @@ SEVERITY_BY_CONDITION = {
     'dvt_warning': 'high',
 }
 
+BASE_PAIN_BY_REGION = {
+    'head': 6,
+    'throat': 5,
+    'chest': 7,
+    'abdomen': 7,
+    'left_arm': 5,
+    'right_arm': 5,
+    'pelvis': 6,
+    'left_leg': 6,
+    'right_leg': 6,
+}
+
+PAIN_BOOST_BY_CONDITION = {
+    'stroke_warning': 2,
+    'angina': 2,
+    'appendicitis_warning': 2,
+    'dvt_warning': 2,
+    'kidney_stone': 2,
+}
+
+REGION_RISK_HINT = {
+    'chest': 'severe chest pain can indicate acute cardiopulmonary risk',
+    'head': 'very severe head pain with neurologic symptoms can indicate stroke or hemorrhage risk',
+    'abdomen': 'severe focal abdominal pain can indicate urgent surgical pathology',
+    'left_leg': 'severe unilateral leg pain/swelling can indicate thrombotic risk',
+    'right_leg': 'severe unilateral leg pain/swelling can indicate thrombotic risk',
+}
+
+
+def _build_region_pain_levels(item):
+    boost = PAIN_BOOST_BY_CONDITION.get(item['condition_id'], 0)
+    return {
+        region_id: max(1, min(10, BASE_PAIN_BY_REGION.get(region_id, 5) + boost))
+        for region_id in item['regions']
+    }
+
+
+def _build_pain_interpretations(item, region_pain_levels):
+    interpretations = {}
+    for region_id, expected_level in region_pain_levels.items():
+        high_hint = REGION_RISK_HINT.get(region_id, 'severe pain in this region warrants urgent clinical review')
+        moderate_floor = max(4, expected_level - 2)
+        high_floor = max(7, expected_level)
+        interpretations[region_id] = [
+            {
+                'min': 1,
+                'max': 3,
+                'message': f"Mild {region_id.replace('_', ' ')} pain can match early or low-intensity {item['name']} patterns.",
+                'urgency': 'routine',
+            },
+            {
+                'min': moderate_floor,
+                'max': 6,
+                'message': f"Moderate {region_id.replace('_', ' ')} pain is compatible with {item['name']} and needs timely clinical assessment.",
+                'urgency': 'soon',
+            },
+            {
+                'min': high_floor,
+                'max': 10,
+                'message': f"High-intensity {region_id.replace('_', ' ')} pain: {high_hint}.",
+                'urgency': 'emergency',
+            },
+        ]
+    return interpretations
+
 
 class Command(BaseCommand):
     help = 'Seed anatomy explainers and condition visualization content.'
@@ -178,12 +243,16 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"Created explainer: {item['region_id']}"))
 
         for item in CONDITIONS:
+            region_pain_levels = _build_region_pain_levels(item)
+            pain_interpretations = _build_pain_interpretations(item, region_pain_levels)
             condition, created = ConditionCatalog.objects.update_or_create(
                 condition_id=item['condition_id'],
                 defaults={
                     'name': item['name'],
                     'overview': f"Clinician-facing visualization profile for {item['name']}.",
                     'regions': item['regions'],
+                    'region_pain_levels': region_pain_levels,
+                    'pain_interpretations': pain_interpretations,
                     'typical_symptoms': item['typical_symptoms'],
                     'seek_care_rules': [
                         'If symptoms are severe, rapidly worsening, or associated with red-flag signs, escalate urgent care.',

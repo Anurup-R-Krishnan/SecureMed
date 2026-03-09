@@ -165,7 +165,7 @@ export default function ClinicalDashboard({ todayAppts, totalPatients, loading }
                     <div className="bg-card border rounded-xl p-0 overflow-hidden">
                         <div className="p-4 border-b flex justify-between items-center">
                             <h3 className="font-bold">Team Huddle</h3>
-                            <Link href="#" className="text-xs text-primary font-bold hover:underline">View Board {'->'}</Link>
+                            <Link href="/doctor/dashboard" className="text-xs text-primary font-bold hover:underline">View Board {'->'}</Link>
                         </div>
 
                         {/* Simplified Huddle View */}

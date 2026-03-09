@@ -8,6 +8,16 @@ interface MedicationSandboxProps {
     patientId?: number;
 }
 
+type FindingGroup = {
+    title: string;
+    severity: InteractionCheckResult['findings'][number]['severity'];
+    medications: string[];
+    combinationSize: number;
+    count: number;
+    effects: string[];
+    sourceLabel: string;
+};
+
 export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<string[]>([]);
@@ -90,7 +100,12 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     }), []);
 
     const findings = checkResult?.findings ?? [];
-    const hasInteractions = findings.some((f) => f.combination_size >= 2);
+    const interactionFindings = findings.filter((f) => f.combination_size >= 2);
+    const singleDrugFindings = findings.filter((f) => f.combination_size < 2);
+    const visibleFindings = interactionFindings.length > 0 ? interactionFindings : singleDrugFindings;
+    const hasInteractions = interactionFindings.length > 0;
+    const groupedInteractionFindings = useMemo(() => buildFindingGroups(interactionFindings), [interactionFindings]);
+    const groupedSingleDrugFindings = useMemo(() => buildFindingGroups(singleDrugFindings), [singleDrugFindings]);
 
     const addMedication = (name: string) => {
         if (selected.some((s) => s.toLowerCase() === name.toLowerCase())) {
@@ -215,8 +230,24 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
 
                 {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
+                {!checking && checkResult && (
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full border bg-background px-3 py-1 font-medium">
+                            Interactions: {checkResult.interaction_findings_total ?? interactionFindings.length}
+                        </span>
+                        <span className="rounded-full border bg-background px-3 py-1 font-medium">
+                            Single-drug effects: {checkResult.single_medication_findings_total ?? singleDrugFindings.length}
+                        </span>
+                        {checkResult.findings_truncated ? (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium text-amber-800">
+                                Showing top {checkResult.visible_findings_count} of {checkResult.interaction_findings_total + checkResult.single_medication_findings_total}
+                            </span>
+                        ) : null}
+                    </div>
+                )}
+
                 <AnimatePresence mode="wait">
-                    {!checking && findings.length === 0 ? (
+                    {!checking && visibleFindings.length === 0 ? (
                         <motion.div
                             key="empty"
                             initial={{ opacity: 0 }}
@@ -226,26 +257,41 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                             Add medicines to see single-med side effects and interaction side effects.
                         </motion.div>
                     ) : (
-                        <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 space-y-2">
-                            {findings.map((item, idx) => (
-                                <div key={`${item.side_effect}-${idx}`} className="rounded-lg border bg-background p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <p className="text-sm font-medium">{item.side_effect || 'Interaction effect'}</p>
-                                        <span className={`text-[11px] px-2 py-0.5 rounded border ${severityTone[item.severity] || severityTone.moderate}`}>
-                                            {item.severity}
-                                        </span>
-                                    </div>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {item.medications.join(' + ')} ({item.combination_size === 1 ? 'single drug' : `${item.combination_size}-drug combo`})
+                        <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 space-y-4">
+                            {groupedInteractionFindings.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">
+                                        Combination Risks
                                     </p>
-                                    {item.description && <p className="mt-1 text-xs">{item.description}</p>}
+                                    {groupedInteractionFindings.map((group, idx) => (
+                                        <FindingGroupCard
+                                            key={`${group.title}-${idx}`}
+                                            group={group}
+                                            severityTone={severityTone}
+                                        />
+                                    ))}
                                 </div>
-                            ))}
+                            )}
+
+                            {!hasInteractions && groupedSingleDrugFindings.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-700">
+                                        Single Medication Effects
+                                    </p>
+                                    {groupedSingleDrugFindings.slice(0, 6).map((group, idx) => (
+                                        <FindingGroupCard
+                                            key={`${group.title}-${idx}`}
+                                            group={group}
+                                            severityTone={severityTone}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {!checking && selected.length > 1 && !hasInteractions && findings.length > 0 && (
+                {!checking && selected.length > 1 && !hasInteractions && singleDrugFindings.length > 0 && (
                     <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-emerald-700" />
                         <span className="text-sm text-emerald-800">No known multi-drug interaction side effects detected for current selection.</span>
@@ -254,10 +300,94 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                 {!checking && hasInteractions && (
                     <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 flex items-center gap-2">
                         <AlertOctagon className="h-4 w-4 text-red-700" />
-                        <span className="text-sm text-red-800">Interaction-related side effects found. Review details above.</span>
+                        <span className="text-sm text-red-800">Interaction-related side effects found. Showing interaction findings first.</span>
                     </div>
                 )}
             </div>
         </div>
     );
+}
+
+function FindingGroupCard({
+    group,
+    severityTone,
+}: {
+    group: FindingGroup;
+    severityTone: Record<string, string>;
+}) {
+    return (
+        <div className="rounded-lg border bg-background p-3">
+            <div className="flex items-center justify-between gap-3">
+                <div>
+                    <p className="text-sm font-medium">{group.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {group.combinationSize === 1 ? 'Single medication profile' : `${group.combinationSize}-drug combination`} • {group.count} linked findings
+                    </p>
+                </div>
+                <span className={`text-[11px] px-2 py-0.5 rounded border ${severityTone[group.severity] || severityTone.moderate}`}>
+                    {group.severity}
+                </span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+                {group.medications.join(' + ')}
+            </p>
+            <p className="mt-2 text-xs text-foreground">
+                {group.effects.slice(0, 4).join(', ')}
+                {group.effects.length > 4 ? `, +${group.effects.length - 4} more` : ''}
+            </p>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+                Source: {group.sourceLabel}
+            </p>
+        </div>
+    );
+}
+
+function buildFindingGroups(findings: InteractionCheckResult['findings']): FindingGroup[] {
+    const grouped = new Map<string, FindingGroup>();
+
+    for (const finding of findings) {
+        const medications = [...finding.medications].sort();
+        const key = `${finding.severity}|${finding.combination_size}|${medications.join('|')}`;
+        const existing = grouped.get(key);
+
+        if (existing) {
+            existing.count += 1;
+            if (finding.side_effect && !existing.effects.includes(finding.side_effect)) {
+                existing.effects.push(finding.side_effect);
+            }
+            continue;
+        }
+
+        grouped.set(key, {
+            title: medications.join(' + '),
+            severity: finding.severity,
+            medications,
+            combinationSize: finding.combination_size,
+            count: 1,
+            effects: finding.side_effect ? [finding.side_effect] : [],
+            sourceLabel: finding.source_reference || finding.source || 'Unknown',
+        });
+    }
+
+    return Array.from(grouped.values()).sort((left, right) => {
+        const severityDelta = severityRank(left.severity) - severityRank(right.severity);
+        if (severityDelta !== 0) return severityDelta;
+        if (right.combinationSize !== left.combinationSize) return right.combinationSize - left.combinationSize;
+        return right.count - left.count;
+    }).slice(0, 8);
+}
+
+function severityRank(severity: string) {
+    switch (severity) {
+        case 'critical':
+            return 0;
+        case 'high':
+            return 1;
+        case 'moderate':
+            return 2;
+        case 'low':
+            return 3;
+        default:
+            return 9;
+    }
 }

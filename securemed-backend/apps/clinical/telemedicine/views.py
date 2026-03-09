@@ -2,6 +2,8 @@
 Telemedicine API views for video room management.
 """
 import time
+import json
+import re
 import socket as _socket
 
 # httpx (used by google-genai) tries IPv6 first; Docker containers typically
@@ -31,6 +33,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.conf import settings
+from django.core.cache import cache
 
 try:
     from google import genai as google_genai
@@ -623,4 +626,219 @@ def condition_visualization(request, condition_id):
         ConditionCatalog.objects.filter(is_active=True).prefetch_related('pins'),
         condition_id=condition_id,
     )
-    return Response(ConditionVisualizationSerializer(condition).data, status=status.HTTP_200_OK)
+    payload = ConditionVisualizationSerializer(condition).data
+
+    # AI-generated pain profile (cached) to avoid static/dummy mappings.
+    if GEMINI_AVAILABLE:
+        cache_key = f"telemedicine:condition-pain-profile:{condition.condition_id}"
+        ai_profile = cache.get(cache_key)
+        if not ai_profile:
+            ai_profile = _generate_condition_pain_profile(condition)
+            if ai_profile:
+                cache.set(cache_key, ai_profile, 60 * 60 * 6)  # 6h cache
+        if ai_profile:
+            payload['region_pain_levels'] = ai_profile.get('region_pain_levels', payload.get('region_pain_levels', {}))
+            payload['pain_interpretations'] = ai_profile.get('pain_interpretations', payload.get('pain_interpretations', {}))
+
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def match_conditions_by_pain(request):
+    """
+    Matches likely conditions for a body-region + pain input profile.
+
+    POST /api/telemedicine/conditions/match/
+    Body: {
+      "regions": ["chest", "abdomen"],
+      "intensityByRegion": {"chest": 7, "abdomen": 8}
+    }
+    """
+    regions = request.data.get('regions') or []
+    intensity_by_region = request.data.get('intensityByRegion') or {}
+
+    if not isinstance(regions, list) or not regions:
+        return Response({'error': 'regions must be a non-empty list.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not isinstance(intensity_by_region, dict):
+        return Response({'error': 'intensityByRegion must be an object.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    selected_regions = [str(r).strip().lower() for r in regions if str(r).strip()]
+    if not selected_regions:
+        return Response({'error': 'regions must include at least one valid region id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    normalized_intensity = {}
+    for region_id, value in intensity_by_region.items():
+        try:
+            level = int(value)
+        except (TypeError, ValueError):
+            level = 5
+        normalized_intensity[str(region_id).strip().lower()] = max(1, min(10, level))
+
+    if not GEMINI_AVAILABLE:
+        return Response(
+            {'error': 'Condition matching AI is unavailable. Configure GOOGLE_GEMINI_API_KEY.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    catalog_payload = []
+    for condition in ConditionCatalog.objects.filter(is_active=True).order_by('name'):
+        catalog_payload.append({
+            'condition_id': condition.condition_id,
+            'name': condition.name,
+            'regions': condition.regions or [],
+            'typical_symptoms': condition.typical_symptoms or [],
+            'overview': condition.overview or '',
+        })
+
+    try:
+        matches = _match_conditions_with_gemini(
+            selected_regions=selected_regions,
+            intensity_by_region=normalized_intensity,
+            catalog_payload=catalog_payload,
+        )
+    except Exception as exc:
+        return Response({'error': f'Condition match failed: {str(exc)[:220]}'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    return Response({'matches': matches}, status=status.HTTP_200_OK)
+
+
+def _extract_first_json_object(raw_text):
+    if not raw_text:
+        return None
+    raw_text = raw_text.strip()
+    try:
+        return json.loads(raw_text)
+    except Exception:
+        pass
+    match = re.search(r"\{.*\}", raw_text, flags=re.DOTALL)
+    if not match:
+        return None
+    try:
+        return json.loads(match.group(0))
+    except Exception:
+        return None
+
+
+def _normalize_ai_pain_profile(profile, regions):
+    if not isinstance(profile, dict):
+        return None
+    region_set = {str(r).strip().lower() for r in regions}
+    if not region_set:
+        return None
+
+    ai_levels = profile.get('region_pain_levels') or {}
+    ai_interpretations = profile.get('pain_interpretations') or {}
+    normalized_levels = {}
+    normalized_interpretations = {}
+
+    for region_id in region_set:
+        try:
+            level = int(ai_levels.get(region_id, 5))
+        except (TypeError, ValueError):
+            level = 5
+        normalized_levels[region_id] = max(1, min(10, level))
+
+        rules = ai_interpretations.get(region_id, [])
+        if not isinstance(rules, list):
+            rules = []
+        cleaned_rules = []
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+            try:
+                min_level = max(1, min(10, int(rule.get('min', 1))))
+                max_level = max(1, min(10, int(rule.get('max', 10))))
+            except (TypeError, ValueError):
+                continue
+            message = str(rule.get('message', '')).strip()
+            urgency = str(rule.get('urgency', 'soon')).strip().lower()
+            if not message:
+                continue
+            cleaned_rules.append({
+                'min': min(min_level, max_level),
+                'max': max(min_level, max_level),
+                'message': message[:280],
+                'urgency': urgency if urgency in {'routine', 'soon', 'emergency'} else 'soon',
+            })
+        normalized_interpretations[region_id] = cleaned_rules
+
+    return {
+        'region_pain_levels': normalized_levels,
+        'pain_interpretations': normalized_interpretations,
+    }
+
+
+def _generate_condition_pain_profile(condition):
+    prompt = (
+        "You are a clinical pain-pattern assistant. "
+        "Return STRICT JSON only with keys region_pain_levels and pain_interpretations.\n"
+        "For each region, estimate pain 1-10 and provide 2-3 interpretation rules "
+        "with fields: min,max,message,urgency(routine|soon|emergency).\n"
+        "Do not add any markdown.\n\n"
+        f"Condition: {condition.name}\n"
+        f"Overview: {condition.overview}\n"
+        f"Regions: {json.dumps(condition.regions or [])}\n"
+        f"Typical symptoms: {json.dumps(condition.typical_symptoms or [])}\n"
+    )
+    response = _genai_client.models.generate_content(
+        model='gemini-2.5-flash-lite',
+        contents=[{'role': 'user', 'parts': [{'text': prompt}]}],
+    )
+    parsed = _extract_first_json_object(response.text or '')
+    return _normalize_ai_pain_profile(parsed, condition.regions or [])
+
+
+def _match_conditions_with_gemini(selected_regions, intensity_by_region, catalog_payload):
+    prompt = (
+        "You are a triage ranking assistant. Rank likely conditions based on pain map input.\n"
+        "Output STRICT JSON object: {\"matches\":[...]}\n"
+        "Each match item fields: condition_id,name,confidence(0-100 integer),matched_regions(array),"
+        "typical_symptoms(array up to 5),reasoning(short string)\n"
+        "Return top 10 max, sorted descending confidence.\n\n"
+        f"Selected regions: {json.dumps(selected_regions)}\n"
+        f"Intensity by region: {json.dumps(intensity_by_region)}\n"
+        f"Condition catalog: {json.dumps(catalog_payload)}\n"
+    )
+    response = _genai_client.models.generate_content(
+        model='gemini-2.5-flash-lite',
+        contents=[{'role': 'user', 'parts': [{'text': prompt}]}],
+    )
+    parsed = _extract_first_json_object(response.text or '')
+    if not isinstance(parsed, dict):
+        return []
+
+    raw_matches = parsed.get('matches', [])
+    if not isinstance(raw_matches, list):
+        return []
+
+    normalized = []
+    for item in raw_matches[:10]:
+        if not isinstance(item, dict):
+            continue
+        condition_id = str(item.get('condition_id', '')).strip()
+        name = str(item.get('name', '')).strip()
+        if not condition_id or not name:
+            continue
+        try:
+            confidence = int(item.get('confidence', 0))
+        except (TypeError, ValueError):
+            confidence = 0
+        confidence = max(0, min(100, confidence))
+        matched_regions = item.get('matched_regions') if isinstance(item.get('matched_regions'), list) else []
+        matched_regions = [str(r).strip().lower() for r in matched_regions if str(r).strip()]
+        typical_symptoms = item.get('typical_symptoms') if isinstance(item.get('typical_symptoms'), list) else []
+        typical_symptoms = [str(s).strip() for s in typical_symptoms[:5] if str(s).strip()]
+        reasoning = str(item.get('reasoning', '')).strip()[:220]
+
+        normalized.append({
+            'condition_id': condition_id,
+            'name': name,
+            'confidence': confidence,
+            'matched_regions': matched_regions,
+            'typical_symptoms': typical_symptoms,
+            'reasoning': reasoning,
+        })
+
+    normalized.sort(key=lambda x: x['confidence'], reverse=True)
+    return normalized

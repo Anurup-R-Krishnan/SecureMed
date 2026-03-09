@@ -107,19 +107,17 @@ const BASE_FILL = '#60a5fa';  // blue-400
 const BASE_STROKE = '#93c5fd';  // blue-300
 const HOVER_FILL = '#93c5fd';  // blue-300  (lighter on hover)
 const HOVER_STROKE = '#bfdbfe';  // blue-200
-const COND_FILL = '#fb923c';  // orange-400
-const COND_FOCUSED = '#f97316';  // orange-500
-
 function getRegionFill(
   selected: boolean,
   hovered: boolean,
   painLevel: number,
   conditionHighlight: boolean,
   conditionFocused: boolean,
+  conditionPainLevel?: number,
 ): string {
   if (selected) return painColor(painLevel);
-  if (conditionFocused) return COND_FOCUSED;
-  if (conditionHighlight) return COND_FILL;
+  if (conditionFocused) return painColor(conditionPainLevel ?? 7);
+  if (conditionHighlight) return painColor(conditionPainLevel ?? 5);
   if (hovered) return HOVER_FILL;
   return BASE_FILL;
 }
@@ -134,8 +132,10 @@ function getRegionOpacity(
   selected: boolean,
   painLevel: number,
   conditionDimmed: boolean,
+  conditionPainLevel?: number,
 ): number {
   if (selected) return painOpacity(painLevel);
+  if (typeof conditionPainLevel === 'number') return painOpacity(conditionPainLevel);
   if (conditionDimmed) return 0.2;
   return 0.65;
 }
@@ -181,6 +181,7 @@ export default function BodyExplorer3D({
 
   const conditionRegions = activeCondition?.regions ?? [];
   const conditionPins = activeCondition?.pins ?? [];
+  const conditionPainLevels = activeCondition?.region_pain_levels ?? {};
 
   const selectedSymptoms = useMemo(
     () => deriveSymptomsFromRegions(selectedRegions),
@@ -227,16 +228,17 @@ export default function BodyExplorer3D({
             const isDimmed = mode === 'condition' && !isCondition;
             const isInteractive = mode === 'selection' || isCondition;
             const pain = intensityByRegion[region.id] ?? 5;
+            const conditionPain = isCondition ? (conditionPainLevels[region.id] ?? 5) : undefined;
 
             return (
               <path
                 key={region.id}
                 d={region.d}
-                fill={getRegionFill(isSelected, isHovered, pain, isCondition, isFocused)}
+                fill={getRegionFill(isSelected, isHovered, pain, isCondition, isFocused, conditionPain)}
                 stroke={getRegionStroke(isSelected, isHovered)}
                 strokeWidth={isSelected || isFocused ? 2.5 : 1.5}
                 strokeLinejoin="round"
-                opacity={getRegionOpacity(isSelected, pain, isDimmed)}
+                opacity={getRegionOpacity(isSelected, pain, isDimmed, conditionPain)}
                 style={{
                   cursor: isInteractive ? 'pointer' : 'default',
                   transition: 'fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease, stroke-width 0.2s ease',
@@ -253,6 +255,20 @@ export default function BodyExplorer3D({
             const centre = REGION_CENTRES[pin.region_id];
             if (!centre) return null;
             return <PinDot key={pin.id} x={centre[0]} y={centre[1]} severity={pin.severity} />;
+          })}
+
+          {/* High-severity condition pulse markers */}
+          {mode === 'condition' && conditionRegions.map((id) => {
+            const centre = REGION_CENTRES[id];
+            if (!centre) return null;
+            const pain = conditionPainLevels[id] ?? 5;
+            if (pain < 7) return null;
+            return (
+              <circle key={`cond-pulse-${id}`} cx={centre[0]} cy={centre[1]} r={7} fill={painColor(pain)} opacity={0.24}>
+                <animate attributeName="r" values="7;13;7" dur="1.2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.24;0.04;0.24" dur="1.2s" repeatCount="indefinite" />
+              </circle>
+            );
           })}
 
           {/* Selected region pulsing markers */}

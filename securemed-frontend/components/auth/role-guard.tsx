@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { getPortalRouteForRole, ROUTES } from '@/lib/routes';
 
 interface RoleGuardProps {
@@ -15,20 +15,18 @@ interface RoleGuardProps {
 export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
     const { user, isAuthenticated, isLoading } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         if (isLoading) return;
         if (!isAuthenticated) {
-            router.replace(ROUTES.LOGIN);
+            const next = encodeURIComponent(pathname);
+            router.replace(`${ROUTES.LOGIN}?next=${next}`);
         }
-    }, [isLoading, isAuthenticated, router]);
+    }, [isLoading, isAuthenticated, router, pathname]);
 
     if (isLoading || !isAuthenticated) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <p className="text-muted-foreground">Loading...</p>
-            </div>
-        );
+        return null;
     }
 
     if (user && !allowedRoles.includes(user.role)) {

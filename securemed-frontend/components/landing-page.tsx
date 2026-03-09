@@ -1,17 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Calendar, Shield, Users, MapPin, Clock, Star, Activity, Heart, CheckCircle2, X, Building2, Stethoscope, Video, CalendarPlus, Phone, FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, Calendar, Shield, Users, MapPin, Clock, Star, Activity, Heart, CheckCircle2, X, Stethoscope, Video, CalendarPlus, Phone, FileText, AlertTriangle, HeartPulse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { appointmentService, Doctor } from '@/services/appointments';
+import { ROUTES } from '@/lib/routes';
 
 interface LandingPageProps {
-  onGetStarted: (role?: 'patient' | 'doctor' | 'admin') => void;
+  onGetStarted: () => void;
 }
 
 export default function LandingPage({ onGetStarted }: LandingPageProps) {
+  const router = useRouter();
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
   const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +24,6 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
 
   // Widget States
   const [location, setLocation] = useState('');
-  const [hospital, setHospital] = useState('');
   const [specialty, setSpecialty] = useState('');
 
   useEffect(() => {
@@ -40,11 +42,14 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
     fetchDoctors();
   }, []);
 
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSearching(true);
 
-    // Simple filter logic for demo - in real app would use all params
     let results = allDoctors;
 
     if (searchQuery.trim()) {
@@ -55,11 +60,11 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
       );
     }
 
-    if (location && location !== 'all') {
+    if (location.trim()) {
       results = results.filter(doc => doc.hospital.toLowerCase().includes(location.toLowerCase()));
     }
 
-    if (specialty && specialty !== 'all') {
+    if (specialty.trim()) {
       results = results.filter(doc => doc.specialization.toLowerCase().includes(specialty.toLowerCase()));
     }
 
@@ -70,10 +75,13 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
   const clearSearch = () => {
     setSearchQuery('');
     setLocation('');
-    setHospital('');
     setSpecialty('');
     setFilteredDoctors(allDoctors.slice(0, 3));
     setIsSearching(false);
+  };
+
+  const pushLoginWithNext = (nextPath: string) => {
+    router.push(`/login?next=${encodeURIComponent(nextPath)}`);
   };
 
   return (
@@ -98,10 +106,10 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
             {/* Service Icon Bar (Inspiration from reference) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto mb-16">
               {[
-                { icon: Users, label: 'Find a Doctor', desc: 'Search by Name, Specialty', action: () => document.getElementById('search-widget')?.scrollIntoView({ behavior: 'smooth' }) },
-                { icon: CalendarPlus, label: 'Book Appointment', desc: 'Schedule a Visit', action: () => onGetStarted('patient') },
-                { icon: FileText, label: 'Health Checkup', desc: 'Book Lab Tests', action: () => onGetStarted('patient') },
-                { icon: Video, label: 'Tele Medicine', desc: 'Connect Online', action: () => onGetStarted('patient') },
+                { icon: Users, label: 'Find a Doctor', desc: 'Search by Name, Specialty', action: () => { document.getElementById('search-widget')?.scrollIntoView({ behavior: 'smooth' }); setTimeout(() => (document.querySelector<HTMLInputElement>('#search-widget input[placeholder="Search by Name"]'))?.focus(), 400); } },
+                { icon: CalendarPlus, label: 'Book Appointment', desc: 'Schedule a Visit', action: () => pushLoginWithNext(ROUTES.PATIENT_APPOINTMENTS) },
+                { icon: FileText, label: 'Health Checkup', desc: 'Book Lab Tests', action: () => router.push(ROUTES.LAB_TESTS) },
+                { icon: Video, label: 'Tele Medicine', desc: 'Video Consultation', action: () => pushLoginWithNext('/patient/appointments?mode=telemedicine') },
               ].map((service, idx) => (
                 <div key={idx} onClick={service.action} className="bg-card hover:bg-primary/5 border border-border/50 hover:border-primary/50 p-6 rounded-xl cursor-pointer transition-all duration-300 group shadow-sm hover:shadow-md text-center flex flex-col items-center">
                   <div className="p-3 bg-primary/10 rounded-full text-primary mb-3 group-hover:scale-110 transition-transform">
@@ -111,6 +119,37 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                   <p className="text-xs text-muted-foreground mt-1">{service.desc}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="max-w-5xl mx-auto mb-10 rounded-3xl border border-red-200 bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 p-6 text-left shadow-lg shadow-red-100/40">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-3xl">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-red-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    Emergency Intake
+                  </div>
+                  <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-foreground">
+                    For urgent cases, submit an emergency intake for immediate triage
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Authorised clinicians can initiate a secure, time-limited emergency session to access critical patient data when standard consent is unavailable.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-foreground">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1"><HeartPulse className="h-3.5 w-3.5 text-red-600" />Trauma</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1"><HeartPulse className="h-3.5 w-3.5 text-red-600" />Life-Threatening</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1"><HeartPulse className="h-3.5 w-3.5 text-red-600" />Critical Lab</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 min-w-[220px]">
+                  <Button
+                    size="lg"
+                    className="bg-red-600 text-white hover:bg-red-700"
+                    onClick={() => router.push(ROUTES.EMERGENCY)}
+                  >
+                    Clinician Emergency Login
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* Booking Widget Bar (Inspiration from reference) */}
@@ -129,21 +168,6 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                     className="w-full bg-transparent outline-none text-foreground font-medium"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                  />
-                </div>
-
-                {/* Hospital Select */}
-                <div className="flex-1 w-full md:w-auto relative border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4 md:pl-4">
-                  <div className="flex items-center gap-3 mb-1">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Hospital</span>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Select Hospital"
-                    className="w-full bg-transparent outline-none text-foreground font-medium"
-                    value={hospital}
-                    onChange={(e) => setHospital(e.target.value)}
                   />
                 </div>
 
@@ -258,7 +282,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                       <Button onClick={() => setSelectedDoctor(doctor)} variant="outline" className="flex-1">
                         View Profile
                       </Button>
-                      <Button onClick={() => onGetStarted('patient')} className="flex-1">
+                      <Button onClick={() => pushLoginWithNext(`${ROUTES.PATIENT_APPOINTMENTS}?doctorId=${doctor.id}`)} className="flex-1">
                         Book
                       </Button>
                     </div>
@@ -358,30 +382,30 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
             <div>
               <h4 className="font-bold text-foreground mb-4">Services</h4>
               <ul className="space-y-3 text-muted-foreground text-sm">
-                <li><button onClick={() => onGetStarted('patient')} className="hover:text-primary transition-colors">Find a Doctor</button></li>
-                <li><button onClick={() => onGetStarted('patient')} className="hover:text-primary transition-colors">Online Consultation</button></li>
-                <li><button onClick={() => onGetStarted('patient')} className="hover:text-primary transition-colors">Lab Tests</button></li>
-                <li><button onClick={() => onGetStarted('patient')} className="hover:text-primary transition-colors">Health Records</button></li>
+                <li><button onClick={() => scrollToSection('search-widget')} className="hover:text-primary transition-colors">Find a Doctor</button></li>
+                <li><button onClick={() => pushLoginWithNext('/patient/appointments?mode=telemedicine')} className="hover:text-primary transition-colors">Tele Medicine</button></li>
+                <li><button onClick={() => router.push(ROUTES.LAB_TESTS)} className="hover:text-primary transition-colors">Lab Tests</button></li>
+                <li><button onClick={() => pushLoginWithNext('/patient/records')} className="hover:text-primary transition-colors">Health Records</button></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-foreground mb-4">Company</h4>
               <ul className="space-y-3 text-muted-foreground text-sm">
-                <li><a href="#" className="hover:text-primary transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Partners</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Contact</a></li>
+                <li><button onClick={() => scrollToSection('features')} className="hover:text-primary transition-colors">About Us</button></li>
+                <li><button onClick={() => scrollToSection('features')} className="hover:text-primary transition-colors">Careers</button></li>
+                <li><button onClick={() => scrollToSection('features')} className="hover:text-primary transition-colors">Partners</button></li>
+                <li><button onClick={() => scrollToSection('testimonials')} className="hover:text-primary transition-colors">Contact</button></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-foreground mb-4">Legal</h4>
               <ul className="space-y-3 text-muted-foreground text-sm">
-                <li><a href="#" className="hover:text-primary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Cookie Policy</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">HIPAA Compliance</a></li>
+                <li><button onClick={() => router.push('/privacy-policy')} className="hover:text-primary transition-colors">Privacy Policy</button></li>
+                <li><button onClick={() => router.push('/terms-of-service')} className="hover:text-primary transition-colors">Terms of Service</button></li>
+                <li><button onClick={() => router.push('/cookie-policy')} className="hover:text-primary transition-colors">Cookie Policy</button></li>
+                <li><button onClick={() => scrollToSection('features')} className="hover:text-primary transition-colors">HIPAA Compliance</button></li>
               </ul>
             </div>
           </div>
@@ -445,7 +469,14 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 </div>
               </div>
 
-              <Button className="w-full mt-6" onClick={() => { setSelectedDoctor(null); onGetStarted('patient'); }}>
+              <Button
+                className="w-full mt-6"
+                onClick={() => {
+                  const doctorPath = `${ROUTES.PATIENT_APPOINTMENTS}?doctorId=${selectedDoctor?.id ?? ''}`;
+                  setSelectedDoctor(null);
+                  pushLoginWithNext(doctorPath);
+                }}
+              >
                 Login to Book Appointment
               </Button>
             </div>

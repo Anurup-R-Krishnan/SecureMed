@@ -135,6 +135,8 @@ class ConditionVisualizationSerializer(serializers.ModelSerializer):
             'name',
             'overview',
             'regions',
+            'region_pain_levels',
+            'pain_interpretations',
             'typical_symptoms',
             'seek_care_rules',
             'pins',
