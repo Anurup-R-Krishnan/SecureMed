@@ -248,7 +248,7 @@ class LabWorklistViewSet(viewsets.ViewSet):
         """Get blinded worklist for technicians"""
         
         # RESTRICT: Only staff/technicians can view worklist
-        if not request.user.is_staff and request.user.role not in ['lab_technician', 'doctor', 'nurse']:
+        if not request.user.is_staff and request.user.role not in ['lab_technician', 'doctor', 'provider']:
              return Response({"error": "Unauthorized. Only clinical staff can view the lab worklist."}, status=status.HTTP_403_FORBIDDEN)
 
         # Filter by pending/processing orders

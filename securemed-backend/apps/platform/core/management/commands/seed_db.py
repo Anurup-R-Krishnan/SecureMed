@@ -78,6 +78,14 @@ PHARMACISTS = [
     ("pharm.user", "pharmacist@securemed.com", "Ramesh", "Gupta", "MPharm"),
 ]
 
+PROVIDERS = [
+    ("provider.user", "provider@securemed.com", "Aarav", "Menon", "General Provider"),
+]
+
+LAB_TECHNICIANS = [
+    ("lab.tech", "lab.tech@securemed.com", "Neha", "Sharma", "BSc MLT"),
+]
+
 DRUGS = [
     # (name, generic, manufacturer, form, strength, price, reorder_level)
     ("Dolo 650", "Paracetamol", "Micro Labs", "Tablet", "650 mg", 2.00, 100),
@@ -157,6 +165,8 @@ class Command(BaseCommand):
         doctors = self._seed_doctors(depts)
         patients = self._seed_patients()
         self._seed_pharmacists()  # NEW
+        self._seed_providers()
+        self._seed_lab_technicians()
         self._seed_admin()
         
         appointments = self._seed_appointments(patients, doctors)
@@ -175,6 +185,7 @@ class Command(BaseCommand):
         self._seed_wellness_tips()
 
         self.stdout.write(self.style.SUCCESS("\n[+] Seeding complete!"))
+        self._print_role_summary()
         self.stdout.write(self.style.SUCCESS(f"    Password for all users: {PASSWORD}\n"))
 
     def _flush(self):
@@ -188,7 +199,15 @@ class Command(BaseCommand):
             MedicalRecordAccess, Prescription, VitalSign,
         )
         from apps.accounts.patients.models import Patient, WellnessTip
-        from apps.clinical.telemedicine.models import Conversation, Message, VideoRoom
+        from apps.clinical.telemedicine.models import (
+            AnatomyRegionExplainer,
+            ConditionCatalog,
+            ConditionPin,
+            Conversation,
+            Message,
+            TriageRequest,
+            VideoRoom,
+        )
         from apps.clinical.pharmacy.models import Drug, DrugStock, DrugBatch, StockTransaction
         from apps.scheduling.availability.models import Doctor, Department
 
@@ -201,6 +220,10 @@ class Command(BaseCommand):
         Message.objects.all().delete()
         Conversation.objects.all().delete()
         VideoRoom.objects.all().delete()
+        TriageRequest.objects.all().delete()
+        ConditionPin.objects.all().delete()
+        ConditionCatalog.objects.all().delete()
+        AnatomyRegionExplainer.objects.all().delete()
         Payment.objects.all().delete()
         InvoiceItem.objects.all().delete()
         Invoice.objects.all().delete()
@@ -354,6 +377,50 @@ class Command(BaseCommand):
                 user.set_password(PASSWORD)
                 user.save()
                 self.stdout.write(f"    + {first} {last}")
+
+    def _seed_lab_technicians(self):
+        self.stdout.write("[-] Seeding lab technicians...")
+        for uname, email, first, last, qualification in LAB_TECHNICIANS:
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": uname,
+                    "first_name": first,
+                    "last_name": last,
+                    "role": "lab_technician",
+                    "is_active": True,
+                    "is_staff": True,
+                },
+            )
+            if created:
+                user.set_password(PASSWORD)
+                user.save()
+                self.stdout.write(f"    + {first} {last}")
+
+    def _seed_providers(self):
+        self.stdout.write("[-] Seeding providers...")
+        for uname, email, first, last, qualification in PROVIDERS:
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": uname,
+                    "first_name": first,
+                    "last_name": last,
+                    "role": "provider",
+                    "is_active": True,
+                    "is_staff": True,
+                },
+            )
+            if created:
+                user.set_password(PASSWORD)
+                user.save()
+                self.stdout.write(f"    + {first} {last}")
+
+    def _print_role_summary(self):
+        self.stdout.write("[-] RBAC role summary...")
+        for role, _ in User.ROLE_CHOICES:
+            role_count = User.objects.filter(role=role).count()
+            self.stdout.write(f"    {role}: {role_count}")
 
     def _seed_admin(self):
         self.stdout.write("[-] Seeding admin user...")
@@ -642,6 +709,7 @@ class Command(BaseCommand):
                         reference_range=ref,
                         units=unit,
                         flag=flag,
+                        technician_name=f"{lab_tech.first_name} {lab_tech.last_name}".strip() if lab_tech else "",
                         technician=lab_tech,
                         released_to_patient=True,
                         released_at=timezone.now() - timedelta(days=days_ago-1)
