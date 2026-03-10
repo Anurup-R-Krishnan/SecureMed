@@ -46,7 +46,14 @@ export default function LoginModal({ isOpen, onClose, redirectTo }: LoginModalPr
             const result = await login(email, password);
 
             if (result.status === 'SUCCESS' && result.user) {
-                router.replace(getSafeRedirect(redirectTo) || getPortalRouteForRole(result.user.role));
+                const target = getSafeRedirect(redirectTo) || getPortalRouteForRole(result.user.role);
+                router.replace(target);
+                // Fallback for environments where the client router stalls (e.g., CI/E2E).
+                window.setTimeout(() => {
+                    if (window.location.pathname.startsWith('/login')) {
+                        window.location.assign(target);
+                    }
+                }, 500);
             } else {
                 setError(result.error || 'Invalid credentials. Please try again.');
             }
