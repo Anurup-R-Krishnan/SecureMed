@@ -12,7 +12,7 @@ interface BillingSummary {
 
 interface BillingSummaryCardProps {
     summary: BillingSummary | null;
-    onNavigate: (tab: any) => void;
+    onNavigate: (tab: any, params?: Record<string, string>) => void;
 }
 
 export default function BillingSummaryCard({ summary, onNavigate }: BillingSummaryCardProps) {

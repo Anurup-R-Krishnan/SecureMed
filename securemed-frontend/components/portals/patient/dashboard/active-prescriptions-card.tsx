@@ -21,7 +21,7 @@ interface Prescription {
 
 interface ActivePrescriptionsCardProps {
     prescriptions: Prescription[];
-    onNavigate: (tab: any) => void;
+    onNavigate: (tab: any, params?: Record<string, string>) => void;
 }
 
 export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: ActivePrescriptionsCardProps) {

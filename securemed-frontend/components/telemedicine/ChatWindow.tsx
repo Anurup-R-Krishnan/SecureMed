@@ -23,6 +23,8 @@ export function ChatWindow({ conversation, conversationId, currentUserId, otherP
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
     const fetchMessages = React.useCallback(async () => {
         if (!activeConversationId) return;
@@ -49,13 +51,19 @@ export function ChatWindow({ conversation, conversationId, currentUserId, otherP
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !activeConversationId) return;
+        if (!activeConversationId) return;
+        if (!newMessage.trim() && !attachmentFile) return;
 
         try {
             setIsLoading(true);
-            const sentMessage = await messagingService.sendMessage(activeConversationId, newMessage);
+            const content = newMessage.trim() || (attachmentFile ? 'Attachment' : '');
+            const sentMessage = await messagingService.sendMessage(activeConversationId, content, attachmentFile || undefined);
             setMessages([...messages, sentMessage]);
             setNewMessage('');
+            setAttachmentFile(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         } catch (error) {
             console.error('Failed to send message', error);
         } finally {
@@ -109,10 +117,14 @@ export function ChatWindow({ conversation, conversationId, currentUserId, otherP
                                 >
                                     <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
                                     {msg.attachment && (
-                                        <div className="mt-3 p-2 bg-black/10 rounded-lg text-xs flex items-center gap-2 cursor-pointer hover:bg-black/20 transition-colors">
+                                        <button
+                                            type="button"
+                                            className="mt-3 p-2 bg-black/10 rounded-lg text-xs flex items-center gap-2 cursor-pointer hover:bg-black/20 transition-colors w-full text-left"
+                                            onClick={() => window.open(msg.attachment as string, '_blank', 'noopener,noreferrer')}
+                                        >
                                             <File size={14} />
                                             <span className="font-bold underline">Attachment</span>
-                                        </div>
+                                        </button>
                                     )}
                                     <span
                                         className={cn(
@@ -133,13 +145,28 @@ export function ChatWindow({ conversation, conversationId, currentUserId, otherP
             {/* Input Area - Floating Capsule */}
             <div className="p-4 sm:p-6 bg-background border-t border-border/40">
                 <form onSubmit={handleSendMessage} className="flex gap-3 items-center bg-muted/30 p-1.5 pr-2 rounded-full border border-border/60 hover:border-primary/30 transition-colors focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5">
-                    <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-primary rounded-full h-10 w-10 shrink-0">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setAttachmentFile(file);
+                        }}
+                    />
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-primary rounded-full h-10 w-10 shrink-0"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
                         <Paperclip size={20} />
                     </Button>
                     <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message..."
+                        placeholder={attachmentFile ? `Attachment: ${attachmentFile.name}` : "Type your message..."}
                         className="flex-1 bg-transparent border-none focus-visible:ring-0 px-2 h-9 font-medium placeholder:text-muted-foreground/50"
                         disabled={isLoading}
                     />

@@ -17,7 +17,7 @@ interface LabResult {
 
 interface LabResultsCardProps {
     results: LabResult[];
-    onNavigate: (tab: any) => void;
+    onNavigate: (tab: any, params?: Record<string, string>) => void;
 }
 
 export default function LabResultsCard({ results, onNavigate }: LabResultsCardProps) {

@@ -16,7 +16,7 @@ interface MedicalRecord {
 
 interface RecentRecordsCardProps {
     records: MedicalRecord[];
-    onNavigate: (tab: any) => void;
+    onNavigate: (tab: any, params?: Record<string, string>) => void;
 }
 
 export default function RecentRecordsCard({ records, onNavigate }: RecentRecordsCardProps) {

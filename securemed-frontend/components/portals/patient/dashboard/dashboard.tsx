@@ -23,7 +23,7 @@ interface Appointment extends Omit<BaseAppointment, 'doctor_name'> {
 }
 
 interface PatientDashboardProps {
-    onNavigate: (tab: any) => void;
+    onNavigate: (tab: any, params?: Record<string, string>) => void;
 }
 
 export default function PatientDashboard({ onNavigate }: PatientDashboardProps) {
@@ -198,7 +198,12 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 shrink-0">
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-500 text-white rounded-full px-4 shrink-0"
+                                    onClick={() => onNavigate('appointments', { join: '1' })}
+                                >
                                     Join
                                 </Button>
                             </div>

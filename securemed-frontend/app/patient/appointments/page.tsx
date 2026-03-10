@@ -15,6 +15,7 @@ function AppointmentsContent() {
     const { isAuthenticated } = useAuth();
     const searchParams = useSearchParams();
     const initialDoctorId = searchParams.get('doctorId') || undefined;
+    const autoJoin = searchParams.get('join') === '1';
 
     const [nextAppointment, setNextAppointment] = useState<any>(null);
 
@@ -51,6 +52,13 @@ function AppointmentsContent() {
 
         fetchNextAppointment();
     }, [isAuthenticated]);
+
+    useEffect(() => {
+        if (autoJoin && nextAppointment && activeRoomId) {
+            setShowTelemed(true);
+            setTelemedStatus('waiting');
+        }
+    }, [autoJoin, nextAppointment, activeRoomId]);
 
     if (showTelemed) {
         return (

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarPlus, Pill, MessageSquareMore, FileText } from 'lucide-react';
 
 interface QuickActionsProps {
-    onNavigate: (tab: any) => void;
+    onNavigate: (tab: any, params?: Record<string, string>) => void;
 }
 
 export default function QuickActions({ onNavigate }: QuickActionsProps) {

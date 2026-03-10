@@ -5,6 +5,7 @@ from .models import Invoice, Payment
 from .serializers import InvoiceSerializer, PaymentSerializer
 from apps.accounts.users.permissions import IsPatient
 from django.utils import timezone
+from datetime import datetime
 
 
 PROVIDER_CODE_MAP = {
@@ -29,6 +30,26 @@ def get_invoices(request):
         return Response({"error": "Patient profile not found."}, status=404)
         
     invoices = Invoice.objects.filter(patient=patient).select_related('appointment', 'appointment__doctor__user').prefetch_related('items', 'payments')
+
+    status_filter = (request.query_params.get('status') or '').strip()
+    if status_filter:
+        status_values = [s.strip() for s in status_filter.split(',') if s.strip()]
+        invoices = invoices.filter(status__in=status_values)
+
+    start_date = (request.query_params.get('start_date') or '').strip()
+    end_date = (request.query_params.get('end_date') or '').strip()
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date).date()
+            invoices = invoices.filter(issue_date__gte=start_dt)
+        except ValueError:
+            return Response({"error": "Invalid start_date format. Use YYYY-MM-DD."}, status=400)
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date).date()
+            invoices = invoices.filter(issue_date__lte=end_dt)
+        except ValueError:
+            return Response({"error": "Invalid end_date format. Use YYYY-MM-DD."}, status=400)
     serializer = InvoiceSerializer(invoices, many=True)
     
     total_billed = sum(item.total_amount for item in invoices)
@@ -49,6 +70,65 @@ def get_invoices(request):
             "nextDueDate": next_due
         }
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsPatient])
+def get_invoice_detail(request, invoice_id):
+    user = request.user
+    patient = get_patient_profile(user)
+
+    if not patient:
+        return Response({"error": "Patient profile not found."}, status=404)
+
+    try:
+        invoice = (
+            Invoice.objects
+            .filter(invoice_id=invoice_id, patient=patient)
+            .select_related('appointment', 'appointment__doctor__user')
+            .prefetch_related('items', 'payments')
+            .first()
+        )
+    except Invoice.DoesNotExist:
+        invoice = None
+
+    if not invoice:
+        return Response({"error": "Invoice not found."}, status=404)
+
+    serializer = InvoiceSerializer(invoice)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsPatient])
+def download_invoice(request, invoice_id):
+    user = request.user
+    patient = get_patient_profile(user)
+
+    if not patient:
+        return Response({"error": "Patient profile not found."}, status=404)
+
+    invoice = (
+        Invoice.objects
+        .filter(invoice_id=invoice_id, patient=patient)
+        .select_related('appointment', 'appointment__doctor__user')
+        .prefetch_related('items', 'payments')
+        .first()
+    )
+    if not invoice:
+        return Response({"error": "Invoice not found."}, status=404)
+
+    serializer = InvoiceSerializer(invoice)
+    data = serializer.data
+
+    from django.http import HttpResponse
+    import json
+    response = HttpResponse(
+        json.dumps(data, default=str, indent=2),
+        content_type='application/json'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{invoice.invoice_id}.json"'
+    return response
 
 
 @api_view(['POST'])

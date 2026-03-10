@@ -42,7 +42,7 @@ export default function DashboardPage() {
     }, [user]);
 
     // Simple navigation handler mapping tab names to routes
-    const handleNavigate = (tab: string) => {
+    const handleNavigate = (tab: string, params?: Record<string, string>) => {
         // Map legacy tab names to new routes
         const routeMap: Record<string, string> = {
             'dashboard': '/patient/dashboard',
@@ -56,6 +56,11 @@ export default function DashboardPage() {
         };
 
         const route = routeMap[tab] || `/patient/${tab}`;
+        if (params && Object.keys(params).length > 0) {
+            const search = new URLSearchParams(params).toString();
+            router.push(`${route}?${search}`);
+            return;
+        }
         router.push(route);
     };
 
