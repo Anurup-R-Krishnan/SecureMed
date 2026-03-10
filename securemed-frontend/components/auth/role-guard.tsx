@@ -31,7 +31,14 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
         if (!allowedRoles.includes(user.role)) {
             const target = getPortalRouteForRole(user.role);
             if (pathname && !pathname.startsWith(target)) {
+                const currentPath = pathname;
                 router.replace(target);
+                // Fallback for environments where client navigation is delayed.
+                window.setTimeout(() => {
+                    if (window.location.pathname === currentPath) {
+                        window.location.assign(target);
+                    }
+                }, 500);
             }
         }
     }, [isLoading, isAuthenticated, user, allowedRoles, router, pathname]);
