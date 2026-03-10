@@ -157,7 +157,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
         if hasattr(request.user, 'patient_profile'):
             if result.order.patient_id != request.user.id or not result.released_to_patient:
                 return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
-        elif hasattr(request.user, 'doctor_profile') or request.user.is_staff:
+        elif hasattr(request.user, 'doctor_profile') or request.user.role == 'doctor' or request.user.is_staff:
             if result.order.doctor_id not in [None, request.user.id] and not request.user.is_staff:
                 return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
         elif request.user.role == 'lab_technician':
