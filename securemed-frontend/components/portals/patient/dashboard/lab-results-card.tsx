@@ -1,9 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Microscope, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 interface LabResult {
     id: number;
@@ -21,6 +30,8 @@ interface LabResultsCardProps {
 }
 
 export default function LabResultsCard({ results, onNavigate }: LabResultsCardProps) {
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [selectedResult, setSelectedResult] = useState<LabResult | null>(null);
     const getFlagIcon = (flag: string) => {
         const normalizedFlag = flag.toLowerCase();
         if (normalizedFlag.includes('high')) return <TrendingUp className="h-3 w-3" />;
@@ -99,18 +110,66 @@ export default function LabResultsCard({ results, onNavigate }: LabResultsCardPr
                                 {result.flag}
                             </Badge>
                         </div>
-                        {result.date && (
-                            <p className="text-xs text-muted-foreground mt-2">
-                                {new Date(result.date).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                })}
-                            </p>
-                        )}
+                        <div className="flex items-center justify-between mt-3">
+                            {result.date && (
+                                <p className="text-xs text-muted-foreground">
+                                    {new Date(result.date).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                    })}
+                                </p>
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-primary"
+                                onClick={() => {
+                                    setSelectedResult(result);
+                                    setDetailOpen(true);
+                                }}
+                            >
+                                View
+                            </Button>
+                        </div>
                     </div>
                 ))}
             </div>
+
+            <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Lab Result Detail</DialogTitle>
+                        <DialogDescription>{selectedResult?.test_name || 'Result'}</DialogDescription>
+                    </DialogHeader>
+                    {selectedResult ? (
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Result</span>
+                                <span className="font-semibold">{selectedResult.result_value} {selectedResult.units}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Reference</span>
+                                <span>{selectedResult.reference_range || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Flag</span>
+                                <span>{selectedResult.flag}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Date</span>
+                                <span>{selectedResult.date || 'N/A'}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-sm text-muted-foreground">No result selected.</div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDetailOpen(false)}>Close</Button>
+                        <Button onClick={() => onNavigate('records')}>View All Records</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

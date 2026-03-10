@@ -84,7 +84,10 @@ export default function RecentRecordsCard({ records, onNavigate }: RecentRecords
                                 {/* Timeline node */}
                                 <div className={`absolute left-[18px] top-3 h-3 w-3 rounded-full border-2 border-background ${colorClass.split(' ')[1]} z-10`} />
 
-                                <div className="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-blue-500/20 transition-all group">
+                                <div
+                                    className="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-blue-500/20 transition-all group cursor-pointer"
+                                    onClick={() => onNavigate('records', { recordId: String(record.id) })}
+                                >
                                     <div className="flex items-start gap-3">
                                         <div className={`h-10 w-10 shrink-0 rounded-lg ${colorClass} flex items-center justify-center`}>
                                             <Icon className="h-5 w-5" />
@@ -100,6 +103,17 @@ export default function RecentRecordsCard({ records, onNavigate }: RecentRecords
                                                         {record.diagnosis || 'General Consultation'}
                                                     </h4>
                                                 </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-primary"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onNavigate('records', { recordId: String(record.id) });
+                                                    }}
+                                                >
+                                                    View
+                                                </Button>
                                             </div>
 
                                             <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
