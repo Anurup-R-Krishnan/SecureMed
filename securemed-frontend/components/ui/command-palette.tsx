@@ -145,15 +145,15 @@ export function CommandPalette() {
                 {user.role === 'doctor' && (
                     <>
                         <CommandGroup heading="Quick Access">
-                            <CommandItem onSelect={() => runCommand(() => console.log('Admit Patient'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/triage-inbox'))}>
                                 <User className="mr-2 h-4 w-4" />
                                 <span>Admit New Patient</span>
                             </CommandItem>
-                            <CommandItem onSelect={() => runCommand(() => console.log('Order Radiology'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/records?new=1&type=imaging'))}>
                                 <FileText className="mr-2 h-4 w-4" />
                                 <span>Order Radiology Scan</span>
                             </CommandItem>
-                            <CommandItem onSelect={() => runCommand(() => console.log('Page On-Call'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/messaging'))}>
                                 <AlertCircle className="mr-2 h-4 w-4" />
                                 <span>Page On-Call Specialist</span>
                             </CommandItem>
@@ -162,12 +162,12 @@ export function CommandPalette() {
                         <CommandSeparator />
 
                         <CommandGroup heading="Actions">
-                            <CommandItem onSelect={() => runCommand(() => console.log('New Prescription'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/prescriptions'))}>
                                 <FileText className="mr-2 h-4 w-4" />
                                 <span>New Prescription</span>
                                 <CommandShortcut>⌘N</CommandShortcut>
                             </CommandItem>
-                            <CommandItem onSelect={() => runCommand(() => console.log('New Lab Order'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/labs'))}>
                                 <TestTube className="mr-2 h-4 w-4" />
                                 <span>New Lab Order</span>
                             </CommandItem>
@@ -177,7 +177,7 @@ export function CommandPalette() {
 
                         <CommandGroup heading="Emergency">
                             <CommandItem
-                                onSelect={() => runCommand(() => console.log('Emergency Mode'))}
+                                onSelect={() => runCommand(() => router.push('/emergency'))}
                                 className="text-red-600 aria-selected:bg-red-100 aria-selected:text-red-700"
                             >
                                 <AlertCircle className="mr-2 h-4 w-4" />
