@@ -130,27 +130,35 @@ export default function PatientNotes({ patient }: PatientNotesProps) {
                     <div>
                         <p className="text-xs text-muted-foreground mb-1">Known Allergies</p>
                         <div className="flex flex-wrap gap-1">
-                            {patient.allergies.map((allergy: string) => (
-                                <span
-                                    key={allergy}
-                                    className="text-xs px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded"
-                                >
-                                    {allergy}
-                                </span>
-                            ))}
+                            {patient.allergies.length === 0 ? (
+                                <span className="text-xs text-muted-foreground">None reported</span>
+                            ) : (
+                                patient.allergies.map((allergy: string) => (
+                                    <span
+                                        key={allergy}
+                                        className="text-xs px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded"
+                                    >
+                                        {allergy}
+                                    </span>
+                                ))
+                            )}
                         </div>
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground mb-1">Medical History</p>
                         <div className="flex flex-wrap gap-1">
-                            {patient.medicalHistory.map((condition: string) => (
-                                <span
-                                    key={condition}
-                                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded"
-                                >
-                                    {condition}
-                                </span>
-                            ))}
+                            {patient.medicalHistory.length === 0 ? (
+                                <span className="text-xs text-muted-foreground">None reported</span>
+                            ) : (
+                                patient.medicalHistory.map((condition: string) => (
+                                    <span
+                                        key={condition}
+                                        className="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded"
+                                    >
+                                        {condition}
+                                    </span>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

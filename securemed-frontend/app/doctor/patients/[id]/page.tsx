@@ -26,6 +26,13 @@ export default function PatientDetailPage() {
             try {
                 const response = await api.get(`/patients/${patientId}/`);
                 const userData = response.data;
+                const parseList = (value: string | null | undefined) => {
+                    if (!value) return [];
+                    return value
+                        .split(',')
+                        .map((item: string) => item.trim())
+                        .filter(Boolean);
+                };
 
                 // Transform API data to Match Patient Interface expected by PatientProfileView
                 setPatient({
@@ -35,6 +42,11 @@ export default function PatientDetailPage() {
                     status: 'Outpatient', // Default or derive if available
                     lastVisit: userData.last_visit || 'N/A',
                     condition: userData.chronic_conditions || 'None listed',
+                    gender: userData.gender || 'Unknown',
+                    dateOfBirth: userData.date_of_birth || 'Unknown',
+                    bloodType: userData.blood_group || 'Unknown',
+                    allergies: parseList(userData.allergies),
+                    medicalHistory: parseList(userData.chronic_conditions),
                 });
 
             } catch (err: any) {
@@ -92,4 +104,3 @@ export default function PatientDetailPage() {
         />
     );
 }
-

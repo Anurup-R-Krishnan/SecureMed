@@ -18,6 +18,11 @@ interface Patient {
   status: 'Admitted' | 'Outpatient' | 'Observation';
   lastVisit: string;
   condition: string;
+  gender?: string;
+  dateOfBirth?: string;
+  bloodType?: string;
+  allergies?: string[];
+  medicalHistory?: string[];
 }
 
 interface PatientProfileViewProps {
@@ -319,11 +324,11 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
             id: patient.id,
             name: patient.name,
             age: patient.age,
-            gender: 'Unknown',
-            dateOfBirth: 'Unknown',
-            bloodType: 'Unknown',
-            allergies: [],
-            medicalHistory: []
+            gender: patient.gender || 'Unknown',
+            dateOfBirth: patient.dateOfBirth || 'Unknown',
+            bloodType: patient.bloodType || 'Unknown',
+            allergies: patient.allergies || [],
+            medicalHistory: patient.medicalHistory || []
           }} />
         </div>
 
