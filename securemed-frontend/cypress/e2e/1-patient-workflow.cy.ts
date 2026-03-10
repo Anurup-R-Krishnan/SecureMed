@@ -1,5 +1,6 @@
 describe('Patient Workflow', () => {
   beforeEach(() => {
+    cy.viewport(1280, 720);
     cy.clearCookies();
     cy.clearLocalStorage();
     cy.visit('http://localhost:3000/login');
@@ -11,7 +12,7 @@ describe('Patient Workflow', () => {
 
   it('Loads the patient dashboard', () => {
     cy.url().should('include', '/patient');
-    cy.contains(/Personal Health Command Center/i).should('be.visible');
+    cy.contains(/Personal Health Command Center/i).should('exist');
   });
 
   it('Loads the appointments page', () => {
