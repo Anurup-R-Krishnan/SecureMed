@@ -373,9 +373,22 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 Empowering patients and doctors with secure, efficient, and modern digital health solutions.
               </p>
               <div className="flex gap-4">
-                {/* Social placeholders */}
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors cursor-pointer"><Users className="h-4 w-4" /></div>
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors cursor-pointer"><Heart className="h-4 w-4" /></div>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('testimonials')}
+                  className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
+                  aria-label="Jump to patient stories"
+                >
+                  <Users className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('features')}
+                  className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
+                  aria-label="Jump to care features"
+                >
+                  <Heart className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
