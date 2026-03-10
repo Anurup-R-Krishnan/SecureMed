@@ -35,3 +35,20 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static          ./.next/sta
 USER nextjs
 EXPOSE 8080
 CMD ["node", "server.js"]
+
+# ── dev ───────────────────────────────────────────────────────────────────────
+FROM oven/bun:1 AS dev
+
+WORKDIR /app
+
+ENV NODE_ENV=development \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+COPY package.json bun.lock ./
+RUN bun install
+
+COPY . .
+
+EXPOSE 3000
+CMD ["bun", "run", "dev"]
