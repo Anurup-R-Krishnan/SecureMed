@@ -20,6 +20,7 @@ import { getAccessToken } from '@/lib/auth-utils';
 import { API_BASE_URL } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { videoService } from '@/services/telemedicine';
 
 interface VideoRoomProps {
     roomId: string;
@@ -37,6 +38,9 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
     const [showSettings, setShowSettings] = useState(false);
     const [showNotes, setShowNotes] = useState(false);
     const [notes, setNotes] = useState('');
+    const [roomStatus, setRoomStatus] = useState<'waiting' | 'active' | 'ended' | null>(null);
+    const [waitingCount, setWaitingCount] = useState(0);
+    const [admitting, setAdmitting] = useState(false);
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -59,6 +63,31 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
         }, 2000);
         return () => clearTimeout(timer);
     }, []);
+
+    useEffect(() => {
+        if (!roomId) return;
+        let poll: ReturnType<typeof setInterval> | null = null;
+        let isMounted = true;
+
+        const pollStatus = async () => {
+            try {
+                const statusRes = await videoService.checkRoomStatus(roomId);
+                if (!isMounted) return;
+                setRoomStatus((statusRes?.status as any) || null);
+                setWaitingCount(Number(statusRes?.waiting_count || 0));
+            } catch {
+                // ignore polling failures
+            }
+        };
+
+        pollStatus();
+        poll = setInterval(pollStatus, 5000);
+
+        return () => {
+            isMounted = false;
+            if (poll) clearInterval(poll);
+        };
+    }, [roomId]);
 
     // Initialize local video stream
     useEffect(() => {
@@ -152,6 +181,24 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
         }
     };
 
+    const handleAdmitPatient = async () => {
+        if (userRole !== 'doctor') return;
+        setAdmitting(true);
+        try {
+            await videoService.admitPatient(roomId);
+            setRoomStatus('active');
+            toast({ title: 'Patient admitted', description: 'The call has started.' });
+        } catch (error: any) {
+            toast({
+                title: 'Unable to admit patient',
+                description: error?.response?.data?.error || 'Patient may not have joined yet.',
+                variant: 'destructive'
+            });
+        } finally {
+            setAdmitting(false);
+        }
+    };
+
     return (
         <div className="relative h-[calc(100vh-100px)] w-full bg-black rounded-[32px] overflow-hidden shadow-2xl border border-border/20 group">
 
@@ -179,6 +226,16 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
                 </div>
 
                 <div className="flex gap-2">
+                    {userRole === 'doctor' && roomStatus !== 'active' && (
+                        <Button
+                            variant="secondary"
+                            className="rounded-full bg-white/10 text-white border border-white/20 hover:bg-white/20"
+                            onClick={handleAdmitPatient}
+                            disabled={admitting || waitingCount === 0}
+                        >
+                            {admitting ? 'Admitting...' : waitingCount > 0 ? 'Admit Patient' : 'Waiting for Patient'}
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="icon"

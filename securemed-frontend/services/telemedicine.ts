@@ -46,6 +46,12 @@ export const videoService = {
         return response.data;
     },
 
+    // Admit patient from waiting room (Doctor)
+    admitPatient: async (roomId: string): Promise<any> => {
+        const response = await api.post(`/telemedicine/rooms/${roomId}/admit/`);
+        return response.data;
+    },
+
     // End call
     endCall: async (roomId: string): Promise<any> => {
         const response = await api.post(`/telemedicine/rooms/${roomId}/end/`);
