@@ -29,15 +29,27 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
         if (isLoading) return;
         if (!isAuthenticated || !user) return;
         if (!allowedRoles.includes(user.role)) {
-            router.replace(getPortalRouteForRole(user.role));
+            const target = getPortalRouteForRole(user.role);
+            if (pathname && !pathname.startsWith(target)) {
+                router.replace(target);
+            }
         }
-    }, [isLoading, isAuthenticated, user, allowedRoles, router]);
+    }, [isLoading, isAuthenticated, user, allowedRoles, router, pathname]);
 
     if (isLoading || !isAuthenticated) {
         return null;
     }
 
     if (user && !allowedRoles.includes(user.role)) {
+        const target = getPortalRouteForRole(user.role);
+        if (pathname && !pathname.startsWith(target)) {
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-background">
+                    <div className="text-muted-foreground">Redirecting...</div>
+                </div>
+            );
+        }
+
         return (
             <div className="min-h-screen flex items-center justify-center bg-background p-6">
                 <div className="max-w-md w-full text-center space-y-6">
