@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Microscope, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import api from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import {
     Dialog,
     DialogContent,
@@ -32,6 +34,7 @@ interface LabResultsCardProps {
 export default function LabResultsCard({ results, onNavigate }: LabResultsCardProps) {
     const [detailOpen, setDetailOpen] = useState(false);
     const [selectedResult, setSelectedResult] = useState<LabResult | null>(null);
+    const { toast } = useToast();
     const getFlagIcon = (flag: string) => {
         const normalizedFlag = flag.toLowerCase();
         if (normalizedFlag.includes('high')) return <TrendingUp className="h-3 w-3" />;
@@ -45,6 +48,29 @@ export default function LabResultsCard({ results, onNavigate }: LabResultsCardPr
         if (normalizedFlag.includes('high')) return 'bg-orange-50 text-orange-700 border-orange-200';
         if (normalizedFlag.includes('low')) return 'bg-blue-50 text-blue-700 border-blue-200';
         return 'bg-green-50 text-green-700 border-green-200';
+    };
+
+    const handleViewAttachment = async (id: number) => {
+        try {
+            const res = await api.get(`/labs/results/${id}/presigned/`);
+            const url = res.data?.url as string | undefined;
+            if (!url) {
+                toast({
+                    title: 'No attachment found',
+                    description: 'This lab result does not include a report file.',
+                    variant: 'destructive'
+                });
+                return;
+            }
+            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            window.open(viewUrl, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            toast({
+                title: 'Unable to open report',
+                description: 'Failed to open the lab attachment.',
+                variant: 'destructive'
+            });
+        }
     };
 
     if (!results || results.length === 0) {
@@ -166,6 +192,11 @@ export default function LabResultsCard({ results, onNavigate }: LabResultsCardPr
                     )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDetailOpen(false)}>Close</Button>
+                        {selectedResult && (
+                            <Button variant="secondary" onClick={() => handleViewAttachment(selectedResult.id)}>
+                                View Report
+                            </Button>
+                        )}
                         <Button onClick={() => onNavigate('records')}>View All Records</Button>
                     </DialogFooter>
                 </DialogContent>

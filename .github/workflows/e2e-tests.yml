@@ -16,14 +16,66 @@ jobs:
       - name: Start full environment
         run: docker compose -f docker-compose.yml up -d
 
+      - name: Wait for backend readiness
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8000/health/ready/ >/dev/null; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready in time" >&2
+          exit 1
+
+      - name: Wait for Neo4j readiness
+        run: |
+          for i in {1..30}; do
+            if docker compose -f docker-compose.yml exec -T neo4j cypher-shell -u neo4j -p securemed_graph "RETURN 1" >/dev/null 2>&1; then
+              echo "Neo4j is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Neo4j did not become ready in time" >&2
+          exit 1
+
+      - name: Seed database
+        run: docker compose -f docker-compose.yml exec -T backend python manage.py seed_ci_full
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
       - name: Install Cypress dependencies
         working-directory: ./securemed-frontend
         run: bun install
+
+      - name: Cache Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles('securemed-frontend/bun.lock') }}
+          restore-keys: |
+            cypress-${{ runner.os }}-
+
+      - name: Install Cypress binary
+        working-directory: ./securemed-frontend
+        run: bunx cypress install
 
       - name: Run Cypress tests
         uses: cypress-io/github-action@v6
         with:
           working-directory: ./securemed-frontend
           install: false
-          wait-on: "http://localhost:3000"
-          wait-on-timeout: 120
+          wait-on: "http://localhost:8000/health/ready/,http://localhost:3000"
+          wait-on-timeout: 180
+          command: bunx cypress run --browser electron --headless --reporter spec
+
+      - name: Upload Cypress artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            securemed-frontend/cypress/screenshots
+            securemed-frontend/cypress/videos

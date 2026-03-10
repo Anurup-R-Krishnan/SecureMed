@@ -25,11 +25,38 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
         }
     }, [isLoading, isAuthenticated, router, pathname]);
 
+    useEffect(() => {
+        if (isLoading) return;
+        if (!isAuthenticated || !user) return;
+        if (!allowedRoles.includes(user.role)) {
+            const target = getPortalRouteForRole(user.role);
+            if (pathname && !pathname.startsWith(target)) {
+                const currentPath = pathname;
+                router.replace(target);
+                // Fallback for environments where client navigation is delayed.
+                window.setTimeout(() => {
+                    if (window.location.pathname === currentPath) {
+                        window.location.assign(target);
+                    }
+                }, 500);
+            }
+        }
+    }, [isLoading, isAuthenticated, user, allowedRoles, router, pathname]);
+
     if (isLoading || !isAuthenticated) {
         return null;
     }
 
     if (user && !allowedRoles.includes(user.role)) {
+        const target = getPortalRouteForRole(user.role);
+        if (pathname && !pathname.startsWith(target)) {
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-background">
+                    <div className="text-muted-foreground">Redirecting...</div>
+                </div>
+            );
+        }
+
         return (
             <div className="min-h-screen flex items-center justify-center bg-background p-6">
                 <div className="max-w-md w-full text-center space-y-6">

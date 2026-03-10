@@ -6,6 +6,8 @@ export interface TimelineEvent {
     title: string;
     description: string;
     category: 'appointment' | 'medication' | 'lab' | 'diagnosis' | 'admin' | 'billing';
+    type?: string;
+    details?: Record<string, any>;
     doctor?: string;
     location?: string;
     status?: 'completed' | 'upcoming' | 'pending' | 'cancelled';
@@ -27,9 +29,19 @@ export const patientService = {
         try {
             const params = patientId ? { patient_id: patientId } : {};
             const response = await api.get('/patients/timeline/', { params });
+            const data = Array.isArray(response.data) ? response.data : (response.data?.results || []);
+            const categoryMap: Record<string, TimelineEvent['category']> = {
+                diagnostic: 'lab',
+                treatment: 'medication',
+                financial: 'billing',
+                consultation: 'appointment',
+                administrative: 'admin'
+            };
 
-            // Map backend response to ensure frontend compatibility
-            return response.data;
+            return data.map((event: any) => ({
+                ...event,
+                category: categoryMap[event.category] || event.category || 'admin'
+            }));
         } catch (error) {
             console.error('Error fetching patient timeline:', error);
             return [];

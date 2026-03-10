@@ -146,7 +146,7 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const handleDownloadPdf = async () => {
         try {
             setDownloadingPdf(true);
-            const blob = await drugInteractionService.downloadReportPDF(patientId);
+            const blob = await drugInteractionService.downloadReportPDFWithGeneration(patientId);
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -155,8 +155,12 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
             link.click();
             link.remove();
             URL.revokeObjectURL(url);
-        } catch {
-            setError('Could not download interaction report.');
+        } catch (error: any) {
+            if (error?.message?.includes('timed out')) {
+                setError('Report generation is taking longer than expected. Try again in a moment.');
+            } else {
+                setError('Could not download interaction report.');
+            }
         } finally {
             setDownloadingPdf(false);
         }

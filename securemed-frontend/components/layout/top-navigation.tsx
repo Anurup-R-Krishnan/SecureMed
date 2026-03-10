@@ -34,6 +34,21 @@ export function TopNavigation({ userType }: TopNavigationProps) {
     const { user, logout } = useAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+    const profileHref = (() => {
+        if (userType === 'patient') return '/patient/profile';
+        if (userType === 'doctor') return '/doctor/settings';
+        return null;
+    })();
+
+    const settingsHref = (() => {
+        if (userType === 'patient') return '/patient/settings';
+        if (userType === 'doctor') return '/doctor/settings';
+        if (userType === 'lab_technician') return '/lab/settings';
+        if (userType === 'pharmacist') return '/settings/security';
+        if (userType === 'admin') return '/settings/security';
+        return '/settings/security';
+    })();
+
     const handleLogout = async () => {
         await logout();
         router.replace('/');
@@ -138,7 +153,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                         variant="outline"
                         size="sm"
                         className="hidden md:flex items-center gap-3 text-muted-foreground bg-card border-border/60 hover:bg-muted/20 hover:text-foreground w-56 justify-between h-10 px-4 rounded-xl shadow-sm"
-                        onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                        onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }))}
                     >
                         <span className="flex items-center gap-2">
                             <Search className="h-4 w-4" />
@@ -177,11 +192,13 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                         <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel>My Account</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => window.location.href = `/${userType}/profile`}>
-                                <User className="mr-2 h-4 w-4" />
-                                <span>Profile</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => window.location.href = `/${userType}/settings`}>
+                            {profileHref && (
+                                <DropdownMenuItem onClick={() => window.location.href = profileHref}>
+                                    <User className="mr-2 h-4 w-4" />
+                                    <span>Profile</span>
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => window.location.href = settingsHref}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Settings</span>
                             </DropdownMenuItem>

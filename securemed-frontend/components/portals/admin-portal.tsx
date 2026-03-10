@@ -33,9 +33,10 @@ interface AdminPortalProps {
   onSwitchRole: (role: 'patient' | 'doctor' | 'admin' | null) => void;
   currentTab?: AdminTab;
   onTabChange?: (tab: AdminTab) => void;
+  initialPatientId?: number | null;
 }
 
-export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabChange }: AdminPortalProps) {
+export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabChange, initialPatientId }: AdminPortalProps) {
   const [activeTab, setActiveTabState] = useState<AdminTab>(currentTab || 'dashboard');
 
   // Sync tab with URL when currentTab prop changes
@@ -226,6 +227,7 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
       {activeTab === 'patients' && (
         <PatientManager
           patients={patients}
+          initialPatientId={initialPatientId ?? null}
           onRefresh={async () => {
             setPatients(await adminService.getPatients());
           }}

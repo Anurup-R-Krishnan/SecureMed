@@ -373,9 +373,16 @@ class Command(BaseCommand):
                     "is_staff": True,
                 },
             )
+            if not created:
+                user.username = uname
+                user.first_name = first
+                user.last_name = last
+                user.role = "pharmacist"
+                user.is_active = True
+                user.is_staff = True
+            user.set_password(PASSWORD)
+            user.save()
             if created:
-                user.set_password(PASSWORD)
-                user.save()
                 self.stdout.write(f"    + {first} {last}")
 
     def _seed_lab_technicians(self):
@@ -436,9 +443,17 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
+        if not created:
+            user.username = "admin"
+            user.first_name = "System"
+            user.last_name = "Admin"
+            user.role = "admin"
+            user.is_staff = True
+            user.is_superuser = True
+            user.is_active = True
+        user.set_password(PASSWORD)
+        user.save()
         if created:
-            user.set_password(PASSWORD)
-            user.save()
             self.stdout.write("    + admin@securemed.com")
 
     def _seed_appointments(self, patients, doctors):

@@ -45,14 +45,14 @@ export const VALID_TABS = {
 };
 
 // ---------------------------------------------------------------------------
-// Role → portal root mapping
+// Role → portal landing (dashboard) mapping
 // ---------------------------------------------------------------------------
 const ROLE_ROUTES: Record<string, string> = {
-  patient: ROUTES.PATIENT,
-  doctor: ROUTES.DOCTOR,
-  admin: ROUTES.ADMIN,
-  lab_technician: ROUTES.LAB,
-  pharmacist: ROUTES.PHARMACY,
+  patient: ROUTES.PATIENT_DASHBOARD,
+  doctor: ROUTES.DOCTOR_DASHBOARD,
+  admin: ROUTES.ADMIN_DASHBOARD,
+  lab_technician: ROUTES.LAB_WORKLIST,
+  pharmacist: ROUTES.PHARMACY_DASHBOARD,
 };
 
 /**

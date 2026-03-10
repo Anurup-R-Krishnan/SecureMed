@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { patientService, TimelineEvent } from '@/services/patients';
+import api from '@/lib/api';
 import {
     Calendar,
     FileText,
@@ -144,25 +145,82 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
         }
     };
 
-    const handleViewDetails = (event: TimelineEvent) => {
+    const parseEventId = (id: string) => {
+        const parts = id.split('-').filter(Boolean);
+        if (parts.length < 2) {
+            return { type: id, rawId: '' };
+        }
+        return {
+            type: parts.slice(0, -1).join('-'),
+            rawId: parts[parts.length - 1]
+        };
+    };
+
+    const openLabAttachment = async (labResultId: number) => {
+        try {
+            const res = await api.get(`/labs/results/${labResultId}/presigned/`);
+            const url = res.data?.url as string | undefined;
+            if (!url) {
+                toast({
+                    title: 'No attachment found',
+                    description: 'This lab result does not include a report file.',
+                    variant: 'destructive'
+                });
+                return;
+            }
+            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            window.open(viewUrl, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            toast({
+                title: 'Unable to open report',
+                description: 'Failed to open the lab attachment.',
+                variant: 'destructive'
+            });
+        }
+    };
+
+    const handleViewDetails = async (event: TimelineEvent) => {
         if (!event?.id) return;
-        const [prefix, rawId] = event.id.split('_', 2);
-        if (prefix === 'appt') {
+        const parsed = parseEventId(event.id);
+        const eventType = (event.type || parsed.type || '').toLowerCase();
+        const rawId = parsed.rawId;
+
+        if (eventType === 'appointment') {
             router.push(`/patient/appointments?appointmentId=${rawId}`);
             return;
         }
-        if (prefix === 'rec') {
+        if (eventType === 'record') {
             router.push(`/patient/records?recordId=${rawId}`);
             return;
         }
-        if (prefix === 'lab') {
-            router.push(`/patient/records?recordId=${rawId}`);
+        if (eventType === 'lab-result') {
+            const idNumber = Number(rawId);
+            if (Number.isFinite(idNumber) && idNumber > 0) {
+                if (event.details?.has_attachment) {
+                    await openLabAttachment(idNumber);
+                    return;
+                }
+                toast({
+                    title: 'No attachment found',
+                    description: 'This lab result does not include a report file.',
+                    variant: 'destructive'
+                });
+            }
             return;
         }
-        if (prefix === 'inv' || prefix === 'pay') {
+        if (eventType === 'lab-order') {
+            router.push('/patient/records');
+            return;
+        }
+        if (eventType === 'invoice') {
             router.push(`/patient/billing?invoiceId=${rawId}`);
             return;
         }
+        if (eventType === 'pharmacy' || eventType === 'prescription') {
+            router.push('/patient/records');
+            return;
+        }
+
         router.push('/patient/records');
     };
 

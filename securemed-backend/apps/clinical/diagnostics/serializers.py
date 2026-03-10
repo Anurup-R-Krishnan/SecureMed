@@ -8,6 +8,9 @@ class LabTestSerializer(serializers.ModelSerializer):
 
 class LabResultSerializer(serializers.ModelSerializer):
     is_abnormal = serializers.SerializerMethodField()
+    test_name = serializers.CharField(source='test.name', read_only=True)
+    order_id = serializers.IntegerField(source='order.id', read_only=True)
+    sample_id = serializers.CharField(source='order.sample_id', read_only=True)
 
     class Meta:
         model = LabResult
@@ -17,8 +20,8 @@ class LabResultSerializer(serializers.ModelSerializer):
         if value:
             if value.size > 10 * 1024 * 1024:  # 10MB limit
                 raise serializers.ValidationError("File size too large. Max 10MB.")
-            if not value.name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.dcm')):
-                raise serializers.ValidationError("Unsupported file type. Allowed: PDF, JPG, PNG, DCM.")
+            if not value.name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.dcm', '.docx', '.xlsx')):
+                raise serializers.ValidationError("Unsupported file type. Allowed: PDF, JPG, PNG, DCM, DOCX, XLSX.")
         return value
 
     def get_is_abnormal(self, obj):

@@ -28,27 +28,87 @@ import {
 
 import { useAuth } from '@/context/auth-context';
 import { appointmentService, Doctor } from '@/services/appointments';
+import { adminService } from '@/services/admin';
+import api from '@/lib/api';
+
+interface PatientResult {
+    id: number;
+    name: string;
+    displayId?: string | null;
+}
 
 export function CommandPalette() {
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState('');
     const [results, setResults] = React.useState<Doctor[]>([]);
+    const [patientResults, setPatientResults] = React.useState<PatientResult[]>([]);
     const [loading, setLoading] = React.useState(false);
     const router = useRouter();
     const { user } = useAuth();
 
-    // Debounced search for doctors
+    const placeholderText = user?.role === 'patient'
+        ? 'Type a command or search for doctors...'
+        : user?.role === 'doctor' || user?.role === 'admin'
+            ? 'Type a command or search for patients...'
+            : 'Type a command...';
+
+    const settingsRoute = (() => {
+        if (user?.role === 'patient') return '/patient/settings';
+        if (user?.role === 'doctor') return '/doctor/settings';
+        if (user?.role === 'lab_technician') return '/lab/settings';
+        if (user?.role === 'pharmacist') return '/settings/security';
+        if (user?.role === 'admin') return '/settings/security';
+        return '/settings/security';
+    })();
+
+    // Debounced search
     React.useEffect(() => {
-        if (!query || query.length < 2 || user?.role !== 'patient') {
+        if (!query || query.length < 2) {
             setResults([]);
+            setPatientResults([]);
             return;
         }
 
         const timer = setTimeout(async () => {
             setLoading(true);
             try {
-                const docs = await appointmentService.getDoctors(undefined, query);
-                setResults(docs);
+                if (user?.role === 'patient') {
+                    const docs = await appointmentService.getDoctors(undefined, query);
+                    setResults(docs);
+                    setPatientResults([]);
+                } else if (user?.role === 'doctor') {
+                    const response = await api.get('/medical-records/records/', { params: { search: query } });
+                    const rows = Array.isArray(response.data) ? response.data : (response.data.results || []);
+                    const unique = new Map<number, PatientResult>();
+                    rows.forEach((row: any) => {
+                        if (row.patient && !unique.has(row.patient)) {
+                            unique.set(row.patient, {
+                                id: row.patient,
+                                name: row.patient_name || `Patient #${row.patient}`,
+                                displayId: row.patient_display_id
+                            });
+                        }
+                    });
+                    setPatientResults(Array.from(unique.values()));
+                    setResults([]);
+                } else if (user?.role === 'admin') {
+                    const rows = await adminService.getPatients(query);
+                    const normalized = query.trim().toLowerCase();
+                    const matches = rows.filter((row: any) => {
+                        const name = `${row.user_first_name || ''} ${row.user_last_name || ''}`.trim().toLowerCase();
+                        const patientId = (row.patient_id || '').toLowerCase();
+                        return name.includes(normalized) || patientId.includes(normalized);
+                    });
+                    setPatientResults(matches.slice(0, 15).map((row: any) => ({
+                        id: row.id,
+                        name: `${row.user_first_name || ''} ${row.user_last_name || ''}`.trim() || `Patient #${row.id}`,
+                        displayId: row.patient_id
+                    })));
+                    setResults([]);
+                } else {
+                    setResults([]);
+                    setPatientResults([]);
+                }
             } catch (error) {
                 console.error('Search error:', error);
             } finally {
@@ -81,7 +141,7 @@ export function CommandPalette() {
     return (
         <CommandDialog open={open} onOpenChange={setOpen}>
             <CommandInput 
-                placeholder="Type a command or search for doctors..." 
+                placeholder={placeholderText}
                 value={query}
                 onValueChange={setQuery}
             />
@@ -142,18 +202,44 @@ export function CommandPalette() {
                     </>
                 )}
 
+                {patientResults.length > 0 && (
+                    <>
+                        <CommandSeparator />
+                        <CommandGroup heading="Patients">
+                            {patientResults.map((patient) => (
+                                <CommandItem
+                                    key={patient.id}
+                                    onSelect={() => runCommand(() => {
+                                        if (user?.role === 'admin') {
+                                            router.push(`/admin/patients?patientId=${patient.id}`);
+                                        } else {
+                                            router.push(`/doctor/patients/${patient.id}`);
+                                        }
+                                    })}
+                                >
+                                    <User className="mr-2 h-4 w-4 text-primary" />
+                                    <div className="flex flex-col text-left">
+                                        <span className="font-medium">{patient.name}</span>
+                                        <span className="text-[10px] text-muted-foreground">{patient.displayId || `ID ${patient.id}`}</span>
+                                    </div>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </>
+                )}
+
                 {user.role === 'doctor' && (
                     <>
                         <CommandGroup heading="Quick Access">
-                            <CommandItem onSelect={() => runCommand(() => console.log('Admit Patient'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/triage-inbox'))}>
                                 <User className="mr-2 h-4 w-4" />
                                 <span>Admit New Patient</span>
                             </CommandItem>
-                            <CommandItem onSelect={() => runCommand(() => console.log('Order Radiology'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/records?new=1&type=imaging'))}>
                                 <FileText className="mr-2 h-4 w-4" />
                                 <span>Order Radiology Scan</span>
                             </CommandItem>
-                            <CommandItem onSelect={() => runCommand(() => console.log('Page On-Call'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/messaging'))}>
                                 <AlertCircle className="mr-2 h-4 w-4" />
                                 <span>Page On-Call Specialist</span>
                             </CommandItem>
@@ -162,12 +248,12 @@ export function CommandPalette() {
                         <CommandSeparator />
 
                         <CommandGroup heading="Actions">
-                            <CommandItem onSelect={() => runCommand(() => console.log('New Prescription'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/prescriptions'))}>
                                 <FileText className="mr-2 h-4 w-4" />
                                 <span>New Prescription</span>
                                 <CommandShortcut>⌘N</CommandShortcut>
                             </CommandItem>
-                            <CommandItem onSelect={() => runCommand(() => console.log('New Lab Order'))}>
+                            <CommandItem onSelect={() => runCommand(() => router.push('/doctor/labs'))}>
                                 <TestTube className="mr-2 h-4 w-4" />
                                 <span>New Lab Order</span>
                             </CommandItem>
@@ -177,7 +263,7 @@ export function CommandPalette() {
 
                         <CommandGroup heading="Emergency">
                             <CommandItem
-                                onSelect={() => runCommand(() => console.log('Emergency Mode'))}
+                                onSelect={() => runCommand(() => router.push('/emergency'))}
                                 className="text-red-600 aria-selected:bg-red-100 aria-selected:text-red-700"
                             >
                                 <AlertCircle className="mr-2 h-4 w-4" />
@@ -208,7 +294,7 @@ export function CommandPalette() {
                 )}
 
                 <CommandGroup heading="Settings">
-                    <CommandItem onSelect={() => runCommand(() => router.push(`/${user.role}/settings`))}>
+                    <CommandItem onSelect={() => runCommand(() => router.push(settingsRoute))}>
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                     </CommandItem>

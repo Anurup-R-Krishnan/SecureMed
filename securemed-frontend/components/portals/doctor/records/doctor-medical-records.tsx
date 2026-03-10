@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ interface DoctorMedicalRecordsProps {
 }
 
 export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecordsProps) {
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
@@ -41,6 +43,18 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
     notes: '',
   });
   const [newFile, setNewFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const shouldOpen = searchParams.get('new') === '1';
+    const initialType = searchParams.get('type');
+    if (shouldOpen) {
+      setCreateOpen(true);
+    }
+    if (initialType) {
+      setNewRecord((prev) => ({ ...prev, record_type: initialType }));
+    }
+  }, [searchParams]);
 
   // Debounce search input
   useEffect(() => {

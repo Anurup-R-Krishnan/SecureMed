@@ -1120,7 +1120,7 @@ def patient_dashboard_stats(request):
         ).prefetch_related('results__test').order_by('-created_at')[:3]
         
         for order in recent_lab_orders:
-            for result in order.results.all()[:3]:  # Max 3 results per order
+            for result in order.results.filter(released_to_patient=True)[:3]:  # Max 3 results per order
                 recent_lab_results.append({
                     'id': result.id,
                     'test_name': result.test.name if result.test else 'Unknown Test',

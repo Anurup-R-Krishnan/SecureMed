@@ -28,6 +28,7 @@ export function MessagingInterface() {
     const [contacts, setContacts] = useState<ContactUser[]>([]);
     const [contactSearch, setContactSearch] = useState('');
     const [loadingContacts, setLoadingContacts] = useState(false);
+    const [conversationSearch, setConversationSearch] = useState('');
 
     useEffect(() => {
         const user = getCurrentUser();
@@ -95,6 +96,16 @@ export function MessagingInterface() {
         );
     }
 
+    const normalizedConversationSearch = conversationSearch.trim().toLowerCase();
+    const filteredConversations = normalizedConversationSearch
+        ? conversations.filter((conversation) => {
+            const otherParticipant = conversation.participants.find(p => p.id !== currentUser?.id) || conversation.participants[0];
+            const name = `${otherParticipant?.name || ''} ${otherParticipant?.username || ''}`.trim().toLowerCase();
+            const lastMessage = conversation.last_message?.content?.toLowerCase() || '';
+            return name.includes(normalizedConversationSearch) || lastMessage.includes(normalizedConversationSearch);
+        })
+        : conversations;
+
     const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
     return (
@@ -122,6 +133,8 @@ export function MessagingInterface() {
                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Search messages..."
+                            value={conversationSearch}
+                            onChange={(e) => setConversationSearch(e.target.value)}
                             className="pl-9 h-10 rounded-xl bg-background border-border/50 focus:border-primary/50 focus:ring-primary/10 transition-all font-medium"
                         />
                     </div>
@@ -174,12 +187,12 @@ export function MessagingInterface() {
                         </div>
                     ) : (
                         /* Conversation List Component */
-                        <ConversationList
-                            conversations={conversations}
-                            selectedConversationId={selectedConversationId}
-                            onSelectConversation={handleSelectConversation}
-                            currentUserId={currentUser.id}
-                        />
+                            <ConversationList
+                                conversations={filteredConversations}
+                                selectedConversationId={selectedConversationId}
+                                onSelectConversation={handleSelectConversation}
+                                currentUserId={currentUser.id}
+                            />
                     )}
                 </div>
             </div>

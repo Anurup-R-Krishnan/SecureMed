@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import AdminPortal from '@/components/portals/admin-portal';
 import RoleGuard from '@/components/auth/role-guard';
@@ -12,8 +12,11 @@ type AdminTab = (typeof VALID_TABS.admin)[number];
 export default function AdminTabPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, isAuthenticated, isLoading, logout } = useAuth();
     const tab = params.tab as string;
+    const patientIdParam = searchParams?.get('patientId');
+    const initialPatientId = patientIdParam ? Number(patientIdParam) : null;
 
     useEffect(() => {
         if (isLoading) return;
@@ -59,6 +62,7 @@ export default function AdminTabPage() {
         <RoleGuard allowedRoles={['admin']}>
             <AdminPortal
                 currentTab={currentTab}
+                initialPatientId={Number.isFinite(initialPatientId) ? initialPatientId : null}
                 onTabChange={(newTab) => router.push(`/admin/${newTab}`)}
                 onLogout={handleLogout}
                 onSwitchRole={handleSwitchRole}

@@ -47,7 +47,7 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
     setDownloadingPDF(true);
     setPdfError(null);
     try {
-      const blob = await drugInteractionService.downloadReportPDF(parseInt(patient.id));
+      const blob = await drugInteractionService.downloadReportPDFWithGeneration(parseInt(patient.id));
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -56,8 +56,14 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch {
-      setPdfError('No interaction report found for this patient.');
+    } catch (error: any) {
+      if (error?.response?.status === 401) {
+        setPdfError('Session expired. Please log in again.');
+      } else if (error?.message?.includes('timed out')) {
+        setPdfError('Report generation is taking longer than expected. Try again in a moment.');
+      } else {
+        setPdfError('No interaction report found for this patient.');
+      }
     } finally {
       setDownloadingPDF(false);
     }
