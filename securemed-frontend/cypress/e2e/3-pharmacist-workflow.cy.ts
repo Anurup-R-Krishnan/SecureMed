@@ -1,5 +1,6 @@
 describe('Pharmacist Inventory Workflow', () => {
   beforeEach(() => {
+    cy.viewport(1280, 720);
     cy.clearCookies();
     cy.clearLocalStorage();
     cy.visit('http://localhost:3000/login');
