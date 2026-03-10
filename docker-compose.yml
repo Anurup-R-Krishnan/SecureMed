@@ -2,8 +2,6 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
-    ports:
-      - "5433:5432"
     environment:
       POSTGRES_DB: ${DB_NAME:-securemed}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -19,29 +17,10 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
-      retries: 5
-
-  neo4j:
-    image: neo4j:5-community
-    restart: unless-stopped
-    environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-securemed_graph}
-      NEO4J_PLUGINS: '["graph-data-science"]'
-    ports:
-      - "7475:7474"
-      - "7688:7687"
-    volumes:
-      - neo4j_data:/data
-    healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "${NEO4J_USER:-neo4j}", "-p", "${NEO4J_PASSWORD:-securemed_graph}", "RETURN 1"]
-      interval: 10s
-      timeout: 10s
       retries: 5
 
   backend:
@@ -50,74 +29,39 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file:
-      - ./securemed-backend/.env
     environment:
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${DB_NAME:-securemed}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-securemed_db_password}
       DB_HOST: db
-      DB_PORT: 5432
+      DB_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
-      NEO4J_URI: bolt://neo4j:7687
-      AUTO_SEED_INFECTION_TRACKING: ${AUTO_SEED_INFECTION_TRACKING:-false}
-      ALLOWED_HOSTS: "localhost,127.0.0.1,host.docker.internal,backend"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,backend"
+      SECRET_KEY: ${SECRET_KEY:-ci-secret-key}
+      DEBUG: ${DEBUG:-True}
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-      neo4j:
-        condition: service_healthy
-    volumes:
-      - ./securemed-backend:/app
-      - media_data:/app/media
-
-  celery:
-    build:
-      context: ./securemed-backend
-    restart: unless-stopped
-    command: celery -A config worker --loglevel=info
-    env_file:
-      - ./securemed-backend/.env
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      REDIS_URL: redis://redis:6379/0
-      NEO4J_URI: bolt://neo4j:7687
-      AUTO_SEED_INFECTION_TRACKING: ${AUTO_SEED_INFECTION_TRACKING:-false}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-    volumes:
-      - ./securemed-backend:/app
-      - media_data:/app/media
 
   frontend:
     build:
       context: ./securemed-frontend
       target: dev
-      args:
-        - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
-      BACKEND_URL: ${BACKEND_URL:-http://backend:8000}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      BACKEND_URL: http://backend:8000
+      NEXT_PUBLIC_API_URL: /api
+    command: bun run dev
     depends_on:
-      backend:
-        condition: service_started
-    volumes:
-      - ./securemed-frontend/app:/app/app
-      - ./securemed-frontend/components:/app/components
-      - ./securemed-frontend/services:/app/services
-      - ./securemed-frontend/lib:/app/lib
-      - ./securemed-frontend/public:/app/public
-      - ./securemed-frontend/styles:/app/styles
+      - backend
 
 volumes:
   postgres_data:
-  media_data:
-  neo4j_data:

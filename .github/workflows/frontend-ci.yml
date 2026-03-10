@@ -1,0 +1,44 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "securemed-frontend/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "securemed-frontend/**"
+
+defaults:
+  run:
+    working-directory: ./securemed-frontend
+
+jobs:
+  test-and-build:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build application
+        run: bun run build
+
+      - name: Build Docker image
+        working-directory: .
+        run: |
+          docker build \
+            -f securemed-frontend/Dockerfile \
+            -t securemed-frontend:latest \
+            ./securemed-frontend

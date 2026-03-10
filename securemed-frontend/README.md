@@ -38,3 +38,5 @@ npm start
 ## Backend Repository
 
 This frontend connects to the SecureMed backend API. Ensure the backend is running at the configured API URL.
+
+<!-- ci-trigger -->
