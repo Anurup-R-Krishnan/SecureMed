@@ -36,6 +36,7 @@ interface PrescriptionWriterProps {
 
 export default function PrescriptionWriter({ patients, onSuccess }: PrescriptionWriterProps) {
     const [selectedPatient, setSelectedPatient] = useState<string>('');
+    const [patientSearch, setPatientSearch] = useState('');
     const [medicationName, setMedicationName] = useState('');
     const [dosage, setDosage] = useState('');
     const [frequency, setFrequency] = useState('');
@@ -44,6 +45,12 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
     const [overrideReason, setOverrideReason] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+
+    const filteredPatients = patients.filter((patient) => {
+        const term = patientSearch.trim().toLowerCase();
+        if (!term) return true;
+        return patient.name.toLowerCase().includes(term) || patient.displayId.toLowerCase().includes(term);
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -128,12 +135,17 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                     {/* Patient Selection */}
                     <div className="space-y-2">
                         <Label>Select Patient</Label>
+                        <Input
+                            placeholder="Search patient by name or ID..."
+                            value={patientSearch}
+                            onChange={(e) => setPatientSearch(e.target.value)}
+                        />
                         <Select value={selectedPatient} onValueChange={setSelectedPatient}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Search or select patient..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {patients.map(p => (
+                                {filteredPatients.map(p => (
                                     <SelectItem key={p.id} value={p.id.toString()}>
                                         {p.name} <span className="text-muted-foreground ml-2">({p.displayId})</span>
                                     </SelectItem>
