@@ -119,4 +119,41 @@ export const drugInteractionService = {
         });
         return response.data;
     },
+
+    async downloadReportPDFWithGeneration(
+        patientId?: number,
+        options?: { pollIntervalMs?: number; timeoutMs?: number }
+    ): Promise<Blob> {
+        const pollIntervalMs = options?.pollIntervalMs ?? 1500;
+        const timeoutMs = options?.timeoutMs ?? 30000;
+        const start = Date.now();
+
+        const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        try {
+            return await this.downloadReportPDF(patientId);
+        } catch (error: any) {
+            if (error?.response?.status !== 404) {
+                throw error;
+            }
+        }
+
+        const job = await this.regenerateReport(patientId);
+        if (!job?.task_id) {
+            return await this.downloadReportPDF(patientId);
+        }
+
+        while (Date.now() - start < timeoutMs) {
+            const status = await this.getReportJobStatus(job.task_id);
+            if (status.status === 'succeeded') {
+                return await this.downloadReportPDF(patientId);
+            }
+            if (status.status === 'failed') {
+                throw new Error(status.error_message || 'Report generation failed.');
+            }
+            await sleep(pollIntervalMs);
+        }
+
+        throw new Error('Report generation timed out.');
+    },
 };

@@ -32,7 +32,7 @@ export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: A
         try {
             setDownloadingReport(true);
             setReportError('');
-            const blob = await drugInteractionService.downloadReportPDF();
+            const blob = await drugInteractionService.downloadReportPDFWithGeneration();
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -42,10 +42,10 @@ export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: A
             link.remove();
             URL.revokeObjectURL(url);
         } catch (error: any) {
-            if (error?.response?.status === 404) {
-                setReportError('No report yet. Generate one in Medication Safety Checker.');
-            } else if (error?.response?.status === 401) {
+            if (error?.response?.status === 401) {
                 setReportError('Session expired. Please log in again.');
+            } else if (error?.message?.includes('timed out')) {
+                setReportError('Report generation is taking longer than expected. Try again in a moment.');
             } else {
                 setReportError('Could not download report.');
             }
