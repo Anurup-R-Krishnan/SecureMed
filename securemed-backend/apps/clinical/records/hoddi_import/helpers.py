@@ -7,10 +7,12 @@ from apps.clinical.records.interaction_service import normalize_medication_name
 
 
 INTERACTION_COLUMNS = ["drugs", "drugbankid", "drugbank_id", "medications", "drug_ids"]
-SIDE_EFFECT_COLUMNS = ["side_effect", "se_above_0.9", "se", "umls_cui", "cui"]
+SIDE_EFFECT_COLUMNS = ["side_effect", "se_above_0.9", "se", "se_label", "umls_cui", "cui"]
 SEVERITY_COLUMNS = ["severity", "risk_level"]
 DESCRIPTION_COLUMNS = ["description", "detail", "notes"]
 LABEL_COLUMNS = ["hyperedge_label", "label", "is_positive"]
+SOURCE_COLUMNS = ["source", "src"]
+TARGET_COLUMNS = ["target", "dst"]
 
 SIDE_EFFECT_MAP_CODE_COLUMNS = [
     "umls_cui_from_meddra",

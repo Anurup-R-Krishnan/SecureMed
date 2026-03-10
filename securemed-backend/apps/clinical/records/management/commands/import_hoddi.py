@@ -16,6 +16,8 @@ from apps.clinical.records.hoddi_import.helpers import (
     DRUG_MAP_NAME_COLUMNS,
     INTERACTION_COLUMNS,
     LABEL_COLUMNS,
+    SOURCE_COLUMNS,
+    TARGET_COLUMNS,
     SEVERITY_COLUMNS,
     SIDE_EFFECT_COLUMNS,
     SIDE_EFFECT_MAP_CODE_COLUMNS,
@@ -194,6 +196,15 @@ class Command(BaseCommand):
                     continue
 
                 meds_col = detect_column(header, INTERACTION_COLUMNS)
+                source_col = None
+                target_col = None
+                combined_meds_col = None
+                if not meds_col:
+                    source_col = detect_column(header, SOURCE_COLUMNS)
+                    target_col = detect_column(header, TARGET_COLUMNS)
+                    if source_col and target_col:
+                        combined_meds_col = "__combined_meds__"
+                        meds_col = combined_meds_col
                 side_effect_col = detect_column(header, SIDE_EFFECT_COLUMNS)
                 if not meds_col or not side_effect_col:
                     continue
@@ -204,6 +215,8 @@ class Command(BaseCommand):
                 inferred_version = infer_dataset_version(csv_path, dataset_version)
 
                 for row in reader:
+                    if combined_meds_col and source_col and target_col:
+                        row[combined_meds_col] = f"{row.get(source_col, '')}|{row.get(target_col, '')}"
                     parsed_outcome = parse_interaction_row_with_reason(
                         row,
                         meds_col=meds_col,
