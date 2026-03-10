@@ -4,14 +4,26 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Plus } from 'lucide-react';
 import api from '@/lib/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface DoctorMedicalRecordsProps {
   patientId?: string;
 }
 
 export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecordsProps) {
+  const { toast } = useToast();
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +31,16 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newRecord, setNewRecord] = useState({
+    patient_id: patientId || '',
+    record_type: '',
+    record_date: new Date().toISOString().slice(0, 10),
+    diagnosis: '',
+    notes: '',
+  });
+  const [newFile, setNewFile] = useState<File | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -73,6 +95,43 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
 
   const recordTypes = [...new Set(medicalRecords.map(r => r.record_type))];
 
+  const handleCreateRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRecord.record_type || !newRecord.record_date || !newRecord.diagnosis || !newRecord.patient_id) {
+      toast({ title: 'Missing fields', description: 'Patient, type, date, and diagnosis are required.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setCreating(true);
+      const formData = new FormData();
+      formData.append('patient', String(newRecord.patient_id));
+      formData.append('record_type', newRecord.record_type);
+      formData.append('record_date', newRecord.record_date);
+      formData.append('diagnosis', newRecord.diagnosis);
+      if (newRecord.notes) formData.append('notes', newRecord.notes);
+      if (newFile) formData.append('file', newFile);
+
+      await api.post('/medical-records/records/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast({ title: 'Record created', description: 'Medical record saved successfully.' });
+      setCreateOpen(false);
+      setNewRecord({
+        patient_id: patientId || '',
+        record_type: '',
+        record_date: new Date().toISOString().slice(0, 10),
+        diagnosis: '',
+        notes: '',
+      });
+      setNewFile(null);
+      fetchRecords(debouncedSearch);
+    } catch (error: any) {
+      toast({ title: 'Create failed', description: error?.response?.data?.error || 'Could not create record.', variant: 'destructive' });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -82,7 +141,7 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
             {patientId ? 'Patient medical history and records' : 'Manage your practice and patients'}
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" />
           Add Record
         </Button>
@@ -141,6 +200,89 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
           </div>
         </Card>
       </div>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Medical Record</DialogTitle>
+            <DialogDescription>Create a new clinical record for a patient.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateRecord} className="space-y-4">
+            {!patientId && (
+              <div className="space-y-2">
+                <Label htmlFor="patient-id">Patient ID (numeric)</Label>
+                <Input
+                  id="patient-id"
+                  value={newRecord.patient_id}
+                  onChange={(e) => setNewRecord((prev) => ({ ...prev, patient_id: e.target.value }))}
+                  placeholder="e.g. 12"
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="record-type">Record Type</Label>
+                <select
+                  id="record-type"
+                  value={newRecord.record_type}
+                  onChange={(e) => setNewRecord((prev) => ({ ...prev, record_type: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select type</option>
+                  <option value="consultation">Consultation</option>
+                  <option value="lab_report">Lab Report</option>
+                  <option value="prescription">Prescription</option>
+                  <option value="imaging">Imaging</option>
+                  <option value="surgery">Surgery</option>
+                  <option value="discharge">Discharge Summary</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="record-date">Date</Label>
+                <Input
+                  id="record-date"
+                  type="date"
+                  value={newRecord.record_date}
+                  onChange={(e) => setNewRecord((prev) => ({ ...prev, record_date: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="diagnosis">Diagnosis</Label>
+              <Input
+                id="diagnosis"
+                value={newRecord.diagnosis}
+                onChange={(e) => setNewRecord((prev) => ({ ...prev, diagnosis: e.target.value }))}
+                placeholder="Primary diagnosis"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={newRecord.notes}
+                onChange={(e) => setNewRecord((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Clinical notes (optional)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="record-file">Attach File</Label>
+              <Input
+                id="record-file"
+                type="file"
+                onChange={(e) => setNewFile(e.target.files?.[0] || null)}
+                accept=".pdf,.jpg,.jpeg,.png"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? 'Saving...' : 'Create Record'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">

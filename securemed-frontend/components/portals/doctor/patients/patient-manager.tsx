@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
     Users,
     ShieldAlert,
@@ -36,11 +37,19 @@ export default function PatientManager({
     onViewPatient
 }: PatientManagerProps) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
-    const filteredPatients = patients.filter(patient =>
-        patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        patient.displayId.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const statusOptions = useMemo(() => {
+        const unique = new Set(patients.map((p) => p.status).filter(Boolean));
+        return ['all', ...Array.from(unique)];
+    }, [patients]);
+
+    const filteredPatients = patients.filter(patient => {
+        const matchesSearch = patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            patient.displayId.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || patient.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
 
     return (
         <div className="bg-card p-8 rounded-[32px] border border-border overflow-hidden shadow-sm">
@@ -59,9 +68,20 @@ export default function PatientManager({
                             className="pl-9 bg-background/50 border-sidebar-border"
                         />
                     </div>
-                    <Button variant="outline" size="icon" className="shrink-0">
-                        <Filter className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="shrink-0">
+                                <Filter className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {statusOptions.map((status) => (
+                                <DropdownMenuItem key={status} onClick={() => setStatusFilter(status)}>
+                                    {status === 'all' ? 'All Statuses' : status}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="destructive" size="sm" className="font-bold shrink-0" onClick={() => onEmergencyAccess({} as any)}>
                         <ShieldAlert className="h-4 w-4 md:mr-2" />
                         <span className="hidden md:inline">Emergency Access</span>

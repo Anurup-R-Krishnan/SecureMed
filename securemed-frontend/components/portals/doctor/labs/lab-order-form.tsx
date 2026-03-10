@@ -63,6 +63,16 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
     const [submitted, setSubmitted] = useState(false);
     const [labTests, setLabTests] = useState<LabTest[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
+    const resetForm = () => {
+        setSelectedPatient('');
+        setSelectedTests([]);
+        setSearchQuery('');
+        setSelectedCategory('all');
+        setPriority('routine');
+        setClinicalNotes('');
+        setFasting(false);
+        setSubmitted(false);
+    };
 
     useEffect(() => {
         const fetchTests = async () => {
@@ -130,12 +140,7 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
                     <p className="text-slate-600 mb-6">
                         Lab order for {selectedTests.length} test(s) has been submitted.
                     </p>
-                    <Button onClick={() => {
-                        setSubmitted(false);
-                        setSelectedTests([]);
-                        setSelectedPatient('');
-                        setClinicalNotes('');
-                    }}>
+                    <Button onClick={resetForm}>
                         Create Another Order
                     </Button>
                 </CardContent>
@@ -348,7 +353,7 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
 
             {/* Submit */}
             <div className="flex justify-end gap-3">
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline" onClick={resetForm}>Cancel</Button>
                 <Button
                     onClick={handleSubmit}
                     disabled={!selectedPatient || selectedTests.length === 0 || isSubmitting}
