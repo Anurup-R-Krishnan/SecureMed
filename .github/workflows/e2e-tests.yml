@@ -28,6 +28,18 @@ jobs:
           echo "Backend did not become ready in time" >&2
           exit 1
 
+      - name: Wait for Neo4j readiness
+        run: |
+          for i in {1..30}; do
+            if docker compose -f docker-compose.yml exec -T neo4j cypher-shell -u neo4j -p securemed_graph "RETURN 1" >/dev/null 2>&1; then
+              echo "Neo4j is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Neo4j did not become ready in time" >&2
+          exit 1
+
       - name: Seed database
         run: docker compose -f docker-compose.yml exec -T backend python manage.py seed_ci_full
 
