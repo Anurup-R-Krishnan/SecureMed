@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     # Platform
     'apps.platform.core',
     'apps.platform.analytics',
+    'apps.platform.accessibility',
     # Clinical — Infection Tracking
     'apps.clinical.infection_tracking',
     'django_extensions',

@@ -49,6 +49,7 @@ api_patterns = [
     path('doctor/', include('apps.platform.analytics.doctor_urls')),
     path('patient/', include('apps.platform.analytics.patient_urls')),
     path('labs/', include('apps.clinical.diagnostics.urls')),
+    path('platform/voice/', include('apps.platform.accessibility.urls')),
     path('pharmacy/', include('apps.clinical.pharmacy.urls')),
     path('patients/', include('apps.accounts.patients.urls')),
     path('billing/', include('apps.finance.billing.urls')),
