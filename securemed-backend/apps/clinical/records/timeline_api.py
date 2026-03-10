@@ -53,6 +53,7 @@ def patient_timeline(request):
             "status": order.status,
             "priority": order.priority,
             "details": {
+                "lab_order_id": order.id,
                 "sample_id": order.sample_id,
                 "tests": [{"name": t.name, "code": t.code} for t in order.items.all()],
                 "doctor": order.doctor.get_full_name() if order.doctor else "Unknown",
@@ -73,6 +74,7 @@ def patient_timeline(request):
                     "status": "released",
                     "flag": result.flag,
                     "details": {
+                        "lab_result_id": result.id,
                         "test_code": result.test.code,
                         "test_name": result.test.name,
                         "result_value": result.result_value,
