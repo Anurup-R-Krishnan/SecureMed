@@ -1,8 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { User, Bed, AlertTriangle, Shield } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 import { adminService } from '@/services/admin';
 
@@ -10,6 +20,8 @@ export interface RoomData {
     id: string;
     isOccupied: boolean;
     patientName: string | null;
+    patientId?: number;
+    patientDisplayId?: string;
     acuity: 'critical' | 'warning' | 'stable' | null;
     isIsolation: boolean;
 }
@@ -20,8 +32,11 @@ interface WardMapProps {
 }
 
 export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
+    const router = useRouter();
     const [rooms, setRooms] = useState<RoomData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [selectedRoom, setSelectedRoom] = useState<RoomData | null>(null);
 
     useEffect(() => {
         const fetchWardData = async () => {
@@ -33,11 +48,16 @@ export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
                     const assignedPatient = patients[i];
 
                     if (assignedPatient) {
+                        const firstName = assignedPatient.user_first_name || assignedPatient.first_name || '';
+                        const lastName = assignedPatient.user_last_name || assignedPatient.last_name || '';
+                        const displayName = assignedPatient.name || `${firstName} ${lastName}`.trim() || assignedPatient.user_email || 'Patient';
                         // Determine acuity based on recent vitals if available, otherwise random or stable
                         return {
                             id: roomNum,
                             isOccupied: true,
-                            patientName: assignedPatient.name || assignedPatient.first_name + ' ' + assignedPatient.last_name,
+                            patientName: displayName,
+                            patientId: assignedPatient.id,
+                            patientDisplayId: assignedPatient.patient_id,
                             acuity: (i % 5 === 0 ? 'critical' : 'stable') as 'critical' | 'stable', // Simple logic: every 5th patient is critical
                             isIsolation: false
                         };
@@ -103,6 +123,10 @@ export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
                 ${room.acuity === 'warning' ? 'bg-amber-50 border-amber-400 shadow-amber-100' : ''}
                 ${room.acuity === 'stable' ? 'bg-emerald-50 border-emerald-400 shadow-emerald-100' : ''}
              `}
+                                    onClick={() => {
+                                        setSelectedRoom(room);
+                                        setDetailOpen(true);
+                                    }}
                                 >
                                     <div className="flex justify-between items-start">
                                         <span className="font-mono font-black text-lg opacity-50">{room.id}</span>
@@ -165,6 +189,60 @@ export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
                     Nurses Station & Triage
                 </div>
             </div>
+
+            <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Room {selectedRoom?.id || 'Details'}</DialogTitle>
+                        <DialogDescription>
+                            ICU ward occupancy and patient information.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedRoom ? (
+                        <div className="space-y-3 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Status</span>
+                                <span className="font-medium">{selectedRoom.isOccupied ? 'Occupied' : 'Empty'}</span>
+                            </div>
+                            {selectedRoom.isOccupied && (
+                                <>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Patient</span>
+                                        <span className="font-medium">{selectedRoom.patientName}</span>
+                                    </div>
+                                    {selectedRoom.patientDisplayId && (
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Patient ID</span>
+                                            <span className="font-mono">{selectedRoom.patientDisplayId}</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Acuity</span>
+                                <span className="font-medium">{selectedRoom.acuity || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Isolation</span>
+                                <span className="font-medium">{selectedRoom.isIsolation ? 'Yes' : 'No'}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-sm text-muted-foreground">No room selected.</div>
+                    )}
+                    <DialogFooter>
+                        {selectedRoom?.patientId && (
+                            <Button onClick={() => {
+                                setDetailOpen(false);
+                                router.push(`/doctor/patients/${selectedRoom.patientId}`);
+                            }}>
+                                View Patient Profile
+                            </Button>
+                        )}
+                        <Button variant="outline" onClick={() => setDetailOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </TooltipProvider>
     );
 }

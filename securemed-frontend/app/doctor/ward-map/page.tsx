@@ -6,12 +6,21 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 export default function WardMapPage() {
     const { toast } = useToast();
     const [filter, setFilter] = useState<'all' | 'occupied' | 'empty' | 'critical' | 'warning' | 'stable'>('all');
     const [rooms, setRooms] = useState<RoomData[]>([]);
+    const [reportOpen, setReportOpen] = useState(false);
 
     const occupancyStats = useMemo(() => {
         const total = rooms.length || 0;
@@ -84,7 +93,7 @@ export default function WardMapPage() {
                             <DropdownMenuItem onClick={() => setFilter('stable')}>Stable</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button onClick={handleDownloadReport}>Occupancy Report</Button>
+                    <Button onClick={() => setReportOpen(true)}>Occupancy Report</Button>
                 </div>
             </div>
 
@@ -107,6 +116,43 @@ export default function WardMapPage() {
                     <div className="text-sm text-muted-foreground">Nurse to Patient Ratio</div>
                 </div>
             </div>
+
+            <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Ward Occupancy Report</DialogTitle>
+                        <DialogDescription>
+                            Summary of current ward utilization.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Rooms</span>
+                            <span className="font-medium">{occupancyStats.total || 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Occupied</span>
+                            <span className="font-medium">{occupancyStats.occupied}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Empty</span>
+                            <span className="font-medium">{Math.max(0, occupancyStats.total - occupancyStats.occupied)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Critical Cases</span>
+                            <span className="font-medium">{occupancyStats.critical}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Occupancy %</span>
+                            <span className="font-medium">{occupancyStats.occupancyPercent}%</span>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setReportOpen(false)}>Close</Button>
+                        <Button onClick={handleDownloadReport}>Download CSV</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
