@@ -16,6 +16,21 @@ jobs:
       - name: Start full environment
         run: docker compose -f docker-compose.yml up -d
 
+      - name: Wait for backend readiness
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8000/health/ready/ >/dev/null; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready in time" >&2
+          exit 1
+
+      - name: Seed database
+        run: docker compose -f docker-compose.yml exec -T backend python manage.py seed_db
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
 
