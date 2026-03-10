@@ -26,25 +26,36 @@ export const patientService = {
     },
 
     getPatientTimeline: async (patientId?: string): Promise<TimelineEvent[]> => {
-        try {
-            const params = patientId ? { patient_id: patientId } : {};
-            const response = await api.get('/patients/timeline/', { params });
-            const data = Array.isArray(response.data) ? response.data : (response.data?.results || []);
-            const categoryMap: Record<string, TimelineEvent['category']> = {
-                diagnostic: 'lab',
-                treatment: 'medication',
-                financial: 'billing',
-                consultation: 'appointment',
-                administrative: 'admin'
-            };
+        const params = patientId ? { patient_id: patientId } : {};
+        const categoryMap: Record<string, TimelineEvent['category']> = {
+            diagnostic: 'lab',
+            treatment: 'medication',
+            financial: 'billing',
+            consultation: 'appointment',
+            administrative: 'admin'
+        };
 
+        const normalize = (payload: any) => {
+            const data = Array.isArray(payload)
+                ? payload
+                : (Array.isArray(payload?.timeline) ? payload.timeline : (payload?.results || []));
             return data.map((event: any) => ({
                 ...event,
                 category: categoryMap[event.category] || event.category || 'admin'
             }));
-        } catch (error) {
-            console.error('Error fetching patient timeline:', error);
-            return [];
+        };
+
+        try {
+            const response = await api.get('/medical-records/timeline/', { params });
+            return normalize(response.data);
+        } catch (error: any) {
+            try {
+                const response = await api.get('/patients/timeline/', { params });
+                return normalize(response.data);
+            } catch (fallbackError) {
+                console.error('Error fetching patient timeline:', fallbackError);
+                return [];
+            }
         }
     },
 

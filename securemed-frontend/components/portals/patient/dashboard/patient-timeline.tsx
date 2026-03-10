@@ -161,6 +161,10 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
         if (id.includes('-')) {
             const parts = id.split('-').filter(Boolean);
             if (parts.length >= 2) {
+                const last = parts[parts.length - 1];
+                if (/^\d+$/.test(last)) {
+                    return { type: parts.slice(0, -1).join('-'), rawId: last };
+                }
                 return { type: parts[0], rawId: parts.slice(1).join('-') };
             }
         }
