@@ -32,6 +32,8 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const [reportNotice, setReportNotice] = useState<string>('');
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [autoReportRequested, setAutoReportRequested] = useState(false);
+    const [pollingActive, setPollingActive] = useState(false);
+    const [pollingSeconds, setPollingSeconds] = useState(0);
     const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(['critical']));
 
     const toggleTier = (severity: string) => {
@@ -174,16 +176,25 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                 return;
             }
 
+            setPollingActive(true);
+            setPollingSeconds(0);
             for (;;) {
                 await wait(1500);
+                setPollingSeconds((prev) => prev + 1.5);
                 const status = await drugInteractionService.getReportJobStatus(job.task_id);
                 if (status.status === 'succeeded') {
                     await reloadReports();
                     setReportNotice('Report generated successfully.');
+                    setPollingActive(false);
                     return;
                 }
                 if (status.status === 'failed') {
                     setError(status.error_message || 'Report generation failed.');
+                    setPollingActive(false);
+                    return;
+                }
+                if (!pollingActive) {
+                    setReportNotice('Polling stopped. You can refresh or regenerate later.');
                     return;
                 }
             }
@@ -345,7 +356,23 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
             {reportNotice && latestReport && (
                 <div className="text-xs text-muted-foreground">{reportNotice}</div>
             )}
-            {reportLoading && <div className="text-xs text-muted-foreground">Loading latest report...</div>}
+            {reportLoading && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <span>Loading latest report...</span>
+                    {pollingActive && (
+                        <>
+                            <span>Elapsed: {pollingSeconds.toFixed(1)}s</span>
+                            <button
+                                type="button"
+                                onClick={() => setPollingActive(false)}
+                                className="text-xs px-2 py-0.5 rounded border bg-background hover:bg-muted"
+                            >
+                                Stop polling
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
 
             <div className="rounded-xl border bg-card p-4 min-h-[180px]">
                 <div className="flex items-center justify-between">
