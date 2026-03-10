@@ -25,5 +25,5 @@ jobs:
         with:
           working-directory: ./securemed-frontend
           install: false
-          wait-on: "http://localhost:3000"
-          wait-on-timeout: 120
+          wait-on: "http://localhost:8000/health/ready/,http://localhost:3000"
+          wait-on-timeout: 180
