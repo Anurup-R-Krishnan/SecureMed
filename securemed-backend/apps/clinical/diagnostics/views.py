@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, status, serializers
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -93,12 +94,29 @@ class LabResultViewSet(viewsets.ModelViewSet):
     serializer_class = LabResultSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        user = self.request.user
+        qs = LabResult.objects.select_related('order', 'test')
+        if hasattr(user, 'patient_profile'):
+            return qs.filter(order__patient=user, released_to_patient=True)
+        if hasattr(user, 'doctor_profile') or user.role == 'doctor':
+            return qs.filter(order__doctor=user)
+        if user.is_staff or user.role == 'lab_technician':
+            return qs
+        return qs.none()
+
+    def _ensure_lab_staff(self, request):
+        if request.user.is_staff or request.user.role == 'lab_technician':
+            return
+        raise PermissionDenied("Only lab technicians or staff can modify lab results.")
+
     def perform_create(self, serializer):
         from django.core.files.base import ContentFile
         from django.utils import timezone
         import uuid
         from .crypto import encrypt_bytes
 
+        self._ensure_lab_staff(self.request)
         file_obj = serializer.validated_data.get('file_attachment')
         if file_obj:
             encrypted = encrypt_bytes(file_obj.read())
@@ -116,6 +134,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
         import uuid
         from .crypto import encrypt_bytes
 
+        self._ensure_lab_staff(self.request)
         file_obj = serializer.validated_data.get('file_attachment')
         if file_obj:
             encrypted = encrypt_bytes(file_obj.read())
@@ -133,7 +152,19 @@ class LabResultViewSet(viewsets.ModelViewSet):
         result = self.get_object()
         if not result.file_attachment:
             return Response({"error": "No file attached."}, status=status.HTTP_404_NOT_FOUND)
-            
+
+        # Access control: mirror secure_view rules.
+        if hasattr(request.user, 'patient_profile'):
+            if result.order.patient_id != request.user.id or not result.released_to_patient:
+                return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+        elif hasattr(request.user, 'doctor_profile') or request.user.is_staff:
+            if result.order.doctor_id not in [None, request.user.id] and not request.user.is_staff:
+                return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+        elif request.user.role == 'lab_technician':
+            pass
+        else:
+            return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
         from django.http import FileResponse
         from io import BytesIO
         from .crypto import decrypt_bytes
@@ -284,6 +315,9 @@ class LabWorklistViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['post'])
     def enter_result(self, request, pk=None):
         """Enter result for a specific order/test (blinded)"""
+        if not request.user.is_staff and request.user.role != 'lab_technician':
+            return Response({"error": "Unauthorized. Only lab technicians can enter results."}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             order = LabOrder.objects.get(id=pk)
         except LabOrder.DoesNotExist:
@@ -295,10 +329,11 @@ class LabWorklistViewSet(viewsets.ViewSet):
         reference_range = request.data.get('reference_range', '')
         flag = request.data.get('flag', '')  # High, Low, Critical
         notes = request.data.get('notes', '')
-        
+        file_obj = request.FILES.get('file_attachment')
+
         if not test_code or not result_value:
             return Response({"error": "test_code and result_value are required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Validate result value (basic range check)
         try:
             numeric_value = float(result_value)
@@ -320,6 +355,25 @@ class LabWorklistViewSet(viewsets.ViewSet):
         except LabTest.DoesNotExist:
             return Response({"error": "Test not found"}, status=status.HTTP_404_NOT_FOUND)
         
+        # Optional attachment handling
+        attachment_payload = {}
+        if file_obj:
+            from django.core.files.base import ContentFile
+            import uuid
+            from .crypto import encrypt_bytes
+            try:
+                LabResultSerializer().validate_file_attachment(file_obj)
+            except serializers.ValidationError as exc:
+                return Response({"error": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+
+            encrypted = encrypt_bytes(file_obj.read())
+            encrypted_file = ContentFile(encrypted, name=f"lab_{uuid.uuid4().hex}.enc")
+            attachment_payload = {
+                'file_attachment': encrypted_file,
+                'file_attachment_name': file_obj.name,
+                'file_attachment_content_type': getattr(file_obj, 'content_type', ''),
+            }
+
         # Create or update result
         result, created = LabResult.objects.update_or_create(
             order=order,
@@ -332,6 +386,7 @@ class LabWorklistViewSet(viewsets.ViewSet):
                 'notes': notes,
                 'technician_name': request.user.get_full_name() or request.user.email,
                 'technician': request.user,
+                **attachment_payload,
             }
         )
         

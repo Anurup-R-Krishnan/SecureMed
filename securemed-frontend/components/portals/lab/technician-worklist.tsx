@@ -65,6 +65,7 @@ export default function LabTechnicianWorklist() {
         flag: '',
         notes: '',
     });
+    const [attachment, setAttachment] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [filterPriority, setFilterPriority] = useState<string>('all');
@@ -93,10 +94,18 @@ export default function LabTechnicianWorklist() {
 
         setSubmitting(true);
         try {
-            const response = await api.post(`/labs/worklist/${selectedItem.id}/enter_result/`, {
-                test_code: selectedItem.test_code,
-                ...resultForm,
-            });
+            const payload = new FormData();
+            payload.append('test_code', selectedItem.test_code);
+            payload.append('result_value', resultForm.result_value);
+            payload.append('units', resultForm.units || '');
+            payload.append('reference_range', resultForm.reference_range || '');
+            payload.append('flag', resultForm.flag || '');
+            payload.append('notes', resultForm.notes || '');
+            if (attachment) {
+                payload.append('file_attachment', attachment);
+            }
+
+            const response = await api.post(`/labs/worklist/${selectedItem.id}/enter_result/`, payload);
 
             if (response.data.success) {
                 // Remove from worklist if completed
@@ -111,6 +120,7 @@ export default function LabTechnicianWorklist() {
                     flag: '',
                     notes: '',
                 });
+                setAttachment(null);
 
                 // Show alert for critical values
                 if (response.data.is_critical) {
@@ -380,6 +390,20 @@ export default function LabTechnicianWorklist() {
                                         rows={2}
                                         placeholder="Additional observations..."
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Attach Report (PDF/JPG/PNG/DCM/DOCX/XLSX)</label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png,.dcm,.docx,.xlsx"
+                                        className="w-full text-sm"
+                                        onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                                    />
+                                    {attachment && (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            Selected: {attachment.name}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-2">
