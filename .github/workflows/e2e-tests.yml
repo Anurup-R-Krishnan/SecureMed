@@ -31,10 +31,14 @@ jobs:
           restore-keys: |
             cypress-${{ runner.os }}-
 
+      - name: Install Cypress binary
+        working-directory: ./securemed-frontend
+        run: bunx cypress install
+
       - name: Run Cypress tests
         uses: cypress-io/github-action@v6
         with:
           working-directory: ./securemed-frontend
-          install: true
+          install: false
           wait-on: "http://localhost:8000/health/ready/,http://localhost:3000"
           wait-on-timeout: 180
