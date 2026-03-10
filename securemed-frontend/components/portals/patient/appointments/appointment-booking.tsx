@@ -756,6 +756,28 @@ export default function AppointmentBooking({
 
   // Step 5: Success
   if (currentStep === 'success' && bookingResult?.success) {
+    const handleDownloadSummary = () => {
+      const summary = {
+        confirmationNumber: bookingResult.confirmationNumber,
+        doctor: selectedDoctor?.name || null,
+        specialty: selectedDoctor?.specialty || null,
+        hospital: selectedDoctor?.hospital || null,
+        date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
+        time: selectedSlot?.startTime || null,
+        reason: reasonForVisit || null,
+        notifications: bookingResult.notifications || {},
+      };
+      const blob = new Blob([JSON.stringify(summary, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `appointment_summary_${bookingResult.confirmationNumber || Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    };
+
     return (
       <div className="flex items-center justify-center min-h-[80vh] p-4 text-foreground animate-in zoom-in duration-500">
         <Card className="p-12 max-w-2xl w-full text-center relative overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] rounded-[48px] border-none bg-card">
@@ -821,7 +843,12 @@ export default function AppointmentBooking({
                     </div>
                   )}
                 </div>
-                <Button variant="ghost" size="sm" className="font-black text-[10px] uppercase tracking-[0.2em] text-primary hover:bg-primary/5 rounded-full px-6">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="font-black text-[10px] uppercase tracking-[0.2em] text-primary hover:bg-primary/5 rounded-full px-6"
+                  onClick={handleDownloadSummary}
+                >
                   Download Summary
                 </Button>
               </div>
