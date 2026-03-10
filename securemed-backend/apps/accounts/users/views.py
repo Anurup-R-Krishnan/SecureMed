@@ -35,7 +35,8 @@ from .serializers import (
     UserRoleUpdateSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
-    AdminUserCreateSerializer
+    AdminUserCreateSerializer,
+    UserUpdateSerializer
 )
 from apps.platform.analytics.audit import log_audit, get_client_ip
 
@@ -181,12 +182,13 @@ def get_user_data_with_profile(user):
     return data
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def user_profile_view(request):
     """
-    Get current user profile with role-specific data.
+    Get or update current user profile with role-specific data.
     GET /api/auth/user/
+    PUT /api/auth/user/
     
     Response (doctor):
     {
@@ -208,8 +210,50 @@ def user_profile_view(request):
         }
     }
     """
-    data = get_user_data_with_profile(request.user)
-    return Response(data, status=status.HTTP_200_OK)
+    if request.method == 'GET':
+        data = get_user_data_with_profile(request.user)
+        return Response(data, status=status.HTTP_200_OK)
+
+    serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        data = get_user_data_with_profile(request.user)
+        return Response(data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password_view(request):
+    """
+    Change password for current user.
+    POST /api/auth/user/password/
+    Body: { "current_password": "", "new_password": "", "confirm_password": "" }
+    """
+    current_password = request.data.get('current_password')
+    new_password = request.data.get('new_password')
+    confirm_password = request.data.get('confirm_password')
+
+    if not current_password or not new_password or not confirm_password:
+        return Response({'error': 'All fields are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if new_password != confirm_password:
+        return Response({'error': 'New password and confirmation do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = request.user
+    if not user.check_password(current_password):
+        return Response({'error': 'Current password is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        from django.contrib.auth.password_validation import validate_password
+        validate_password(new_password, user=user)
+    except Exception as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save(update_fields=['password'])
+
+    return Response({'success': True}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

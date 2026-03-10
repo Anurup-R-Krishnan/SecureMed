@@ -311,6 +311,15 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'mfa_enabled']
 
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating user profile (non-admin).
+    """
+    class Meta:
+        model = User
+        fields = ['email', 'first_name', 'last_name']
+
+
 class UserListSerializer(serializers.ModelSerializer):
     """Serializer for listing users (Admin only)."""
     

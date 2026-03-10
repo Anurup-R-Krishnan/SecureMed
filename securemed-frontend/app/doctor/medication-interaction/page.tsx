@@ -20,6 +20,10 @@ export default function MedicationInteractionPage() {
         loadPatients();
     }, []);
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
         <div className="space-y-8 max-w-7xl mx-auto p-6 animate-in fade-in duration-500">
             {/* Zenith Header */}
@@ -38,7 +42,11 @@ export default function MedicationInteractionPage() {
                     </div>
                 </div>
                 <div>
-                    <Button variant="outline" className="rounded-full px-6 font-bold border-2 hover:bg-muted/50 hidden md:flex">
+                    <Button
+                        variant="outline"
+                        className="rounded-full px-6 font-bold border-2 hover:bg-muted/50 hidden md:flex"
+                        onClick={handlePrint}
+                    >
                         <Printer className="h-4 w-4 mr-2" /> Print Report
                     </Button>
                 </div>

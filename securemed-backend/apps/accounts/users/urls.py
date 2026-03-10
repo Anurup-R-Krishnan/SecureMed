@@ -19,6 +19,7 @@ urlpatterns = [
     
     # User Profile
     path('user/', views.user_profile_view, name='user_profile'),
+    path('user/password/', views.change_password_view, name='change_password'),
     
     # MFA Endpoints
     path('mfa/setup/', views.mfa_setup_view, name='mfa_setup'),
