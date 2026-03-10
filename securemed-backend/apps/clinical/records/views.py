@@ -129,6 +129,30 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    @action(detail=False, methods=['post'], url_path='patient-upload', permission_classes=[IsPatient])
+    def patient_upload(self, request):
+        user = request.user
+        if not hasattr(user, 'patient_profile'):
+            return Response({"error": "Patient profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['patient'] = user.patient_profile.id
+        data['source'] = 'patient'
+        data['is_attested'] = False
+
+        # Basic validation: require file + record_type + record_date
+        if not data.get('file') or not data.get('record_type') or not data.get('record_date'):
+            return Response(
+                {"error": "file, record_type and record_date are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def retrieve(self, request, *args, **kwargs):
         """
         Get details of a specific medical record.

@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, FileText, Pill, Stethoscope, FileJson, Search, Filter, Calendar, User, Download } from 'lucide-react';
+import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Download } from 'lucide-react';
 import { medicalRecordService } from '@/services/appointments';
 import { drugInteractionService } from '@/services/drug-interactions';
 import FHIRExportButton from '@/components/portals/patient/records/fhir-export-button';
+import { UploadRecordDialog } from '@/components/portals/patient/records/upload-record-dialog';
 
 interface MedicalRecordsProps {
   patientId?: string;
@@ -111,7 +112,10 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
           <h2 className="text-2xl font-bold text-foreground">Medical Records</h2>
           <p className="text-sm text-muted-foreground mt-1">View your medical history and prescriptions</p>
         </div>
-        <FHIRExportButton patientId={patientId} />
+        <div className="flex flex-wrap gap-2">
+          <UploadRecordDialog onRecordUploaded={fetchRecords} />
+          <FHIRExportButton patientId={patientId} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

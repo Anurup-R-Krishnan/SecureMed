@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/select';
 import { Upload, FileText, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
 // We'll need to extend the service to support uploads, assumed to be in medicalRecordService
 import { medicalRecordService } from '@/services/appointments';
 
@@ -35,7 +34,6 @@ export function UploadRecordDialog({ onRecordUploaded }: UploadRecordDialogProps
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
-    const { user } = useAuth();
 
     const [formData, setFormData] = useState({
         record_type: '',
@@ -48,7 +46,16 @@ export function UploadRecordDialog({ onRecordUploaded }: UploadRecordDialogProps
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+            const nextFile = e.target.files[0];
+            if (nextFile.size > 10 * 1024 * 1024) {
+                toast({
+                    title: "File too large",
+                    description: "Please upload a file smaller than 10MB.",
+                    variant: "destructive"
+                });
+                return;
+            }
+            setFile(nextFile);
         }
     };
 
@@ -72,8 +79,6 @@ export function UploadRecordDialog({ onRecordUploaded }: UploadRecordDialogProps
             uploadData.append('diagnosis', formData.diagnosis || 'Patient Uploaded Record');
             uploadData.append('notes', formData.notes);
             uploadData.append('file', file);
-
-            // We don't manually set patient/doctor here as backend handles it based on auth
 
             await medicalRecordService.uploadRecord(uploadData);
 
@@ -100,7 +105,7 @@ export function UploadRecordDialog({ onRecordUploaded }: UploadRecordDialogProps
             console.error(error);
             toast({
                 title: "Upload Failed",
-                description: "There was an error uploading your record. Please try again.",
+                description: (error as any)?.response?.data?.error || "There was an error uploading your record. Please try again.",
                 variant: "destructive"
             });
         } finally {
