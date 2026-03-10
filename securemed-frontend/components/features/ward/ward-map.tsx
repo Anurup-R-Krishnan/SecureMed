@@ -239,6 +239,17 @@ export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
                                 View Patient Profile
                             </Button>
                         )}
+                        {selectedRoom?.patientId && (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setDetailOpen(false);
+                                    router.push(`/doctor/records?patient_id=${selectedRoom.patientId}`);
+                                }}
+                            >
+                                Open Patient Records
+                            </Button>
+                        )}
                         <Button variant="outline" onClick={() => setDetailOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>

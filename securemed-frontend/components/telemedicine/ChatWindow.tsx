@@ -172,7 +172,7 @@ export function ChatWindow({ conversation, conversationId, currentUserId, otherP
                     />
                     <Button
                         type="submit"
-                        disabled={isLoading || !newMessage.trim()}
+                        disabled={isLoading || (!newMessage.trim() && !attachmentFile)}
                         className="rounded-full h-10 w-10 p-0 shadow-lg shadow-primary/20 hover:scale-105 transition-all shrink-0 bg-primary text-primary-foreground"
                     >
                         <Send size={18} className={isLoading ? "animate-pulse" : "ml-0.5"} />

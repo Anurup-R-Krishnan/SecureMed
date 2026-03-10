@@ -53,15 +53,26 @@ export function MessagingInterface() {
     const fetchContacts = async () => {
         setLoadingContacts(true);
         try {
-            const doctorsRes = await api.get('/appointments/doctors/');
-            const doctors = Array.isArray(doctorsRes.data) ? doctorsRes.data : (doctorsRes.data.results || []);
-            const contactList: ContactUser[] = doctors.map((d: any) => ({
-                id: d.user_id || d.id,
-                name: d.name || `Dr. ${d.user?.first_name || ''} ${d.user?.last_name || ''}`.trim(),
-                role: 'doctor',
-                specialization: d.specialization || d.department_name || '',
-            }));
-            setContacts(contactList);
+            if (currentUser?.role === 'doctor') {
+                const patientsRes = await api.get('/patients/');
+                const patients = Array.isArray(patientsRes.data) ? patientsRes.data : (patientsRes.data.results || []);
+                const contactList: ContactUser[] = patients.map((p: any) => ({
+                    id: p.user_id || p.user || p.id,
+                    name: [p.user_first_name, p.user_last_name].filter(Boolean).join(' ').trim() || p.user_email || `Patient #${p.id}`,
+                    role: 'patient',
+                }));
+                setContacts(contactList);
+            } else {
+                const doctorsRes = await api.get('/appointments/doctors/');
+                const doctors = Array.isArray(doctorsRes.data) ? doctorsRes.data : (doctorsRes.data.results || []);
+                const contactList: ContactUser[] = doctors.map((d: any) => ({
+                    id: d.user_id || d.id,
+                    name: d.name || `Dr. ${d.user?.first_name || ''} ${d.user?.last_name || ''}`.trim(),
+                    role: 'doctor',
+                    specialization: d.specialization || d.department_name || '',
+                }));
+                setContacts(contactList);
+            }
         } catch (error) {
             console.error('Failed to fetch contacts', error);
         } finally {

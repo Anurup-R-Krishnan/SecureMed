@@ -26,6 +26,8 @@ interface DoctorMedicalRecordsProps {
 export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecordsProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const urlPatientId = searchParams?.get('patient_id') || '';
+  const resolvedPatientId = patientId || urlPatientId || '';
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newRecord, setNewRecord] = useState({
-    patient_id: patientId || '',
+    patient_id: resolvedPatientId,
     record_type: '',
     record_date: new Date().toISOString().slice(0, 10),
     diagnosis: '',
@@ -56,6 +58,12 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (resolvedPatientId) {
+      setNewRecord((prev) => ({ ...prev, patient_id: resolvedPatientId }));
+    }
+  }, [resolvedPatientId]);
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -71,8 +79,8 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
       if (search?.trim()) {
         params.search = search.trim();
       }
-      if (patientId?.trim()) {
-        params.patient_id = patientId.trim();
+      if (resolvedPatientId?.trim()) {
+        params.patient_id = resolvedPatientId.trim();
       }
 
       const [recordsResponse, prescriptionsResponse] = await Promise.all([
@@ -96,11 +104,11 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
     } finally {
       setLoading(false);
     }
-  }, [patientId]);
+  }, [resolvedPatientId]);
 
   useEffect(() => {
     fetchRecords(debouncedSearch);
-  }, [patientId, debouncedSearch, fetchRecords]);
+  }, [resolvedPatientId, debouncedSearch, fetchRecords]);
 
   const filteredRecords = medicalRecords.filter(record => {
     const matchesFilter = filterType === 'all' || record.record_type === filterType;
@@ -152,7 +160,7 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
         <div>
           <h2 className="text-2xl font-bold text-foreground">Medical Records</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {patientId ? 'Patient medical history and records' : 'Manage your practice and patients'}
+            {resolvedPatientId ? 'Patient medical history and records' : 'Manage your practice and patients'}
           </p>
         </div>
         <Button className="gap-2" onClick={() => setCreateOpen(true)}>
@@ -363,13 +371,16 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
                             <h4 className="font-semibold text-foreground">{record.record_type_display || 'Medical Record'}</h4>
                             <p className="text-sm text-muted-foreground mt-1">{record.diagnosis}</p>
                           </div>
-                          {record.file && (
+                          {(record.file_url || record.file) && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(record.file, '_blank');
+                                const url = record.file_url || record.file;
+                                if (url) {
+                                  window.open(url, '_blank');
+                                }
                               }}
                               className="flex-shrink-0"
                             >

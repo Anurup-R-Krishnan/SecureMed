@@ -34,6 +34,12 @@ export const videoService = {
         return response.data;
     },
 
+    // Poll room status (Patient/Doctor)
+    checkRoomStatus: async (roomId: string): Promise<{ status: string; waiting_count?: number }> => {
+        const response = await api.get(`/telemedicine/rooms/${roomId}/status_check/`);
+        return response.data;
+    },
+
     // Start call (Doctor)
     startCall: async (roomId: string): Promise<any> => {
         const response = await api.post(`/telemedicine/rooms/${roomId}/start/`);

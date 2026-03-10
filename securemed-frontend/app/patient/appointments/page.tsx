@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,12 @@ import MyAppointments from '@/components/portals/patient/appointments/my-appoint
 import WaitingRoom from '@/components/telemedicine/waiting-room';
 import VideoRoom from '@/components/telemedicine/video-room';
 import { appointmentService } from '@/services/appointments';
+import { videoService } from '@/services/telemedicine';
+import { useToast } from '@/hooks/use-toast';
 
 function AppointmentsContent() {
     const { isAuthenticated } = useAuth();
+    const { toast } = useToast();
     const searchParams = useSearchParams();
     const initialDoctorId = searchParams.get('doctorId') || undefined;
     const autoJoin = searchParams.get('join') === '1';
@@ -42,8 +45,14 @@ function AppointmentsContent() {
                         return dateA.getTime() - dateB.getTime();
                     });
                 if (upcoming.length > 0) {
-                    setNextAppointment(upcoming[0]);
-                    setActiveRoomId(`room-${upcoming[0].id}`);
+                    const next = upcoming[0];
+                    setNextAppointment(next);
+                    try {
+                        const room = await videoService.getActiveRoom(next.patient);
+                        setActiveRoomId(room?.room_id || '');
+                    } catch {
+                        setActiveRoomId('');
+                    }
                 }
             } catch (e) {
                 console.error('Failed to fetch upcoming appointment:', e);
@@ -53,12 +62,37 @@ function AppointmentsContent() {
         fetchNextAppointment();
     }, [isAuthenticated]);
 
-    useEffect(() => {
-        if (autoJoin && nextAppointment && activeRoomId) {
-            setShowTelemed(true);
-            setTelemedStatus('waiting');
+    const handleJoinTelemed = useCallback(async () => {
+        if (!nextAppointment) return;
+        let roomId = activeRoomId;
+        if (!roomId) {
+            try {
+                const room = await videoService.getActiveRoom(nextAppointment.patient);
+                roomId = room?.room_id || '';
+                setActiveRoomId(roomId);
+            } catch {
+                roomId = '';
+            }
         }
-    }, [autoJoin, nextAppointment, activeRoomId]);
+
+        if (!roomId) {
+            toast({
+                title: 'Waiting room not ready',
+                description: 'Your doctor has not started the room yet. Please try again shortly.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        setShowTelemed(true);
+        setTelemedStatus('waiting');
+    }, [activeRoomId, nextAppointment, toast]);
+
+    useEffect(() => {
+        if (autoJoin && nextAppointment) {
+            handleJoinTelemed();
+        }
+    }, [autoJoin, nextAppointment, handleJoinTelemed]);
 
     if (showTelemed) {
         return (
@@ -98,10 +132,7 @@ function AppointmentsContent() {
                         </div>
                     </div>
                     <Button
-                        onClick={() => {
-                            setShowTelemed(true);
-                            setTelemedStatus('waiting');
-                        }}
+                        onClick={handleJoinTelemed}
                         className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
                     >
                         Join Waiting Room

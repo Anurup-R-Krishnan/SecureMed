@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -43,6 +44,7 @@ export default function AppointmentBooking({
   patientName = 'Guest',
   initialDoctorId
 }: EnhancedAppointmentBookingProps) {
+  const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -858,7 +860,11 @@ export default function AppointmentBooking({
               <Button className="flex-1 h-20 rounded-[28px] font-black text-lg shadow-2xl active:scale-95 transition-all" onClick={resetBooking}>
                 New Booking
               </Button>
-              <Button variant="outline" className="flex-1 h-20 rounded-[28px] font-black text-lg border-2 hover:bg-muted/50 active:scale-95 transition-all" onClick={() => window.location.reload()}>
+              <Button
+                variant="outline"
+                className="flex-1 h-20 rounded-[28px] font-black text-lg border-2 hover:bg-muted/50 active:scale-95 transition-all"
+                onClick={() => router.push('/patient/dashboard')}
+              >
                 Patient Home
               </Button>
             </div>

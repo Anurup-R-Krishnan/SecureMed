@@ -146,14 +146,25 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
     };
 
     const parseEventId = (id: string) => {
-        const parts = id.split('-').filter(Boolean);
-        if (parts.length < 2) {
-            return { type: id, rawId: '' };
+        if (!id) {
+            return { type: '', rawId: '' };
         }
-        return {
-            type: parts.slice(0, -1).join('-'),
-            rawId: parts[parts.length - 1]
-        };
+        if (/^\d+$/.test(id)) {
+            return { type: 'id', rawId: id };
+        }
+        if (id.includes('_')) {
+            const parts = id.split('_').filter(Boolean);
+            if (parts.length >= 2) {
+                return { type: parts[0], rawId: parts.slice(1).join('_') };
+            }
+        }
+        if (id.includes('-')) {
+            const parts = id.split('-').filter(Boolean);
+            if (parts.length >= 2) {
+                return { type: parts[0], rawId: parts.slice(1).join('-') };
+            }
+        }
+        return { type: id, rawId: '' };
     };
 
     const openLabAttachment = async (labResultId: number) => {
@@ -182,41 +193,37 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
     const handleViewDetails = async (event: TimelineEvent) => {
         if (!event?.id) return;
         const parsed = parseEventId(event.id);
-        const eventType = (event.type || parsed.type || '').toLowerCase();
+        const normalizedType = (event.type || parsed.type || '').toLowerCase();
         const rawId = parsed.rawId;
+        const category = event.category?.toLowerCase();
+        const isAppointment = category === 'appointment' || ['appointment', 'appt'].includes(normalizedType);
+        const isRecord = ['record', 'rec'].includes(normalizedType);
+        const isLab = category === 'lab' || ['lab', 'lab-result', 'lab_result'].includes(normalizedType);
+        const isInvoice = category === 'billing' || ['invoice', 'inv'].includes(normalizedType);
+        const isMedication = category === 'medication' || ['pharmacy', 'prescription', 'rx'].includes(normalizedType);
 
-        if (eventType === 'appointment') {
+        if (isAppointment) {
             router.push(`/patient/appointments?appointmentId=${rawId}`);
             return;
         }
-        if (eventType === 'record') {
+        if (isRecord) {
             router.push(`/patient/records?recordId=${rawId}`);
             return;
         }
-        if (eventType === 'lab-result') {
-            const idNumber = Number(rawId);
-            if (Number.isFinite(idNumber) && idNumber > 0) {
-                if (event.details?.has_attachment) {
-                    await openLabAttachment(idNumber);
-                    return;
-                }
-                toast({
-                    title: 'No attachment found',
-                    description: 'This lab result does not include a report file.',
-                    variant: 'destructive'
-                });
+        if (isLab) {
+            const attachmentId = Number(event.details?.lab_result_id || event.details?.result_id || rawId);
+            if (Number.isFinite(attachmentId) && attachmentId > 0) {
+                await openLabAttachment(attachmentId);
+                return;
             }
-            return;
-        }
-        if (eventType === 'lab-order') {
             router.push('/patient/records');
             return;
         }
-        if (eventType === 'invoice') {
+        if (isInvoice) {
             router.push(`/patient/billing?invoiceId=${rawId}`);
             return;
         }
-        if (eventType === 'pharmacy' || eventType === 'prescription') {
+        if (isMedication) {
             router.push('/patient/records');
             return;
         }

@@ -343,11 +343,16 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                         <h4 className="font-semibold text-foreground">{record.record_type_display || 'Medical Record'}</h4>
                         <p className="text-sm text-muted-foreground mt-1">{record.diagnosis}</p>
                       </div>
-                      {record.file && (
+                      {(record.file_url || record.file) && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(record.file, '_blank')}
+                          onClick={() => {
+                            const url = record.file_url || record.file;
+                            if (url) {
+                              window.open(url, '_blank');
+                            }
+                          }}
                           className="flex-shrink-0"
                         >
                           <Eye className="h-4 w-4 mr-1" />
