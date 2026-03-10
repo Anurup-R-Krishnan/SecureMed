@@ -31,6 +31,7 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const [error, setError] = useState<string>('');
     const [reportNotice, setReportNotice] = useState<string>('');
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [autoReportRequested, setAutoReportRequested] = useState(false);
     const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(['critical']));
 
     const toggleTier = (severity: string) => {
@@ -56,7 +57,11 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
             setLatestReport(null);
             setReportHistory([]);
             if (e?.response?.status === 404) {
-                setReportNotice('No interaction report yet. Generate one to enable PDF download.');
+                setReportNotice('No interaction report yet. Generating a new report now.');
+                if (!autoReportRequested) {
+                    setAutoReportRequested(true);
+                    await handleRegenerateReport();
+                }
             }
         } finally {
             setReportLoading(false);
@@ -169,10 +174,10 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                 return;
             }
 
-            for (let attempt = 0; attempt < 12; attempt += 1) {
+            for (;;) {
                 await wait(1500);
                 const status = await drugInteractionService.getReportJobStatus(job.task_id);
-                if (status.status === 'completed') {
+                if (status.status === 'succeeded') {
                     await reloadReports();
                     setReportNotice('Report generated successfully.');
                     return;
@@ -182,9 +187,6 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                     return;
                 }
             }
-
-            await reloadReports();
-            setReportNotice('Report generation is still running. Please refresh in a moment.');
         } catch {
             setError('Could not regenerate report.');
         } finally {
@@ -361,6 +363,11 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                         <span className="rounded-full border bg-background px-3 py-1 font-medium">
                             Single-drug effects: {checkResult.single_medication_findings_total ?? singleDrugFindings.length}
                         </span>
+                        {checkResult.coverage_gap && (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium text-amber-800">
+                                Only 3-drug combos evaluated
+                            </span>
+                        )}
                         {checkResult.findings_truncated ? (
                             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium text-amber-800">
                                 Showing top {checkResult.visible_findings_count} of {checkResult.interaction_findings_total + checkResult.single_medication_findings_total}
@@ -430,6 +437,14 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                     <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-emerald-700" />
                         <span className="text-sm text-emerald-800">No known multi-drug interaction side effects detected for current selection.</span>
+                    </div>
+                )}
+                {selected.length > 3 && (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-2">
+                        <AlertOctagon className="h-4 w-4 text-amber-700" />
+                        <span className="text-sm text-amber-800">
+                            Only up to 3-drug combinations are evaluated. Larger combinations may be incomplete.
+                        </span>
                     </div>
                 )}
                 {!checking && hasInteractions && (

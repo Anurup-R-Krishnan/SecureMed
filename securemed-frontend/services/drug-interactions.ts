@@ -21,6 +21,10 @@ export interface InteractionCheckResult {
     visible_findings_count: number;
     findings_truncated: boolean;
     limit_findings: number;
+    evaluated_combination_depth?: number;
+    max_supported_combination_size?: number;
+    not_evaluated_depths?: number[];
+    coverage_gap?: boolean;
     totals: {
         critical: number;
         high: number;
@@ -43,7 +47,7 @@ export interface InteractionReport {
 
 export interface ReportGenerationJob {
     task_id: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
+    status: 'queued' | 'running' | 'succeeded' | 'failed';
     patient_id: number;
     trigger_event: string;
     created_at: string;
@@ -51,7 +55,7 @@ export interface ReportGenerationJob {
 
 export interface ReportJobStatus {
     task_id: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
+    status: 'queued' | 'running' | 'succeeded' | 'failed';
     patient_id: number;
     trigger_event: string;
     error_message?: string | null;

@@ -708,6 +708,25 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         patient = self._resolve_patient(request)
         if not patient:
             raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_cutoff = timezone.now() - timedelta(minutes=10)
+        existing_job = (
+            self.MedicationInteractionReportJob.objects
+            .filter(patient=patient, status__in=["queued", "running"], created_at__gte=recent_cutoff)
+            .first()
+        )
+        if existing_job:
+            return Response(
+                {
+                    "task_id": existing_job.task_id,
+                    "status": existing_job.status,
+                    "patient_id": existing_job.patient_id,
+                    "trigger_event": existing_job.trigger_event,
+                    "created_at": existing_job.created_at,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
         job = enqueue_report_generation(
             patient=patient,
             generated_by=request.user,
