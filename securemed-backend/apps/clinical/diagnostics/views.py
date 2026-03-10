@@ -33,13 +33,14 @@ class LabOrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        base = LabOrder.objects.all().order_by('-created_at', '-id')
         if hasattr(user, 'patient_profile'):
             # patient FK on LabOrder points to AUTH_USER_MODEL, not Patient
-            return LabOrder.objects.filter(patient=user)
+            return base.filter(patient=user)
         elif hasattr(user, 'doctor_profile') or user.role == 'doctor':
-            return LabOrder.objects.filter(doctor=user)
+            return base.filter(doctor=user)
         elif user.is_staff:
-            return LabOrder.objects.all()
+            return base
         return LabOrder.objects.none()
 
     def perform_create(self, serializer):
@@ -255,6 +256,8 @@ class LabResultViewSet(viewsets.ModelViewSet):
         elif hasattr(request.user, 'doctor_profile') or request.user.is_staff:
             if result.order.doctor_id not in [None, request.user.id] and not request.user.is_staff:
                 return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+        elif request.user.role == 'lab_technician':
+            pass
         else:
             return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
