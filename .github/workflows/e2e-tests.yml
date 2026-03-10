@@ -69,3 +69,13 @@ jobs:
           install: false
           wait-on: "http://localhost:8000/health/ready/,http://localhost:3000"
           wait-on-timeout: 180
+          command: bunx cypress run --browser electron --headless --reporter spec
+
+      - name: Upload Cypress artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            securemed-frontend/cypress/screenshots
+            securemed-frontend/cypress/videos
