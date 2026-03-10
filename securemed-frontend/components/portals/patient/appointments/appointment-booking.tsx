@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { useSearchParams } from 'next/navigation';
 
 type BookingStep = 'doctor' | 'date' | 'time' | 'confirm' | 'success';
 
@@ -45,6 +46,7 @@ export default function AppointmentBooking({
 }: EnhancedAppointmentBookingProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
 
   const effectivePatientName = user?.username || user?.email || patientName;
 
@@ -57,6 +59,48 @@ export default function AppointmentBooking({
 
   // Track whether the real doctor record has been loaded from the API
   const [doctorReady, setDoctorReady] = useState(!initialDoctorId);
+
+  // Handle Voice Booking Intent
+  useEffect(() => {
+    const bookingIntent = searchParams.get('bookingIntent');
+    if (bookingIntent) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(bookingIntent));
+        if (decoded.doctor_id) {
+          const numericId = parseInt(decoded.doctor_id, 10);
+          setSelectedDoctor({
+            id: numericId,
+            name: decoded.doctor_name || 'Selected Doctor',
+            specialty: '',
+            specialization: '',
+            hospital: '',
+            department_name: '',
+            experience: '',
+            user_id: 0,
+            description: '',
+            consultation_fee: 0,
+            rating: 0,
+            reviews: 0,
+            available: true,
+          } as Doctor);
+          
+          if (decoded.date) {
+            setSelectedDate(new Date(decoded.date));
+          }
+          
+          // Move to time selection step
+          setCurrentStep('time');
+          
+          toast({
+              title: "Voice Booking",
+              description: `Setting up appointment with Dr. ${decoded.doctor_name}`,
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing booking intent', e);
+      }
+    }
+  }, [searchParams, toast]);
 
   // Pre-select doctor from URL param (only doctorId is required; doctorName is optional)
   useEffect(() => {
