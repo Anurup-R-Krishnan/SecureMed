@@ -12,7 +12,7 @@ describe('Pharmacist Inventory Workflow', () => {
   it('Allows pharmacist to check stock levels', () => {
     cy.url().should('include', '/pharmacy');
     cy.visit('http://localhost:3000/pharmacy/inventory');
-    cy.contains(/Drugs \\(/i).should('be.visible');
+    cy.contains(/Drugs \(/i).should('be.visible');
   });
 
   it('Allows pharmacist to view orders', () => {
