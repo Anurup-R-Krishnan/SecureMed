@@ -223,7 +223,14 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
           }}
         />
       )}
-      {activeTab === 'patients' && <PatientManager patients={patients} />}
+      {activeTab === 'patients' && (
+        <PatientManager
+          patients={patients}
+          onRefresh={async () => {
+            setPatients(await adminService.getPatients());
+          }}
+        />
+      )}
       {activeTab === 'billing' && <InsuranceVerification />}
       {activeTab === 'infection-tracking' && (
         <InfectionTrackingPortal
