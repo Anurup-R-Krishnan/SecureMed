@@ -78,6 +78,8 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     };
 
     React.useEffect(() => {
+        setAutoReportRequested(false);
+        setReportNotice('');
         reloadReports();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patientId]);
