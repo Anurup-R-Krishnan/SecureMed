@@ -55,6 +55,13 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
             ]);
             setLatestReport(report);
             setReportHistory(history.slice(0, 5));
+            if (!report) {
+                setReportNotice('No interaction report yet. Generating a new report now.');
+                if (!autoReportRequested) {
+                    setAutoReportRequested(true);
+                    await handleRegenerateReport();
+                }
+            }
         } catch (e: any) {
             setLatestReport(null);
             setReportHistory([]);
@@ -182,6 +189,7 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
 
             setPollingActive(true);
             setPollingSeconds(0);
+            const start = Date.now();
             for (;;) {
                 await wait(1500);
                 setPollingSeconds((prev) => prev + 1.5);
@@ -197,8 +205,9 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                     setPollingActive(false);
                     return;
                 }
-                if (!pollingActive) {
-                    setReportNotice('Polling stopped. You can refresh or regenerate later.');
+                if (Date.now() - start > 45000) {
+                    setReportNotice('Report generation is taking longer than expected. Try again in a moment.');
+                    setPollingActive(false);
                     return;
                 }
             }
