@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     FlaskConical,
     LayoutDashboard,
@@ -24,6 +25,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 type LabTab = 'worklist' | 'completed' | 'reports' | 'settings';
 
@@ -36,6 +38,7 @@ interface LabTechnicianPortalProps {
 
 export default function LabTechnicianPortal({ onLogout, onSwitchRole, currentTab, onTabChange }: LabTechnicianPortalProps) {
     const [activeTab, setActiveTabState] = useState<LabTab>(currentTab || 'worklist');
+    const router = useRouter();
 
     // Sync tab with URL when currentTab prop changes
     useEffect(() => {
@@ -84,7 +87,7 @@ export default function LabTechnicianPortal({ onLogout, onSwitchRole, currentTab
                     <p className="text-muted-foreground">Manage laboratory configuration and preferences.</p>
                     <div className="bg-card p-8 rounded-lg border border-border text-center">
                         <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                        <Button variant="outline">Open Advanced Settings</Button>
+                        <Button variant="outline" onClick={() => router.push('/settings/security')}>Open Advanced Settings</Button>
                     </div>
                 </div>
             )}
@@ -152,6 +155,48 @@ function CompletedTestsView() {
 }
 
 function ReportsView() {
+    const router = useRouter();
+    const { toast } = useToast();
+    const [downloading, setDownloading] = useState(false);
+
+    const handleDownloadMonthlyReport = async () => {
+        try {
+            setDownloading(true);
+            const response = await api.get('/labs/results/');
+            const rows = Array.isArray(response.data) ? response.data : response.data?.results || [];
+            if (!rows.length) {
+                toast({ title: 'No data', description: 'No lab results available for report.', variant: 'destructive' });
+                return;
+            }
+            const header = ['Sample ID', 'Test Name', 'Result', 'Units', 'Flag', 'Completed At'];
+            const lines = rows.map((row: any) => ([
+                row.sample_id || '',
+                row.test_name || '',
+                row.result_value || '',
+                row.units || '',
+                row.flag || '',
+                row.completed_at || '',
+            ]));
+            const csv = [header, ...lines]
+                .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `lab_report_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            toast({ title: 'Report downloaded', description: 'Monthly report exported as CSV.' });
+        } catch (error) {
+            toast({ title: 'Download failed', description: 'Could not generate report.', variant: 'destructive' });
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     return (
         <div className="bg-card p-12 rounded-[32px] border border-border text-center">
             <FlaskConical className="h-16 w-16 text-primary/40 mx-auto mb-6" />
@@ -160,8 +205,12 @@ function ReportsView() {
                 Generate detailed productivity reports, critical values summary, and turnaround time analytics.
             </p>
             <div className="flex justify-center gap-4">
-                <Button className="rounded-xl font-bold">Download Monthly Report</Button>
-                <Button variant="outline" className="rounded-xl font-bold">View Real-time Dashboard</Button>
+                <Button className="rounded-xl font-bold" onClick={handleDownloadMonthlyReport} disabled={downloading}>
+                    {downloading ? 'Preparing...' : 'Download Monthly Report'}
+                </Button>
+                <Button variant="outline" className="rounded-xl font-bold" onClick={() => router.push('/lab/worklist')}>
+                    View Real-time Dashboard
+                </Button>
             </div>
         </div>
     );

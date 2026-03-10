@@ -127,7 +127,7 @@ def patient_timeline(request):
         for inv in invoices:
             # Invoice Issued Event
             events.append({
-                'id': f"inv_{inv.id}",
+                'id': f"inv_{inv.invoice_id}",
                 'date': f"{inv.issue_date}T09:00:00", # Default time
                 'title': f"Invoice Generated: ${inv.total_amount}",
                 'description': inv.notes or "Medical Service Invoice",
@@ -139,7 +139,7 @@ def patient_timeline(request):
             if inv.status == 'paid':
                 payment_date = inv.updated_at.isoformat()
                 events.append({
-                    'id': f"pay_{inv.id}",
+                    'id': f"pay_{inv.invoice_id}",
                     'date': payment_date,
                     'title': f"Payment Confirmed: ${inv.paid_amount}",
                     'description': f"Payment for Invoice #{inv.invoice_id}",

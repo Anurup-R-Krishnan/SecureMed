@@ -5,6 +5,7 @@ urlpatterns = [
     # Admin Dashboard Endpoints
     path('dashboard/stats/', views.get_dashboard_stats, name='dashboard_stats'),
     path('hospitals/', views.get_hospitals, name='hospitals'),
+    path('hospitals/<int:pk>/', views.hospital_detail, name='hospital_detail'),
     path('staff/', views.get_staff, name='staff'),
     path('alerts/', views.get_alerts, name='alerts'),
     path('audit-logs/', views.get_audit_logs, name='audit_logs'),
@@ -17,4 +18,3 @@ urlpatterns = [
 # These URLs will be added to main config/urls.py:
 # path('api/doctor/', include('analytics.doctor_urls')),
 # path('api/patient/', include('analytics.patient_urls')),
-

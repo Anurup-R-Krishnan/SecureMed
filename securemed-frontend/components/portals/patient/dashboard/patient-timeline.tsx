@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { patientService, TimelineEvent } from '@/services/patients';
 import {
     Calendar,
@@ -71,9 +72,17 @@ const typeConfig = {
         border: 'border-slate-500/20',
         label: 'Administrative'
     },
+    billing: {
+        icon: FileText,
+        color: 'text-indigo-500',
+        bg: 'bg-indigo-500/10',
+        border: 'border-indigo-500/20',
+        label: 'Billing'
+    },
 };
 
 export default function PatientTimeline({ patientId, className }: EnhancedPatientTimelineProps) {
+    const router = useRouter();
     const { toast } = useToast();
     const [events, setEvents] = useState<TimelineEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -133,6 +142,28 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
             default:
                 return null;
         }
+    };
+
+    const handleViewDetails = (event: TimelineEvent) => {
+        if (!event?.id) return;
+        const [prefix, rawId] = event.id.split('_', 2);
+        if (prefix === 'appt') {
+            router.push(`/patient/appointments?appointmentId=${rawId}`);
+            return;
+        }
+        if (prefix === 'rec') {
+            router.push(`/patient/records?recordId=${rawId}`);
+            return;
+        }
+        if (prefix === 'lab') {
+            router.push(`/patient/records?recordId=${rawId}`);
+            return;
+        }
+        if (prefix === 'inv' || prefix === 'pay') {
+            router.push(`/patient/billing?invoiceId=${rawId}`);
+            return;
+        }
+        router.push('/patient/records');
     };
 
     if (loading) {
@@ -293,7 +324,13 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
                                             </div>
 
                                             <div className="flex md:flex-col justify-end gap-2 shrink-0">
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full">
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 rounded-full"
+                                                    onClick={() => handleViewDetails(event)}
+                                                    aria-label="View details"
+                                                >
                                                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                                 </Button>
                                             </div>

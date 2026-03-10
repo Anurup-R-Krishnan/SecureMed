@@ -10,17 +10,19 @@ export interface Hospital {
     name: string;
     location: string;
     beds: number;
-    occupancy: string;
+    occupancy_percent: number;
     doctors: number;
 }
 
 export interface StaffMember {
     id: number;
+    user_id?: number;
     name: string;
     role: string;
     hospital: string;
     status: 'Active' | 'On Leave' | 'Inactive';
     email?: string;
+    is_active?: boolean;
 }
 
 export interface DashboardStats {
@@ -99,6 +101,28 @@ export const adminService = {
             console.error('Error fetching hospitals:', error);
             throw error;
         }
+    },
+
+    async createHospital(payload: {
+        name: string;
+        location: string;
+        beds: number;
+        occupancy_percent: number;
+        doctors: number;
+    }): Promise<Hospital> {
+        const response = await apiClient.post('/admin/hospitals/', payload);
+        return response.data;
+    },
+
+    async updateHospital(id: number, payload: Partial<{
+        name: string;
+        location: string;
+        beds: number;
+        occupancy_percent: number;
+        doctors: number;
+    }>): Promise<Hospital> {
+        const response = await apiClient.patch(`/admin/hospitals/${id}/`, payload);
+        return response.data;
     },
 
     /**
@@ -194,7 +218,27 @@ export const adminService = {
     }) {
         const response = await apiClient.post('/auth/users/create/', payload);
         return response.data;
-    }
+    },
+
+    async updateUserRole(userId: number, role: string) {
+        const response = await apiClient.patch(`/auth/users/${userId}/role/`, { role });
+        return response.data;
+    },
+
+    async deactivateUser(userId: number) {
+        const response = await apiClient.post(`/auth/users/${userId}/deactivate/`);
+        return response.data;
+    },
+
+    async activateUser(userId: number) {
+        const response = await apiClient.post(`/auth/users/${userId}/activate/`);
+        return response.data;
+    },
+
+    async resetUserPassword(userId: number) {
+        const response = await apiClient.post(`/auth/users/${userId}/reset-password/`);
+        return response.data;
+    },
 };
 
 export default adminService;

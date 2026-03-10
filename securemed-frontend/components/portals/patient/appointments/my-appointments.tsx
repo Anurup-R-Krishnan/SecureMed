@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, User, XCircle, CheckCircle, Activity, Loader2, AlertCircle } from 'lucide-react';
 import { appointmentService, Appointment } from '@/services/appointments';
@@ -8,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function MyAppointments() {
     const { toast } = useToast();
+    const searchParams = useSearchParams();
+    const highlightId = searchParams.get('appointmentId');
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     const [cancellingId, setCancellingId] = useState<number | null>(null);
@@ -27,6 +30,14 @@ export default function MyAppointments() {
     useEffect(() => {
         fetchAppointments();
     }, []);
+
+    useEffect(() => {
+        if (!highlightId || appointments.length === 0) return;
+        const target = document.getElementById(`appointment-${highlightId}`);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [highlightId, appointments]);
 
     const handleCancel = async (apt: Appointment) => {
         if (!confirm(`Cancel appointment with ${apt.doctor_name} on ${apt.appointment_date}?`)) return;
@@ -134,7 +145,11 @@ export default function MyAppointments() {
     }
 
     const renderAppointmentCard = (apt: Appointment, showCancel: boolean) => (
-        <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border border-border bg-card rounded-xl shadow-sm gap-4">
+        <div
+            key={apt.id}
+            id={`appointment-${apt.id}`}
+            className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 border border-border bg-card rounded-xl shadow-sm gap-4 ${highlightId && String(apt.id) === String(highlightId) ? 'ring-2 ring-primary/40 bg-primary/5' : ''}`}
+        >
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">

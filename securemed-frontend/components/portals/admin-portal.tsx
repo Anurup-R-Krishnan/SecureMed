@@ -194,12 +194,30 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
       )}
 
       {activeTab === 'analytics' && <ClinicalAnalytics />}
-      {activeTab === 'hospitals' && <HospitalManager hospitals={hospitals} />}
+      {activeTab === 'hospitals' && (
+        <HospitalManager
+          hospitals={hospitals}
+          onCreateHospital={async (payload) => {
+            await adminService.createHospital(payload);
+            const updated = await adminService.getHospitals();
+            setHospitals(updated);
+          }}
+          onUpdateHospital={async (id, payload) => {
+            await adminService.updateHospital(id, payload);
+            const updated = await adminService.getHospitals();
+            setHospitals(updated);
+          }}
+        />
+      )}
       {activeTab === 'staff' && (
         <StaffManager
           staff={staff}
           onCreateUser={async (payload) => {
             await adminService.createUser(payload);
+            const staffData = await adminService.getStaff();
+            setStaff(staffData);
+          }}
+          onRefresh={async () => {
             const staffData = await adminService.getStaff();
             setStaff(staffData);
           }}

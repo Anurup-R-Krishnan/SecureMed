@@ -1495,6 +1495,89 @@ class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], url_path='deactivate')
+    def deactivate_user(self, request, pk=None):
+        """
+        Deactivate a user account (Admin only).
+        POST /api/auth/users/{id}/deactivate/
+        """
+        if request.user.role != 'admin':
+            return Response({'error': 'Forbidden: Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        user = get_object_or_404(User, pk=pk)
+        if user.id == request.user.id:
+            return Response({'error': 'Cannot deactivate your own account'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+
+        log_audit(
+            actor=request.user,
+            action='user_deactivated',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'Admin {request.user.email} deactivated user {user.email}',
+            ip_address=get_client_ip(request),
+        )
+
+        return Response({'message': 'User deactivated', 'user_id': user.id, 'is_active': user.is_active})
+
+    @action(detail=True, methods=['post'], url_path='activate')
+    def activate_user(self, request, pk=None):
+        """
+        Reactivate a user account (Admin only).
+        POST /api/auth/users/{id}/activate/
+        """
+        if request.user.role != 'admin':
+            return Response({'error': 'Forbidden: Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        user = get_object_or_404(User, pk=pk)
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+
+        log_audit(
+            actor=request.user,
+            action='user_activated',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'Admin {request.user.email} activated user {user.email}',
+            ip_address=get_client_ip(request),
+        )
+
+        return Response({'message': 'User activated', 'user_id': user.id, 'is_active': user.is_active})
+
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        """
+        Reset a user's password and return a temporary password (Admin only).
+        POST /api/auth/users/{id}/reset-password/
+        """
+        if request.user.role != 'admin':
+            return Response({'error': 'Forbidden: Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        user = get_object_or_404(User, pk=pk)
+        if user.id == request.user.id:
+            return Response({'error': 'Cannot reset your own password here'}, status=status.HTTP_400_BAD_REQUEST)
+
+        alphabet = string.ascii_letters + string.digits + '!@#$%^&*()'
+        temp_password = ''.join(secrets.choice(alphabet) for _ in range(14))
+
+        user.set_password(temp_password)
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        user.save(update_fields=['password', 'failed_login_attempts', 'locked_until'])
+
+        log_audit(
+            actor=request.user,
+            action='user_password_reset',
+            resource_type='User',
+            resource_id=str(user.id),
+            description=f'Admin {request.user.email} reset password for {user.email}',
+            ip_address=get_client_ip(request),
+        )
+
+        return Response({'message': 'Password reset', 'temporary_password': temp_password})
+
     @action(detail=False, methods=['post'], url_path='create')
     def create_user(self, request):
         """

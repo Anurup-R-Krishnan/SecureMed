@@ -324,7 +324,7 @@ class UserRoleUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user role (Admin only)."""
     
     role = serializers.ChoiceField(
-        choices=['patient', 'provider', 'admin'],
+        choices=['patient', 'doctor', 'provider', 'pharmacist', 'lab_technician', 'admin'],
         required=True,
         help_text="New role for the user"
     )
@@ -335,7 +335,7 @@ class UserRoleUpdateSerializer(serializers.ModelSerializer):
     
     def validate_role(self, value):
         """Ensure role is one of the allowed values."""
-        allowed_roles = ['patient', 'provider', 'admin']
+        allowed_roles = ['patient', 'doctor', 'provider', 'pharmacist', 'lab_technician', 'admin']
         if value not in allowed_roles:
             raise serializers.ValidationError(
                 f"Invalid role. Must be one of: {', '.join(allowed_roles)}"

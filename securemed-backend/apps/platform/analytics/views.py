@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework import status
 from django.db.models import Count
 from django.utils import timezone
 from datetime import timedelta
@@ -10,6 +11,10 @@ import uuid
 import os
 import logging
 from django.conf import settings
+
+from apps.platform.analytics.audit import log_audit, get_client_ip
+from apps.platform.analytics.models import Hospital
+from apps.platform.analytics.serializers import HospitalSerializer
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -98,38 +103,97 @@ def get_dashboard_stats(request):
     })
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def get_hospitals(request):
     """
-    Returns list of hospitals/facilities.
+    List or create hospitals/facilities.
     GET /api/admin/hospitals/
-    
-    Note: In a real system, this would query a Hospital model.
-    Currently returns static facility data.
+    POST /api/admin/hospitals/
     """
-    # In production, this would come from a Hospital model
-    # For now, return facility info based on departments
-    hospitals = [
-        {
-            'id': 1,
-            'name': 'SecureMed Main Hospital',
-            'location': 'Main Campus',
-            'beds': 350,
-            'occupancy': '78%',
-            'doctors': User.objects.filter(role='doctor', is_active=True).count(),
-        },
-        {
-            'id': 2,
-            'name': 'SecureMed Specialty Center',
-            'location': 'Downtown',
-            'beds': 150,
-            'occupancy': '65%',
-            'doctors': 12,
-        },
-    ]
-    
-    return Response(hospitals)
+    if request.method == 'POST':
+        if request.user.role != 'admin':
+            return Response({'error': 'Forbidden: Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = HospitalSerializer(data=request.data)
+        if serializer.is_valid():
+            hospital = serializer.save()
+            log_audit(
+                actor=request.user,
+                action='user_created',
+                resource_type='Hospital',
+                resource_id=str(hospital.id),
+                description=f'Created hospital {hospital.name}',
+                ip_address=get_client_ip(request),
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    if not Hospital.objects.exists():
+        Hospital.objects.create(
+            name='SecureMed Main Hospital',
+            location='Main Campus',
+            beds=350,
+            occupancy_percent=78,
+            doctors=User.objects.filter(role='doctor', is_active=True).count(),
+        )
+        Hospital.objects.create(
+            name='SecureMed Specialty Center',
+            location='Downtown',
+            beds=150,
+            occupancy_percent=65,
+            doctors=12,
+        )
+
+    hospitals = Hospital.objects.all()
+    serializer = HospitalSerializer(hospitals, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def hospital_detail(request, pk):
+    """
+    Retrieve, update, or delete a hospital.
+    GET /api/admin/hospitals/{id}/
+    PATCH /api/admin/hospitals/{id}/
+    DELETE /api/admin/hospitals/{id}/
+    """
+    try:
+        hospital = Hospital.objects.get(pk=pk)
+    except Hospital.DoesNotExist:
+        return Response({'error': 'Hospital not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(HospitalSerializer(hospital).data)
+
+    if request.user.role != 'admin':
+        return Response({'error': 'Forbidden: Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'PATCH':
+        serializer = HospitalSerializer(hospital, data=request.data, partial=True)
+        if serializer.is_valid():
+            hospital = serializer.save()
+            log_audit(
+                actor=request.user,
+                action='user_role_changed',
+                resource_type='Hospital',
+                resource_id=str(hospital.id),
+                description=f'Updated hospital {hospital.name}',
+                ip_address=get_client_ip(request),
+            )
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    hospital.delete()
+    log_audit(
+        actor=request.user,
+        action='user_deleted',
+        resource_type='Hospital',
+        resource_id=str(pk),
+        description='Deleted hospital',
+        ip_address=get_client_ip(request),
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
@@ -147,12 +211,18 @@ def get_staff(request):
     try:
         doctors = Doctor.objects.select_related('user').all()[:20]  # Limit to 20
         for doc in doctors:
+            status_label = 'Active' if doc.user.is_active and doc.is_available else 'On Leave'
+            if not doc.user.is_active:
+                status_label = 'Inactive'
             staff_list.append({
-                'id': doc.id,
+                'id': doc.user.id,
+                'user_id': doc.user.id,
                 'name': f"Dr. {doc.user.first_name} {doc.user.last_name}".strip() or f"Dr. {doc.user.email}",
-                'role': doc.specialty or 'General Practitioner',
+                'role': 'Doctor',
+                'specialty': doc.specialty or 'General Practitioner',
                 'hospital': 'SecureMed Main Hospital',
-                'status': 'Active' if doc.is_available else 'On Leave',
+                'status': status_label,
+                'is_active': doc.user.is_active,
                 'email': doc.user.email,
             })
     except Exception as e:
@@ -161,10 +231,12 @@ def get_staff(request):
         for user in doctor_users:
             staff_list.append({
                 'id': user.id,
+                'user_id': user.id,
                 'name': f"Dr. {user.first_name} {user.last_name}".strip() or f"Dr. {user.email}",
                 'role': 'Doctor',
                 'hospital': 'SecureMed Main Hospital',
-                'status': 'Active',
+                'status': 'Active' if user.is_active else 'Inactive',
+                'is_active': user.is_active,
                 'email': user.email,
             })
     
@@ -173,10 +245,12 @@ def get_staff(request):
     for user in providers:
         staff_list.append({
             'id': user.id,
+            'user_id': user.id,
             'name': f"{user.first_name} {user.last_name}".strip() or user.email,
             'role': 'Healthcare Provider',
             'hospital': 'SecureMed Main Hospital',
-            'status': 'Active',
+            'status': 'Active' if user.is_active else 'Inactive',
+            'is_active': user.is_active,
             'email': user.email,
         })
     

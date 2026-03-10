@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Bed, AlertTriangle, Shield } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -15,21 +15,69 @@ export interface RoomData {
 }
 
 interface WardMapProps {
-    rooms: RoomData[];
-    loading?: boolean;
+    filter?: 'all' | 'occupied' | 'empty' | 'critical' | 'warning' | 'stable';
+    onRoomsChange?: (rooms: RoomData[]) => void;
 }
 
-export function WardMap({ rooms, loading = false }: WardMapProps) {
-    if (loading) {
-        return (
-            <div className="p-6 bg-card rounded-xl border shadow-sm flex items-center justify-center h-64">
-                <div className="flex flex-col items-center gap-2">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-sm text-muted-foreground font-medium">Loading ward data...</p>
-                </div>
-            </div>
-        );
-    }
+export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
+    const [rooms, setRooms] = useState<RoomData[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchWardData = async () => {
+            try {
+                const patients = await adminService.getPatients();
+
+                const generatedRooms = Array.from({ length: 12 }, (_, i) => {
+                    const roomNum = `30${i + 1}`;
+                    const assignedPatient = patients[i];
+
+                    if (assignedPatient) {
+                        // Determine acuity based on recent vitals if available, otherwise random or stable
+                        return {
+                            id: roomNum,
+                            isOccupied: true,
+                            patientName: assignedPatient.name || assignedPatient.first_name + ' ' + assignedPatient.last_name,
+                            acuity: (i % 5 === 0 ? 'critical' : 'stable') as 'critical' | 'stable', // Simple logic: every 5th patient is critical
+                            isIsolation: false
+                        };
+                    } else {
+                        return {
+                            id: roomNum,
+                            isOccupied: false,
+                            patientName: null,
+                            acuity: null,
+                            isIsolation: false
+                        };
+                    }
+                });
+
+                setRooms(generatedRooms);
+            } catch (error) {
+                console.error("Failed to fetch ward data", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWardData();
+    }, []);
+
+    useEffect(() => {
+        if (onRoomsChange) {
+            onRoomsChange(rooms);
+        }
+    }, [rooms, onRoomsChange]);
+
+    const filteredRooms = rooms.filter((room) => {
+        if (filter === 'all') return true;
+        if (filter === 'occupied') return room.isOccupied;
+        if (filter === 'empty') return !room.isOccupied;
+        if (filter === 'critical') return room.acuity === 'critical';
+        if (filter === 'warning') return room.acuity === 'warning';
+        if (filter === 'stable') return room.acuity === 'stable';
+        return true;
+    });
 
     return (
         <TooltipProvider>
@@ -44,7 +92,7 @@ export function WardMap({ rooms, loading = false }: WardMapProps) {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {rooms.map((room: RoomData) => (
+                    {filteredRooms.map((room) => (
                         <Tooltip key={room.id}>
                             <TooltipTrigger asChild>
                                 <div

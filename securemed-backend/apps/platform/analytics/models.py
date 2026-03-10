@@ -25,6 +25,9 @@ class AuditLog(models.Model):
         # Admin CRUD
         ('user_created', 'User Created'),
         ('user_role_changed', 'User Role Changed'),
+        ('user_deactivated', 'User Deactivated'),
+        ('user_activated', 'User Activated'),
+        ('user_password_reset', 'User Password Reset'),
         ('user_deleted', 'User Deleted'),
         # Consent
         ('consent_granted', 'Consent Granted'),
@@ -41,6 +44,8 @@ class AuditLog(models.Model):
         'register': 'auth', 'password_reset': 'auth',
         'mfa_enabled': 'auth', 'mfa_disabled': 'auth',
         'user_created': 'admin', 'user_role_changed': 'admin',
+        'user_deactivated': 'admin', 'user_activated': 'admin',
+        'user_password_reset': 'admin',
         'user_deleted': 'admin',
         'consent_granted': 'consent', 'consent_revoked': 'consent',
         'medical_record_viewed': 'clinical',
@@ -116,3 +121,20 @@ class DiseaseSymptom(models.Model):
     
     class Meta:
         unique_together = ['disease', 'symptom']
+
+
+class Hospital(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    location = models.CharField(max_length=200)
+    beds = models.PositiveIntegerField(default=0)
+    occupancy_percent = models.PositiveSmallIntegerField(default=0)
+    doctors = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'hospitals'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name

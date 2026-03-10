@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,8 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const [adherenceLoading, setAdherenceLoading] = useState<number | null>(null);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [reportError, setReportError] = useState('');
+  const searchParams = useSearchParams();
+  const highlightRecordId = searchParams.get('recordId');
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -43,6 +46,14 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   useEffect(() => {
     fetchRecords();
   }, []);
+
+  useEffect(() => {
+    if (!highlightRecordId || loading || medicalRecords.length === 0) return;
+    const target = document.getElementById(`record-${highlightRecordId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightRecordId, loading, medicalRecords]);
 
   /* Pagination / Infinite Scroll State */
   const [displayCount, setDisplayCount] = useState(5);
@@ -316,7 +327,11 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
         ) : (
           <div className="space-y-3">
             {visibleRecords.map((record) => (
-              <div key={record.id} className="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+              <div
+                key={record.id}
+                id={`record-${record.id}`}
+                className={`border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors ${highlightRecordId && String(record.id) === String(highlightRecordId) ? 'ring-2 ring-primary/40 bg-primary/5' : ''}`}
+              >
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
                     <Stethoscope className="h-5 w-5 text-primary" />

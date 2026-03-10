@@ -5,7 +5,7 @@ export interface TimelineEvent {
     date: string;
     title: string;
     description: string;
-    category: 'appointment' | 'medication' | 'lab' | 'diagnosis' | 'admin';
+    category: 'appointment' | 'medication' | 'lab' | 'diagnosis' | 'admin' | 'billing';
     doctor?: string;
     location?: string;
     status?: 'completed' | 'upcoming' | 'pending' | 'cancelled';

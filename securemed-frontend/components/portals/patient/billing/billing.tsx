@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Eye, Filter, CreditCard, TrendingUp } from 'lucide-react';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 import {
@@ -21,6 +22,8 @@ interface PatientBillingProps {
 }
 
 export default function PatientBilling({ patient }: PatientBillingProps) {
+  const searchParams = useSearchParams();
+  const invoiceQuery = searchParams.get('invoiceId');
   const [invoices, setInvoices] = useState<any[]>([]);
   const [billingSummary, setBillingSummary] = useState({
     totalBilled: 0,
@@ -39,6 +42,7 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
   const [insuranceOpen, setInsuranceOpen] = useState(false);
   const [insuranceLoading, setInsuranceLoading] = useState(false);
   const [insuranceProfile, setInsuranceProfile] = useState<any | null>(null);
+  const [autoOpened, setAutoOpened] = useState(false);
 
   const fetchBillingData = async (params?: Record<string, string>) => {
     try {
@@ -58,6 +62,17 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
   useEffect(() => {
     fetchBillingData();
   }, []);
+
+  useEffect(() => {
+    if (autoOpened || !invoiceQuery || loading || invoices.length === 0) return;
+    const match = invoices.find((inv) =>
+      String(inv.invoice_id) === String(invoiceQuery) || String(inv.id) === String(invoiceQuery)
+    );
+    if (match?.invoice_id) {
+      handleViewInvoice(match.invoice_id);
+      setAutoOpened(true);
+    }
+  }, [autoOpened, invoiceQuery, invoices, loading]);
 
   const applyFilters = async () => {
     const params: Record<string, string> = {};
