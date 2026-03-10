@@ -39,10 +39,22 @@ export const patientService = {
             const data = Array.isArray(payload)
                 ? payload
                 : (Array.isArray(payload?.timeline) ? payload.timeline : (payload?.results || []));
-            return data.map((event: any) => ({
-                ...event,
-                category: categoryMap[event.category] || event.category || 'admin'
-            }));
+            return data.map((event: any) => {
+                const rawCategory = categoryMap[event.category] || event.category || 'admin';
+                const rawType = String(event.type || '').toLowerCase();
+                let inferredCategory = rawCategory;
+
+                if (rawType.includes('appointment')) inferredCategory = 'appointment';
+                else if (rawType.includes('medical_record') || rawType === 'record') inferredCategory = 'diagnosis';
+                else if (rawType.includes('lab')) inferredCategory = 'lab';
+                else if (rawType.includes('prescription') || rawType.includes('pharmacy')) inferredCategory = 'medication';
+                else if (rawType.includes('invoice') || rawType.includes('billing')) inferredCategory = 'billing';
+
+                return {
+                    ...event,
+                    category: inferredCategory
+                };
+            });
         };
 
         try {
