@@ -153,7 +153,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                         variant="outline"
                         size="sm"
                         className="hidden md:flex items-center gap-3 text-muted-foreground bg-card border-border/60 hover:bg-muted/20 hover:text-foreground w-56 justify-between h-10 px-4 rounded-xl shadow-sm"
-                        onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                        onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }))}
                     >
                         <span className="flex items-center gap-2">
                             <Search className="h-4 w-4" />
