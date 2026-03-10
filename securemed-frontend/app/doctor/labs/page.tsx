@@ -22,6 +22,7 @@ interface LabResultItem {
     units?: string;
     flag?: string;
     released_to_patient?: boolean;
+    file_attachment_name?: string;
 }
 
 export default function LabsPage() {
@@ -84,6 +85,38 @@ export default function LabsPage() {
         }
     };
 
+    const handleViewAttachment = async (id: number) => {
+        try {
+            const res = await api.get(`/labs/results/${id}/presigned/`);
+            const url = res.data?.url as string | undefined;
+            if (!url) {
+                toast.error('No view link available');
+                return;
+            }
+            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            window.open(viewUrl, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            toast.error('Failed to open attachment');
+        }
+    };
+
+    const handleDownloadAttachment = async (id: number, filename?: string) => {
+        try {
+            const res = await api.get(`/labs/results/${id}/download/`, { responseType: 'blob' });
+            const blob = new Blob([res.data]);
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = filename || `lab_result_${id}`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            toast.error('Failed to download attachment');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-black text-foreground tracking-tight">Lab Orders</h2>
@@ -102,6 +135,7 @@ export default function LabsPage() {
                                     <th className="px-4 py-3 text-left">Test</th>
                                     <th className="px-4 py-3 text-left">Result</th>
                                     <th className="px-4 py-3 text-left">Flag</th>
+                                    <th className="px-4 py-3 text-left">Attachment</th>
                                     <th className="px-4 py-3 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -112,6 +146,28 @@ export default function LabsPage() {
                                         <td className="px-4 py-3">{result.test_name || '—'}</td>
                                         <td className="px-4 py-3">{result.result_value || '—'} {result.units || ''}</td>
                                         <td className="px-4 py-3">{result.flag || 'Normal'}</td>
+                                        <td className="px-4 py-3">
+                                            {result.file_attachment_name ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => handleViewAttachment(result.id)}
+                                                    >
+                                                        View
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => handleDownloadAttachment(result.id, result.file_attachment_name)}
+                                                    >
+                                                        Download
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">None</span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-right">
                                             {result.released_to_patient ? (
                                                 <span className="text-xs text-green-600 font-semibold">Released</span>

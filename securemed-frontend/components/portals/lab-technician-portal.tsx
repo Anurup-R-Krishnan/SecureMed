@@ -26,6 +26,13 @@ import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
 
 type LabTab = 'worklist' | 'completed' | 'reports' | 'settings';
 
@@ -98,6 +105,10 @@ export default function LabTechnicianPortal({ onLogout, onSwitchRole, currentTab
 function CompletedTestsView() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [selectedResult, setSelectedResult] = useState<any | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -112,6 +123,70 @@ function CompletedTestsView() {
         };
         fetchHistory();
     }, []);
+
+    const refreshHistory = async () => {
+        try {
+            const response = await api.get('/labs/results/');
+            setData(response.data);
+        } catch (error) {
+            console.error('Error fetching lab history:', error);
+        }
+    };
+
+    const handleOpenUpload = (row: any) => {
+        setSelectedResult(row);
+        setFile(null);
+    };
+
+    const handleUpload = async () => {
+        if (!selectedResult || !file) return;
+        setUploading(true);
+        try {
+            const payload = new FormData();
+            payload.append('file_attachment', file);
+            await api.patch(`/labs/results/${selectedResult.id}/`, payload);
+            toast({ title: 'Attachment uploaded', description: 'Lab result attachment updated.' });
+            setSelectedResult(null);
+            setFile(null);
+            await refreshHistory();
+        } catch (error) {
+            toast({ title: 'Upload failed', description: 'Could not upload attachment.', variant: 'destructive' });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleView = async (row: any) => {
+        try {
+            const res = await api.get(`/labs/results/${row.id}/presigned/`);
+            const url = res.data?.url as string | undefined;
+            if (!url) {
+                toast({ title: 'No view link', description: 'Attachment not available.', variant: 'destructive' });
+                return;
+            }
+            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            window.open(viewUrl, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            toast({ title: 'View failed', description: 'Could not open attachment.', variant: 'destructive' });
+        }
+    };
+
+    const handleDownload = async (row: any) => {
+        try {
+            const res = await api.get(`/labs/results/${row.id}/download/`, { responseType: 'blob' });
+            const blob = new Blob([res.data]);
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = row.file_attachment_name || `lab_result_${row.id}`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            toast({ title: 'Download failed', description: 'Could not download attachment.', variant: 'destructive' });
+        }
+    };
 
     const columns: ColumnDef<any>[] = [
         {
@@ -138,6 +213,23 @@ function CompletedTestsView() {
             },
         },
         {
+            accessorKey: 'file_attachment_name',
+            header: 'Attachment',
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2">
+                    {row.original.file_attachment_name ? (
+                        <>
+                            <Button size="sm" variant="outline" onClick={() => handleView(row.original)}>View</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDownload(row.original)}>Download</Button>
+                        </>
+                    ) : (
+                        <span className="text-xs text-muted-foreground">None</span>
+                    )}
+                    <Button size="sm" onClick={() => handleOpenUpload(row.original)}>Upload</Button>
+                </div>
+            ),
+        },
+        {
             accessorKey: 'completed_at',
             header: 'Completed At',
             cell: ({ row }) => new Date(row.getValue('completed_at')).toLocaleString(),
@@ -150,6 +242,30 @@ function CompletedTestsView() {
         <div className="space-y-4">
             <h3 className="text-xl font-bold text-foreground">Laboratory History</h3>
             <DataTable columns={columns} data={data} />
+            <Dialog open={Boolean(selectedResult)} onOpenChange={(open) => !open && setSelectedResult(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Upload Attachment</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.dcm,.docx,.xlsx"
+                            className="w-full text-sm"
+                            onChange={(e) => setFile(e.target.files?.[0] || null)}
+                        />
+                        {file && (
+                            <p className="text-xs text-muted-foreground">Selected: {file.name}</p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSelectedResult(null)}>Cancel</Button>
+                        <Button onClick={handleUpload} disabled={!file || uploading}>
+                            {uploading ? 'Uploading...' : 'Upload'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
