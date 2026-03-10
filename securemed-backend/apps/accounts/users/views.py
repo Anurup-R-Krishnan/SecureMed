@@ -82,7 +82,7 @@ def generate_temp_token(user):
         'exp': timezone.now() + timedelta(minutes=5),
         'type': 'mfa_temp'
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+    return jwt.encode(payload, settings.JWT_SIGNING_KEY, algorithm='HS256')
 
 
 def verify_temp_token(token):
@@ -92,7 +92,7 @@ def verify_temp_token(token):
     """
     try:
         # Explicitly use HS256 algorithm and settings.SECRET_KEY
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        payload = jwt.decode(token, settings.JWT_SIGNING_KEY, algorithms=['HS256'])
         
         # Check if token type is correct
         if payload.get('type') == 'mfa_temp':

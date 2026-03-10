@@ -1,6 +1,7 @@
 import logging
 from django.http import JsonResponse
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,9 @@ class RoleMiddleware:
                 auth_result = jwt_auth.authenticate(request)
                 if auth_result:
                     request.user = auth_result[0]
+            except InvalidToken:
+                # Invalid or expired tokens are common on logout/expiry; avoid noisy stack traces.
+                logger.debug("RoleMiddleware JWT authentication failed: invalid token")
             except Exception:
                 logger.exception("RoleMiddleware JWT authentication failed")
 
