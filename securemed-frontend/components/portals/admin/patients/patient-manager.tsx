@@ -19,14 +19,28 @@ interface PatientManagerProps {
     patients: Patient[];
     onViewPatient?: (patientId: number) => void;
     onRefresh: () => Promise<void>;
+    initialPatientId?: number | null;
 }
 
-export default function PatientManager({ patients, onViewPatient, onRefresh }: PatientManagerProps) {
+export default function PatientManager({ patients, onViewPatient, onRefresh, initialPatientId }: PatientManagerProps) {
     const { toast } = useToast();
     const [detailOpen, setDetailOpen] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
     const [resetPassword, setResetPassword] = useState<string | null>(null);
+    const [autoOpened, setAutoOpened] = useState(false);
+
+    React.useEffect(() => {
+        if (autoOpened || !initialPatientId || patients.length === 0) {
+            return;
+        }
+        const match = patients.find((p) => p.id === initialPatientId) || null;
+        if (match) {
+            setSelectedPatient(match);
+            setDetailOpen(true);
+        }
+        setAutoOpened(true);
+    }, [autoOpened, initialPatientId, patients]);
 
     const columns = getColumns({
         onViewPatient: (patientId) => {

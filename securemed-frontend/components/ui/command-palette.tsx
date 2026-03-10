@@ -28,6 +28,7 @@ import {
 
 import { useAuth } from '@/context/auth-context';
 import { appointmentService, Doctor } from '@/services/appointments';
+import { adminService } from '@/services/admin';
 import api from '@/lib/api';
 
 interface PatientResult {
@@ -45,7 +46,22 @@ export function CommandPalette() {
     const router = useRouter();
     const { user } = useAuth();
 
-    // Debounced search for doctors
+    const placeholderText = user?.role === 'patient'
+        ? 'Type a command or search for doctors...'
+        : user?.role === 'doctor' || user?.role === 'admin'
+            ? 'Type a command or search for patients...'
+            : 'Type a command...';
+
+    const settingsRoute = (() => {
+        if (user?.role === 'patient') return '/patient/settings';
+        if (user?.role === 'doctor') return '/doctor/settings';
+        if (user?.role === 'lab_technician') return '/lab/settings';
+        if (user?.role === 'pharmacist') return '/settings/security';
+        if (user?.role === 'admin') return '/settings/security';
+        return '/settings/security';
+    })();
+
+    // Debounced search
     React.useEffect(() => {
         if (!query || query.length < 2) {
             setResults([]);
@@ -74,6 +90,20 @@ export function CommandPalette() {
                         }
                     });
                     setPatientResults(Array.from(unique.values()));
+                    setResults([]);
+                } else if (user?.role === 'admin') {
+                    const rows = await adminService.getPatients(query);
+                    const normalized = query.trim().toLowerCase();
+                    const matches = rows.filter((row: any) => {
+                        const name = `${row.user_first_name || ''} ${row.user_last_name || ''}`.trim().toLowerCase();
+                        const patientId = (row.patient_id || '').toLowerCase();
+                        return name.includes(normalized) || patientId.includes(normalized);
+                    });
+                    setPatientResults(matches.slice(0, 15).map((row: any) => ({
+                        id: row.id,
+                        name: `${row.user_first_name || ''} ${row.user_last_name || ''}`.trim() || `Patient #${row.id}`,
+                        displayId: row.patient_id
+                    })));
                     setResults([]);
                 } else {
                     setResults([]);
@@ -111,7 +141,7 @@ export function CommandPalette() {
     return (
         <CommandDialog open={open} onOpenChange={setOpen}>
             <CommandInput 
-                placeholder="Type a command or search for doctors..." 
+                placeholder={placeholderText}
                 value={query}
                 onValueChange={setQuery}
             />
@@ -179,7 +209,13 @@ export function CommandPalette() {
                             {patientResults.map((patient) => (
                                 <CommandItem
                                     key={patient.id}
-                                    onSelect={() => runCommand(() => router.push(`/doctor/patients/${patient.id}`))}
+                                    onSelect={() => runCommand(() => {
+                                        if (user?.role === 'admin') {
+                                            router.push(`/admin/patients?patientId=${patient.id}`);
+                                        } else {
+                                            router.push(`/doctor/patients/${patient.id}`);
+                                        }
+                                    })}
                                 >
                                     <User className="mr-2 h-4 w-4 text-primary" />
                                     <div className="flex flex-col text-left">
@@ -258,7 +294,7 @@ export function CommandPalette() {
                 )}
 
                 <CommandGroup heading="Settings">
-                    <CommandItem onSelect={() => runCommand(() => router.push(`/${user.role}/settings`))}>
+                    <CommandItem onSelect={() => runCommand(() => router.push(settingsRoute))}>
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                     </CommandItem>

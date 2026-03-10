@@ -167,9 +167,11 @@ export const adminService = {
     /**
      * Get list of all patients
      */
-    async getPatients(): Promise<any[]> {
+    async getPatients(search?: string): Promise<any[]> {
         try {
-            const response = await apiClient.get('/patients/');
+            const response = await apiClient.get('/patients/', {
+                params: search ? { search } : undefined,
+            });
             // Handle pagination if needed, for now assume list or results
             if (response.data && Array.isArray(response.data)) {
                 return response.data;
