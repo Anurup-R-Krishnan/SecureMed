@@ -25,6 +25,14 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
         }
     }, [isLoading, isAuthenticated, router, pathname]);
 
+    useEffect(() => {
+        if (isLoading) return;
+        if (!isAuthenticated || !user) return;
+        if (!allowedRoles.includes(user.role)) {
+            router.replace(getPortalRouteForRole(user.role));
+        }
+    }, [isLoading, isAuthenticated, user, allowedRoles, router]);
+
     if (isLoading || !isAuthenticated) {
         return null;
     }
