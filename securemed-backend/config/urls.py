@@ -37,6 +37,10 @@ def api_root(request):
 api_patterns = [
     path('auth/', include('apps.accounts.users.urls')),
     path('consents/', include('apps.accounts.compliance.urls')),
+    # Health check endpoints (prefixed for API consumers)
+    path('health/', HealthCheckView.as_view(), name='api-health'),
+    path('health/ready/', ReadinessCheckView.as_view(), name='api-readiness'),
+    path('health/live/', LivenessCheckView.as_view(), name='api-liveness'),
     
     path('doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
     path('patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),

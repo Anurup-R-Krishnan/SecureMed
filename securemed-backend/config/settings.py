@@ -20,7 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-0tf^1ob=elb^f%1r$n#t8t(y$iknnnk7ubj+qclku=s9xpjntb')
+SECRET_KEY = config(
+    'SECRET_KEY',
+    default='django-insecure-9n6%5e1y^f7v8t4x2qz0p3m8k1b6c9d2r5w7u3a1s0d4h8j'
+)
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 
@@ -198,6 +201,15 @@ AUTH_USER_MODEL = 'authentication.User'
 
 # Simple JWT Settings
 from datetime import timedelta
+import hashlib
+
+def _get_jwt_signing_key(raw_key: str) -> str:
+    # Ensure a minimum length for HMAC signing; fall back to a derived key if too short.
+    if len(raw_key) >= 32:
+        return raw_key
+    return hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+
+JWT_SIGNING_KEY = _get_jwt_signing_key(SECRET_KEY)
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
@@ -206,7 +218,7 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
+    'SIGNING_KEY': JWT_SIGNING_KEY,
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,

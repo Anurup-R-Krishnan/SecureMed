@@ -18,7 +18,7 @@ class LabTestViewSet(viewsets.ReadOnlyModelViewSet):
     Catalog of available lab tests.
     Public but rate-limited and trimmed to safe fields.
     """
-    queryset = LabTest.objects.filter(is_active=True)
+    queryset = LabTest.objects.filter(is_active=True).order_by('name', 'id')
     serializer_class = LabTestSerializer
     permission_classes = [permissions.AllowAny]
     throttle_classes = [LabCatalogThrottle]
@@ -96,7 +96,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = LabResult.objects.select_related('order', 'test')
+        qs = LabResult.objects.select_related('order', 'test').order_by('-processed_at', '-id')
         if hasattr(user, 'patient_profile'):
             return qs.filter(order__patient=user, released_to_patient=True)
         if hasattr(user, 'doctor_profile') or user.role == 'doctor':
