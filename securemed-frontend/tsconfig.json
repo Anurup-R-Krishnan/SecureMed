@@ -24,11 +24,10 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@/lib/*": ["./lib/*"],
-      "@/app/*": ["./app/*"],
-      "@/components/*": ["./components/*"]
-    }
+  "@/*": ["./*"],
+  "lib/*": ["./lib/*"],
+  "app/*": ["./app/*"]
+}
   },
   "include": [
     "next-env.d.ts",
