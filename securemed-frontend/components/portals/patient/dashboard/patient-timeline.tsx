@@ -202,10 +202,14 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
         const rawId = parsed.rawId;
         const category = event.category?.toLowerCase();
         const isAppointment = category === 'appointment' || ['appointment', 'appt'].includes(normalizedType);
-        const isRecord = ['record', 'rec'].includes(normalizedType);
-        const isLab = category === 'lab' || ['lab', 'lab-result', 'lab_result'].includes(normalizedType);
+        const isRecord = ['record', 'rec', 'medical_record'].includes(normalizedType);
+        const isLabResult = ['lab-result', 'lab_result'].includes(normalizedType);
+        const isLabOrder = ['lab-order', 'lab_order'].includes(normalizedType);
+        const isLab = category === 'lab' || isLabResult || isLabOrder || normalizedType === 'lab';
         const isInvoice = category === 'billing' || ['invoice', 'inv'].includes(normalizedType);
         const isMedication = category === 'medication' || ['pharmacy', 'prescription', 'rx'].includes(normalizedType);
+        const labResultId = Number(event.details?.lab_result_id || event.details?.result_id || rawId);
+        const hasLabResultId = Number.isFinite(labResultId) && labResultId > 0;
 
         if (isAppointment) {
             router.push(`/patient/appointments?appointmentId=${rawId}`);
@@ -215,12 +219,15 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
             router.push(`/patient/records?recordId=${rawId}`);
             return;
         }
-        if (isLab) {
-            const attachmentId = Number(event.details?.lab_result_id || event.details?.result_id || rawId);
-            if (Number.isFinite(attachmentId) && attachmentId > 0) {
-                await openLabAttachment(attachmentId);
+        if (isLabResult || (isLab && hasLabResultId && !isLabOrder)) {
+            if (hasLabResultId) {
+                await openLabAttachment(labResultId);
                 return;
             }
+            router.push('/patient/records');
+            return;
+        }
+        if (isLabOrder || isLab) {
             router.push('/patient/records');
             return;
         }
