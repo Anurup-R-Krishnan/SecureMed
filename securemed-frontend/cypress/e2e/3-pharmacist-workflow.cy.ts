@@ -17,6 +17,6 @@ describe('Pharmacist Inventory Workflow', () => {
 
   it('Allows pharmacist to view orders', () => {
     cy.visit('http://localhost:3000/pharmacy/orders');
-    cy.contains(/Orders/i).should('be.visible');
+    cy.contains('h2', /^Orders$/i).should('be.visible');
   });
 });
