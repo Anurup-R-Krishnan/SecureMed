@@ -26,5 +26,5 @@ class PatientSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'patient_id', 'date_of_birth', 'gender', 'blood_group', 'emergency_contacts',
-            'allergies', 'chronic_conditions', 'current_medications' # Clinical data must be clinician-managed
+            'chronic_conditions' # Clinician-managed
         ]
