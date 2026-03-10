@@ -23,10 +23,18 @@ jobs:
         working-directory: ./securemed-frontend
         run: bun install
 
+      - name: Cache Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles('securemed-frontend/bun.lock') }}
+          restore-keys: |
+            cypress-${{ runner.os }}-
+
       - name: Run Cypress tests
         uses: cypress-io/github-action@v6
         with:
           working-directory: ./securemed-frontend
-          install: false
+          install: true
           wait-on: "http://localhost:8000/health/ready/,http://localhost:3000"
           wait-on-timeout: 180
