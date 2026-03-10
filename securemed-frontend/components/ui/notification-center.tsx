@@ -73,7 +73,7 @@ export function NotificationCenter() {
                             {notifications.map((notification) => (
                                 <div
                                     key={notification.id}
-                                    className={`p-3 rounded-xl transition-all duration-200 border border-transparent ${!notification.read ? 'bg-primary/5 border-primary/10' : 'hover:bg-muted/50 hover:border-border/40'}`}
+                                    className={`group p-3 rounded-xl transition-all duration-200 border border-transparent ${!notification.read ? 'bg-primary/5 border-primary/10' : 'hover:bg-muted/50 hover:border-border/40'}`}
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className="flex-1 space-y-1">

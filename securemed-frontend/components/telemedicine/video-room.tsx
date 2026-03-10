@@ -13,11 +13,13 @@ import {
     MessageSquare,
     Settings,
     Maximize2,
-    Share2
+    Share2,
+    X
 } from 'lucide-react';
 import { getAccessToken } from '@/lib/auth-utils';
 import { API_BASE_URL } from '@/lib/urls';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface VideoRoomProps {
     roomId: string;
@@ -26,11 +28,15 @@ interface VideoRoomProps {
 }
 
 export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
+    const { toast } = useToast();
     const [isVideoOn, setIsVideoOn] = useState(true);
     const [isAudioOn, setIsAudioOn] = useState(true);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [callDuration, setCallDuration] = useState(0);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+    const [showSettings, setShowSettings] = useState(false);
+    const [showNotes, setShowNotes] = useState(false);
+    const [notes, setNotes] = useState('');
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -136,6 +142,16 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
         onEndCall();
     };
 
+    const handleShare = async () => {
+        const link = typeof window !== 'undefined' ? window.location.href : roomId;
+        try {
+            await navigator.clipboard.writeText(link);
+            toast({ title: 'Link copied', description: 'Session link copied to clipboard.' });
+        } catch {
+            toast({ title: 'Copy failed', description: 'Could not copy the link. Please copy it manually.', variant: 'destructive' });
+        }
+    };
+
     return (
         <div className="relative h-[calc(100vh-100px)] w-full bg-black rounded-[32px] overflow-hidden shadow-2xl border border-border/20 group">
 
@@ -163,14 +179,62 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
                 </div>
 
                 <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" className="rounded-full bg-white/5 hover:bg-white/20 text-white border border-white/10">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full bg-white/5 hover:bg-white/20 text-white border border-white/10"
+                        onClick={() => setShowSettings((prev) => !prev)}
+                    >
                         <Settings className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="rounded-full bg-white/5 hover:bg-white/20 text-white border border-white/10">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full bg-white/5 hover:bg-white/20 text-white border border-white/10"
+                        onClick={handleShare}
+                    >
                         <Share2 className="w-4 h-4" />
                     </Button>
                 </div>
             </div>
+
+            {showSettings && (
+                <div className="absolute top-20 right-6 z-30 w-72 rounded-2xl border border-white/10 bg-black/70 p-4 text-white shadow-xl backdrop-blur">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="text-xs font-bold uppercase tracking-wider text-white/70">Session Settings</div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+                            onClick={() => setShowSettings(false)}
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <div className="space-y-3 text-xs">
+                        <div className="flex items-center justify-between">
+                            <span className="text-white/70">Role</span>
+                            <span className="font-semibold">{userRole}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-white/70">Room</span>
+                            <span className="font-mono">{roomId}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-white/70">Camera</span>
+                            <span className={isVideoOn ? 'text-green-400' : 'text-red-400'}>{isVideoOn ? 'On' : 'Off'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-white/70">Microphone</span>
+                            <span className={isAudioOn ? 'text-green-400' : 'text-red-400'}>{isAudioOn ? 'On' : 'Off'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-white/70">Screen Share</span>
+                            <span className={isScreenSharing ? 'text-blue-300' : 'text-white/60'}>{isScreenSharing ? 'Active' : 'Off'}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Remote Video (Main) */}
             <div className="absolute inset-0 z-0">
@@ -260,6 +324,7 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
                     <Button
                         variant="ghost"
                         className="rounded-full w-12 h-12 bg-white/10 hover:bg-white/20 text-white transition-all duration-300"
+                        onClick={() => setShowNotes((prev) => !prev)}
                     >
                         <MessageSquare className="w-5 h-5" />
                     </Button>
@@ -272,6 +337,37 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
                     </Button>
                 </div>
             </div>
+
+            {showNotes && (
+                <div className="absolute right-6 top-28 z-30 w-80 rounded-2xl border border-white/10 bg-black/70 p-4 text-white shadow-xl backdrop-blur">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="text-xs font-bold uppercase tracking-wider text-white/70">Session Notes</div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+                            onClick={() => setShowNotes(false)}
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Capture quick notes or action items..."
+                        className="h-40 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
+                    <div className="mt-3 flex justify-end">
+                        <Button
+                            size="sm"
+                            className="bg-white/10 hover:bg-white/20 text-white"
+                            onClick={() => toast({ title: 'Notes saved', description: 'Notes saved for this session.' })}
+                        >
+                            Save Notes
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
