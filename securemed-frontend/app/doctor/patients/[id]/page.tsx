@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import api from '@/lib/api';
+import api from "../../../lib/routes"
 import PatientProfileView from '@/components/portals/doctor/patients/patient-profile-view';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
