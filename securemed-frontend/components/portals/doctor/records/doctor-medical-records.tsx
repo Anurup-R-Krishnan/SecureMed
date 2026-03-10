@@ -230,7 +230,7 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
             <DialogDescription>Create a new clinical record for a patient.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateRecord} className="space-y-4">
-            {!patientId && (
+            {!resolvedPatientId && (
               <div className="space-y-2">
                 <Label htmlFor="patient-id">Patient ID (numeric)</Label>
                 <Input
