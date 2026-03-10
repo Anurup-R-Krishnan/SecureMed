@@ -1,4 +1,4 @@
-'use client';
+in'use client';
 
 import React from 'react';
 import { MedicationSandbox } from '@/components/features/pharmacy/interaction-sandbox';
