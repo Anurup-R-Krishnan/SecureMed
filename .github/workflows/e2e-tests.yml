@@ -16,6 +16,9 @@ jobs:
       - name: Start full environment
         run: docker compose -f docker-compose.yml up -d
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
       - name: Install Cypress dependencies
         working-directory: ./securemed-frontend
         run: bun install
