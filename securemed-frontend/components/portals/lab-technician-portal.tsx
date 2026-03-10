@@ -25,7 +25,9 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { API_ORIGIN } from '@/lib/urls';
 import {
     Dialog,
     DialogContent,
@@ -108,6 +110,7 @@ function CompletedTestsView() {
     const [uploading, setUploading] = useState(false);
     const [selectedResult, setSelectedResult] = useState<any | null>(null);
     const [file, setFile] = useState<File | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -164,7 +167,7 @@ function CompletedTestsView() {
                 toast({ title: 'No view link', description: 'Attachment not available.', variant: 'destructive' });
                 return;
             }
-            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            const viewUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
             window.open(viewUrl, '_blank', 'noopener,noreferrer');
         } catch (error) {
             toast({ title: 'View failed', description: 'Could not open attachment.', variant: 'destructive' });
@@ -187,6 +190,16 @@ function CompletedTestsView() {
             toast({ title: 'Download failed', description: 'Could not download attachment.', variant: 'destructive' });
         }
     };
+
+    const filteredData = data.filter((row: any) => {
+        if (!searchQuery.trim()) return true;
+        const term = searchQuery.trim().toLowerCase();
+        return (
+            String(row.sample_id || '').toLowerCase().includes(term) ||
+            String(row.test_name || '').toLowerCase().includes(term) ||
+            String(row.result_value || '').toLowerCase().includes(term)
+        );
+    });
 
     const columns: ColumnDef<any>[] = [
         {
@@ -240,8 +253,19 @@ function CompletedTestsView() {
 
     return (
         <div className="space-y-4">
-            <h3 className="text-xl font-bold text-foreground">Laboratory History</h3>
-            <DataTable columns={columns} data={data} />
+            <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-foreground">Laboratory History</h3>
+                <div className="relative w-full max-w-xs">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search results..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 bg-background"
+                    />
+                </div>
+            </div>
+            <DataTable columns={columns} data={filteredData} />
             <Dialog open={Boolean(selectedResult)} onOpenChange={(open) => !open && setSelectedResult(null)}>
                 <DialogContent>
                     <DialogHeader>

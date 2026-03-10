@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Paperclip, File, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { API_ORIGIN } from '@/lib/urls';
 
 interface ChatWindowProps {
     conversation: any; // Using any for flexibility with conversation object structure differences
@@ -120,7 +121,11 @@ export function ChatWindow({ conversation, conversationId, currentUserId, otherP
                                         <button
                                             type="button"
                                             className="mt-3 p-2 bg-black/10 rounded-lg text-xs flex items-center gap-2 cursor-pointer hover:bg-black/20 transition-colors w-full text-left"
-                                            onClick={() => window.open(msg.attachment as string, '_blank', 'noopener,noreferrer')}
+                                            onClick={() => {
+                                                const url = msg.attachment as string;
+                                                const fullUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
+                                                window.open(fullUrl, '_blank', 'noopener,noreferrer');
+                                            }}
                                         >
                                             <File size={14} />
                                             <span className="font-bold underline">Attachment</span>

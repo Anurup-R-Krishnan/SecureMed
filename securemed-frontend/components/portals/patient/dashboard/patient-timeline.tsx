@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { patientService, TimelineEvent } from '@/services/patients';
 import api from '@/lib/api';
+import { API_ORIGIN } from '@/lib/urls';
 import {
     Calendar,
     FileText,
@@ -183,7 +184,7 @@ export default function PatientTimeline({ patientId, className }: EnhancedPatien
                 });
                 return;
             }
-            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            const viewUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
             window.open(viewUrl, '_blank', 'noopener,noreferrer');
         } catch (error) {
             toast({

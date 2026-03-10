@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { API_ORIGIN } from '@/lib/urls';
 import {
     Dialog,
     DialogContent,
@@ -62,7 +63,7 @@ export default function LabResultsCard({ results, onNavigate }: LabResultsCardPr
                 });
                 return;
             }
-            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            const viewUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
             window.open(viewUrl, '_blank', 'noopener,noreferrer');
         } catch (error) {
             toast({

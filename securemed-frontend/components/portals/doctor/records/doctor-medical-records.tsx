@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Plus } from 'lucide-react';
 import api from '@/lib/api';
+import { API_ORIGIN } from '@/lib/urls';
 import {
   Dialog,
   DialogContent,
@@ -379,7 +380,8 @@ export default function DoctorMedicalRecords({ patientId }: DoctorMedicalRecords
                                 e.stopPropagation();
                                 const url = record.file_url || record.file;
                                 if (url) {
-                                  window.open(url, '_blank');
+                                  const fullUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
+                                  window.open(fullUrl, '_blank');
                                 }
                               }}
                               className="flex-shrink-0"

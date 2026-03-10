@@ -10,6 +10,7 @@ import { medicalRecordService } from '@/services/appointments';
 import { drugInteractionService } from '@/services/drug-interactions';
 import FHIRExportButton from '@/components/portals/patient/records/fhir-export-button';
 import { UploadRecordDialog } from '@/components/portals/patient/records/upload-record-dialog';
+import { API_ORIGIN } from '@/lib/urls';
 
 interface MedicalRecordsProps {
   patientId?: string;
@@ -350,7 +351,8 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                           onClick={() => {
                             const url = record.file_url || record.file;
                             if (url) {
-                              window.open(url, '_blank');
+                              const fullUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
+                              window.open(fullUrl, '_blank');
                             }
                           }}
                           className="flex-shrink-0"

@@ -6,6 +6,9 @@ import api from '@/lib/api';
 import LabOrderForm from '@/components/portals/doctor/labs/lab-order-form';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
+import { API_ORIGIN } from '@/lib/urls';
 
 interface DoctorPatient {
     id: number;
@@ -32,6 +35,7 @@ export default function LabsPage() {
     const [results, setResults] = useState<LabResultItem[]>([]);
     const [resultsLoading, setResultsLoading] = useState(true);
     const [releaseId, setReleaseId] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         if (!isAuthenticated) return;
@@ -93,7 +97,7 @@ export default function LabsPage() {
                 toast.error('No view link available');
                 return;
             }
-            const viewUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+            const viewUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
             window.open(viewUrl, '_blank', 'noopener,noreferrer');
         } catch (error) {
             toast.error('Failed to open attachment');
@@ -117,15 +121,39 @@ export default function LabsPage() {
         }
     };
 
+    const filteredResults = results.filter((result) => {
+        if (!searchQuery.trim()) return true;
+        const term = searchQuery.trim().toLowerCase();
+        return (
+            String(result.sample_id || '').toLowerCase().includes(term) ||
+            String(result.test_name || '').toLowerCase().includes(term) ||
+            String(result.result_value || '').toLowerCase().includes(term) ||
+            String(result.flag || '').toLowerCase().includes(term)
+        );
+    });
+
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-black text-foreground tracking-tight">Lab Orders</h2>
             <div className="space-y-3">
-                <h3 className="text-xl font-bold text-foreground">Pending Results</h3>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <h3 className="text-xl font-bold text-foreground">Pending Results</h3>
+                    <div className="relative w-full md:max-w-xs">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search results..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 bg-background"
+                        />
+                    </div>
+                </div>
                 {resultsLoading ? (
                     <div className="text-muted-foreground">Loading lab results...</div>
-                ) : results.length === 0 ? (
-                    <div className="text-muted-foreground">No lab results found.</div>
+                ) : filteredResults.length === 0 ? (
+                    <div className="text-muted-foreground">
+                        {searchQuery ? 'No lab results match your search.' : 'No lab results found.'}
+                    </div>
                 ) : (
                     <div className="rounded-2xl border border-border/60 overflow-hidden">
                         <table className="w-full text-sm">
@@ -140,7 +168,7 @@ export default function LabsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {results.map((result) => (
+                                {filteredResults.map((result) => (
                                     <tr key={result.id} className="border-t border-border/40">
                                         <td className="px-4 py-3 font-mono text-xs">{result.sample_id || '—'}</td>
                                         <td className="px-4 py-3">{result.test_name || '—'}</td>
@@ -191,9 +219,14 @@ export default function LabsPage() {
             <LabOrderForm
                 patients={patients}
                 onSubmitOrder={async (order) => {
-                    console.log("Order submitted:", order);
-                    toast.success("Lab order submitted successfully");
-                    return Promise.resolve();
+                    try {
+                        const res = await api.post('/labs/orders/', order);
+                        const sampleId = res?.data?.sample_id as string | undefined;
+                        toast.success(sampleId ? `Lab order submitted (Sample ${sampleId})` : 'Lab order submitted successfully');
+                    } catch (error) {
+                        toast.error('Failed to submit lab order');
+                        throw error;
+                    }
                 }}
             />
         </div>
