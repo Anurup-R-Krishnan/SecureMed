@@ -36,9 +36,8 @@ export function TopNavigation({ userType }: TopNavigationProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const handleLogout = async () => {
-        const returnTo = encodeURIComponent(pathname);
         await logout();
-        router.push(`/login?next=${returnTo}`);
+        router.replace('/');
     };
 
     // Define navigation items based on user type

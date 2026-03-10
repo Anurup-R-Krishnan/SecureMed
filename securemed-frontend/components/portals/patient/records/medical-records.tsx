@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, FileText, Pill, Stethoscope, FileJson, Search, Filter, Calendar, User, Download } from 'lucide-react';
 import { medicalRecordService } from '@/services/appointments';
+import { drugInteractionService } from '@/services/drug-interactions';
 import FHIRExportButton from '@/components/portals/patient/records/fhir-export-button';
 
 interface MedicalRecordsProps {
@@ -19,6 +20,8 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [adherenceLoading, setAdherenceLoading] = useState<number | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+  const [reportError, setReportError] = useState('');
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -75,6 +78,32 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
     }
   };
 
+  const handleDownloadInteractionReport = async () => {
+    try {
+      setDownloadingReport(true);
+      setReportError('');
+      const blob = await drugInteractionService.downloadReportPDF();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `interaction_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        setReportError('No interaction report available yet. Run Medication Safety Checker first.');
+      } else if (error?.response?.status === 401) {
+        setReportError('Session expired. Please log in again.');
+      } else {
+        setReportError('Could not download interaction report right now.');
+      }
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -126,10 +155,38 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
       </div>
 
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Pill className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-bold text-foreground">Current Prescriptions</h3>
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-2">
+            <Pill className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-bold text-foreground">Current Prescriptions</h3>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={downloadingReport}
+            onClick={handleDownloadInteractionReport}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {downloadingReport ? 'Downloading...' : 'Download Safety Report'}
+          </Button>
         </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2">
+          <span className="text-xs text-amber-800">
+            Medication Safety Report summarizes interaction risks for your active prescriptions.
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={downloadingReport}
+            onClick={handleDownloadInteractionReport}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {downloadingReport ? 'Downloading...' : 'Get PDF'}
+          </Button>
+        </div>
+        {reportError && (
+          <p className="text-xs text-amber-700 mb-3">{reportError}</p>
+        )}
 
         {activePrescriptions.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">

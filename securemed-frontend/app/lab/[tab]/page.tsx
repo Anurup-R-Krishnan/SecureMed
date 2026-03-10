@@ -42,9 +42,9 @@ export default function LabTabPage() {
         ? (tab as LabTab)
         : 'worklist';
 
-    const handleLogout = () => {
-        logout();
-        router.push(ROUTES.HOME);
+    const handleLogout = async () => {
+        await logout();
+        router.replace(ROUTES.HOME);
     };
 
     const handleSwitchRole = (role: 'patient' | 'doctor' | 'admin' | 'lab_technician' | null) => {

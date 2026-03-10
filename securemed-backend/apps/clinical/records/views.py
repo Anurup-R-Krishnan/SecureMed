@@ -938,7 +938,7 @@ class VitalSignViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['GET'])
-@permission_classes([IsPatient])
+@permission_classes([permissions.IsAuthenticated])
 def patient_dashboard_stats(request):
     """
     Comprehensive dashboard data for patient portal.
@@ -946,10 +946,42 @@ def patient_dashboard_stats(request):
     NO MOCK DATA - all from database.
     """
     user = request.user
-    if not hasattr(user, 'patient_profile'):
-        return Response({"error": "Patient profile not found"}, status=404)
-    
-    patient = user.patient_profile
+    target_patient_id = (request.query_params.get('patient_id') or '').strip()
+
+    if hasattr(user, 'patient_profile'):
+        patient = user.patient_profile
+    elif user.is_staff or user.role == 'admin' or hasattr(user, 'doctor_profile'):
+        if not target_patient_id:
+            return Response(
+                {"error": "patient_id is required for doctor/admin access."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            patient = Patient.objects.get(pk=int(target_patient_id))
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid patient_id."}, status=status.HTTP_400_BAD_REQUEST)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if hasattr(user, 'doctor_profile'):
+            has_access = MedicalRecord.objects.filter(
+                patient=patient,
+                doctor=user.doctor_profile,
+            ).exists()
+            if not has_access:
+                from .models import EmergencyAccessLog
+                has_access = EmergencyAccessLog.objects.filter(
+                    patient=patient,
+                    accessed_by=user
+                ).exists()
+            if not has_access:
+                return Response(
+                    {"error": "No permission to access this patient."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+    else:
+        return Response({"error": "Unauthorized role."}, status=status.HTTP_403_FORBIDDEN)
     
     try:
         from .models import VitalSign, Prescription, MedicalRecord

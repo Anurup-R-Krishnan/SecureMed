@@ -15,6 +15,7 @@ import BillingSummaryCard from './billing-summary-card';
 import HealthInsightsCard from './health-insights-card';
 import AnatomyEducationCard from './anatomy-education-card';
 import { getDashboardStats } from '@/lib/api';
+import { getAccessToken } from '@/lib/auth-utils';
 
 interface Appointment extends Omit<BaseAppointment, 'doctor_name'> {
     specialty?: string;
@@ -32,6 +33,12 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!getAccessToken()) {
+                setAppointments([]);
+                setDashboardStats(null);
+                setLoading(false);
+                return;
+            }
             setLoading(true);
             try {
                 // Fetch Dashboard Stats (Health Score, Vitals, Prescriptions, Labs, etc.)
@@ -45,15 +52,24 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 }
 
                 // Fetch Appointments
-                const appts = await appointmentService.getAppointments();
-                const now = new Date();
-                const upcoming = appts.filter((apt: Appointment) => {
-                    const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
-                    return aptDate >= now && (apt.status === 'scheduled' || apt.status === 'confirmed');
-                });
-                setAppointments(upcoming.slice(0, 3));
+                try {
+                    const appts = await appointmentService.getAppointments();
+                    const now = new Date();
+                    const upcoming = appts.filter((apt: Appointment) => {
+                        const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+                        return aptDate >= now && (apt.status === 'scheduled' || apt.status === 'confirmed');
+                    });
+                    setAppointments(upcoming.slice(0, 3));
+                } catch (e: any) {
+                    if (e?.response?.status !== 403 && e?.response?.status !== 401) {
+                        console.error("Failed to fetch appointments", e);
+                    }
+                    setAppointments([]);
+                }
             } catch (error) {
-                console.error('Error fetching dashboard data:', error);
+                if ((error as any)?.response?.status !== 403 && (error as any)?.response?.status !== 401) {
+                    console.error('Error fetching dashboard data:', error);
+                }
             } finally {
                 setLoading(false);
             }

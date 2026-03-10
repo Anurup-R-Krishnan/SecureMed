@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertOctagon, CheckCircle2, ChevronDown, Pill, Plus, Search, X } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, ChevronDown, Download, Pill, Plus, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { drugInteractionService, type InteractionCheckResult, type InteractionReport } from '@/services/drug-interactions';
 
@@ -29,6 +29,8 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const [latestReport, setLatestReport] = useState<InteractionReport | null>(null);
     const [reportHistory, setReportHistory] = useState<InteractionReport[]>([]);
     const [error, setError] = useState<string>('');
+    const [reportNotice, setReportNotice] = useState<string>('');
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [expandedTiers, setExpandedTiers] = useState<Set<string>>(new Set(['critical']));
 
     const toggleTier = (severity: string) => {
@@ -43,15 +45,19 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const reloadReports = async () => {
         try {
             setReportLoading(true);
+            setReportNotice('');
             const [report, history] = await Promise.all([
                 drugInteractionService.getLatestReport(patientId),
                 drugInteractionService.getReportHistory(patientId),
             ]);
             setLatestReport(report);
             setReportHistory(history.slice(0, 5));
-        } catch {
+        } catch (e: any) {
             setLatestReport(null);
             setReportHistory([]);
+            if (e?.response?.status === 404) {
+                setReportNotice('No interaction report yet. Generate one to enable PDF download.');
+            }
         } finally {
             setReportLoading(false);
         }
@@ -130,6 +136,62 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
         setSelected((prev) => prev.filter((m) => m !== name));
     };
 
+    const handleDownloadPdf = async () => {
+        try {
+            setDownloadingPdf(true);
+            const blob = await drugInteractionService.downloadReportPDF(patientId);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `interaction_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch {
+            setError('Could not download interaction report.');
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const handleRegenerateReport = async () => {
+        try {
+            setReportLoading(true);
+            setError('');
+            setReportNotice('');
+            const job = await drugInteractionService.regenerateReport(patientId);
+
+            if (!job?.task_id) {
+                await reloadReports();
+                return;
+            }
+
+            for (let attempt = 0; attempt < 12; attempt += 1) {
+                await wait(1500);
+                const status = await drugInteractionService.getReportJobStatus(job.task_id);
+                if (status.status === 'completed') {
+                    await reloadReports();
+                    setReportNotice('Report generated successfully.');
+                    return;
+                }
+                if (status.status === 'failed') {
+                    setError(status.error_message || 'Report generation failed.');
+                    return;
+                }
+            }
+
+            await reloadReports();
+            setReportNotice('Report generation is still running. Please refresh in a moment.');
+        } catch {
+            setError('Could not regenerate report.');
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
     return (
         <div className="flex flex-col gap-4 p-4 md:p-6">
             <div className="rounded-xl border bg-card p-4">
@@ -196,7 +258,7 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 border-t border-dashed"
                                     >
                                         <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
-                                        <span>Add <span className="font-medium">"{query.trim()}"</span> as custom drug</span>
+                                        <span>Add <span className="font-medium">&quot;{query.trim()}&quot;</span> as custom drug</span>
                                     </button>
                                 )}
                             </>
@@ -217,26 +279,28 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                 </div>
             </div>
 
-            {latestReport && (
+            {latestReport ? (
                 <div className="rounded-xl border bg-blue-50/60 p-4">
                     <div className="flex items-center justify-between gap-3">
                         <h4 className="font-semibold text-sm">Latest Patient Report</h4>
                         <div className="flex items-center gap-3">
                             <button
                                 type="button"
-                                onClick={async () => {
-                                    try {
-                                        setReportLoading(true);
-                                        await drugInteractionService.regenerateReport(patientId);
-                                        await reloadReports();
-                                    } catch {
-                                        setError('Could not regenerate report.');
-                                        setReportLoading(false);
-                                    }
-                                }}
+                                onClick={handleRegenerateReport}
                                 className="text-xs px-2 py-1 rounded border bg-background hover:bg-muted"
                             >
                                 Regenerate
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDownloadPdf}
+                                disabled={downloadingPdf}
+                                className="text-xs px-2 py-1 rounded border bg-background hover:bg-muted disabled:opacity-60"
+                            >
+                                <span className="inline-flex items-center gap-1">
+                                    <Download className="h-3.5 w-3.5" />
+                                    {downloadingPdf ? 'Downloading...' : 'Download PDF'}
+                                </span>
                             </button>
                             <span className="text-xs text-muted-foreground">
                                 {new Date(latestReport.created_at).toLocaleString()}
@@ -259,6 +323,25 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                         </div>
                     )}
                 </div>
+            ) : (
+                <div className="rounded-xl border bg-amber-50/60 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <h4 className="font-semibold text-sm">Patient Report</h4>
+                        <button
+                            type="button"
+                            onClick={handleRegenerateReport}
+                            className="text-xs px-2 py-1 rounded border bg-background hover:bg-muted"
+                        >
+                            Generate Report
+                        </button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                        {reportNotice || 'No interaction report found yet for this patient.'}
+                    </p>
+                </div>
+            )}
+            {reportNotice && latestReport && (
+                <div className="text-xs text-muted-foreground">{reportNotice}</div>
             )}
             {reportLoading && <div className="text-xs text-muted-foreground">Loading latest report...</div>}
 

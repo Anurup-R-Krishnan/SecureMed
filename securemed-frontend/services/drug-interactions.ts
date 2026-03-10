@@ -41,6 +41,26 @@ export interface InteractionReport {
     items: InteractionFinding[];
 }
 
+export interface ReportGenerationJob {
+    task_id: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    patient_id: number;
+    trigger_event: string;
+    created_at: string;
+}
+
+export interface ReportJobStatus {
+    task_id: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    patient_id: number;
+    trigger_event: string;
+    error_message?: string | null;
+    report_id?: number | null;
+    created_at: string;
+    started_at?: string | null;
+    completed_at?: string | null;
+}
+
 export const drugInteractionService = {
     async searchMedications(query: string, patientId?: number): Promise<string[]> {
         const params: Record<string, string | number> = { q: query };
@@ -72,10 +92,17 @@ export const drugInteractionService = {
         return Array.isArray(response.data) ? response.data : [];
     },
 
-    async regenerateReport(patientId?: number): Promise<InteractionReport> {
+    async regenerateReport(patientId?: number): Promise<ReportGenerationJob> {
         const payload: Record<string, number> = {};
         if (patientId) payload.patient_id = patientId;
         const response = await api.post('/medical-records/drug-interactions/reports/generate/', payload);
+        return response.data;
+    },
+
+    async getReportJobStatus(taskId: string): Promise<ReportJobStatus> {
+        const response = await api.get('/medical-records/drug-interactions/reports/status/', {
+            params: { task_id: taskId },
+        });
         return response.data;
     },
 

@@ -50,6 +50,12 @@ export default function Header({ onLoginClick }: HeaderProps) {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/');
+    setMobileMenuOpen(false);
+  };
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
@@ -94,7 +100,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
                   <User className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">{user?.username}</span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground hover:text-destructive">
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
@@ -151,7 +157,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
                   <Button className="w-full" onClick={() => { handleGoToDashboard(); setMobileMenuOpen(false); }}>
                     Go to Dashboard
                   </Button>
-                  <Button variant="outline" className="w-full" onClick={logout}>
+                  <Button variant="outline" className="w-full" onClick={handleLogout}>
                     Logout
                   </Button>
                 </>

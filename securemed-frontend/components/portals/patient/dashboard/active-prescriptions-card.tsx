@@ -1,9 +1,11 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Pill, AlertCircle, User } from 'lucide-react';
+import { Download, Pill, AlertCircle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { drugInteractionService } from '@/services/drug-interactions';
+import { useState } from 'react';
 
 interface Prescription {
     id: number;
@@ -23,15 +25,56 @@ interface ActivePrescriptionsCardProps {
 }
 
 export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: ActivePrescriptionsCardProps) {
+    const [downloadingReport, setDownloadingReport] = useState(false);
+    const [reportError, setReportError] = useState('');
+
+    const handleDownloadReport = async () => {
+        try {
+            setDownloadingReport(true);
+            setReportError('');
+            const blob = await drugInteractionService.downloadReportPDF();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `interaction_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                setReportError('No report yet. Generate one in Medication Safety Checker.');
+            } else if (error?.response?.status === 401) {
+                setReportError('Session expired. Please log in again.');
+            } else {
+                setReportError('Could not download report.');
+            }
+        } finally {
+            setDownloadingReport(false);
+        }
+    };
+
     if (!prescriptions || prescriptions.length === 0) {
         return (
             <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                        <Pill className="h-5 w-5 text-emerald-500" />
-                        Active Prescriptions
-                    </h3>
-                </div>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Pill className="h-5 w-5 text-emerald-500" />
+                    Active Prescriptions
+                </h3>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={downloadingReport}
+                    onClick={handleDownloadReport}
+                >
+                    <Download className="h-4 w-4 mr-2" />
+                    {downloadingReport ? 'Downloading...' : 'Safety Report'}
+                </Button>
+            </div>
+            {reportError && (
+                <p className="text-xs text-amber-700 mb-2">{reportError}</p>
+            )}
                 <div className="text-center py-8 text-muted-foreground bg-white/5 rounded-lg border border-dashed border-white/10">
                     <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                     <p>No active prescriptions</p>
@@ -55,14 +98,28 @@ export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: A
                     <Pill className="h-5 w-5 text-emerald-500" />
                     Active Prescriptions
                 </h3>
-                <Button
-                    variant="link"
-                    className="text-primary text-sm h-auto p-0"
-                    onClick={() => onNavigate('medical-records')}
-                >
-                    View all
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={downloadingReport}
+                        onClick={handleDownloadReport}
+                    >
+                        <Download className="h-4 w-4 mr-2" />
+                        {downloadingReport ? 'Downloading...' : 'Safety Report'}
+                    </Button>
+                    <Button
+                        variant="link"
+                        className="text-primary text-sm h-auto p-0"
+                        onClick={() => onNavigate('records')}
+                    >
+                        View all
+                    </Button>
+                </div>
             </div>
+            {reportError && (
+                <p className="text-xs text-amber-700 mb-2">{reportError}</p>
+            )}
 
             <div className="space-y-3">
                 {prescriptions.map((rx) => (
