@@ -27,6 +27,7 @@ class IntentMatcher:
             {'name': 'Profile', 'url': '/patient/profile', 'patterns': [r'profile', r'my account']},
             {'name': 'Settings', 'url': '/patient/settings', 'patterns': [r'settings', r'preferences']},
             {'name': 'Referrals', 'url': '/patient/referrals', 'patterns': [r'referral']},
+            {'name': 'Telemedicine', 'url': '/patient/telemedicine', 'patterns': [r'telemedicine', r'video call', r'virtual visit', r'doctor video']},
         ]
 
         for target in nav_targets:
