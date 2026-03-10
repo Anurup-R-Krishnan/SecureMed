@@ -5,6 +5,7 @@ import { TopNavigation } from '@/components/layout/top-navigation';
 import { CommandPalette } from '@/components/ui/command-palette';
 import AiTriageWidget from '@/components/portals/patient/ai-triage-widget';
 import RoleGuard from '@/components/auth/role-guard';
+import { VoiceNavigation } from '@/components/features/accessibility/voice-navigation';
 
 export default function PatientLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -18,6 +19,7 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
 
                 <CommandPalette />
                 <AiTriageWidget />
+                <VoiceNavigation />
             </div>
         </RoleGuard>
     );
