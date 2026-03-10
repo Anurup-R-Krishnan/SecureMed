@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'apps.platform.analytics',
     # Clinical — Infection Tracking
     'apps.clinical.infection_tracking',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
