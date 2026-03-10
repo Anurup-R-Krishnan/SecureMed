@@ -37,12 +37,14 @@ interface EnhancedAppointmentBookingProps {
   patientId?: string;
   patientName?: string;
   initialDoctorId?: string;
+  initialDoctorName?: string;
 }
 
 export default function AppointmentBooking({
   patientId = '',
   patientName = 'Guest',
-  initialDoctorId
+  initialDoctorId,
+  initialDoctorName
 }: EnhancedAppointmentBookingProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -71,7 +73,7 @@ export default function AppointmentBooking({
       if (prev && prev.id === numericId) return prev; // already set
       return {
         id: numericId,
-        name: 'Selected Doctor',
+        name: initialDoctorName || 'Selected Doctor',
         specialty: '',
         specialization: '',
         hospital: '',
