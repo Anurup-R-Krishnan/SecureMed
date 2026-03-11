@@ -43,6 +43,7 @@ export default function InfectionTrackingPortal({
     const [error, setError] = useState<string | null>(null);
     const [selectedTrace, setSelectedTrace] = useState<InfectionTrace | null>(null);
     const [refreshToken, setRefreshToken] = useState(0);
+    const [focusTrace, setFocusTrace] = useState(false);
     const activeTrace = selectedTrace ?? traces?.[0] ?? null;
 
     const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
@@ -73,7 +74,7 @@ export default function InfectionTrackingPortal({
 
             try {
                 const [graphRes, tracesRes, statsRes] = await Promise.all([
-                    infectionTrackingService.getGraphVisualization(180, { signal: controller.signal }),
+                    infectionTrackingService.getGraphVisualization(320, { signal: controller.signal }),
                     infectionTrackingService.getTraces({ signal: controller.signal }),
                     infectionTrackingService.getGraphStats({ signal: controller.signal }),
                 ]);
@@ -202,6 +203,13 @@ export default function InfectionTrackingPortal({
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-muted-foreground">
+                                <Button
+                                    variant={focusTrace ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setFocusTrace((prev) => !prev)}
+                                >
+                                    {focusTrace ? 'Focused View' : 'Full Network'}
+                                </Button>
                                 {Object.entries(NODE_COLORS).map(([type, color]) => (
                                     <span key={type} className="flex items-center gap-1.5">
                                         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
@@ -211,7 +219,7 @@ export default function InfectionTrackingPortal({
                             </div>
                         </div>
                     </div>
-                    <ForceGraph data={graphData} highlightTrace={activeTrace} isActive={isActive} />
+                    <ForceGraph data={graphData} highlightTrace={activeTrace} isActive={isActive} focusTrace={focusTrace} />
                 </div>
             )}
 

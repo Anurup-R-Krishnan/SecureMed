@@ -200,33 +200,43 @@ export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
                         </DialogDescription>
                     </DialogHeader>
                     {selectedRoom ? (
-                        <div className="space-y-3 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Status</span>
-                                <span className="font-medium">{selectedRoom.isOccupied ? 'Occupied' : 'Empty'}</span>
-                            </div>
-                            {selectedRoom.isOccupied && (
-                                <>
+                        <div className="space-y-4 text-sm">
+                            <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Room Status</p>
+                                <div className="mt-2 space-y-2">
                                     <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Patient</span>
-                                        <span className="font-medium">{selectedRoom.patientName}</span>
+                                        <span className="text-muted-foreground">Status</span>
+                                        <span className="font-medium">{selectedRoom.isOccupied ? 'Occupied' : 'Empty'}</span>
                                     </div>
-                                    {selectedRoom.patientDisplayId && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Acuity</span>
+                                        <span className="font-medium">{selectedRoom.acuity || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Isolation</span>
+                                        <span className="font-medium">{selectedRoom.isIsolation ? 'Yes' : 'No'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {selectedRoom.isOccupied ? (
+                                <div className="rounded-lg border border-border/60 bg-background p-3">
+                                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Patient</p>
+                                    <div className="mt-2 space-y-2">
                                         <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Patient ID</span>
-                                            <span className="font-mono">{selectedRoom.patientDisplayId}</span>
+                                            <span className="text-muted-foreground">Name</span>
+                                            <span className="font-medium">{selectedRoom.patientName}</span>
                                         </div>
-                                    )}
-                                </>
+                                        {selectedRoom.patientDisplayId && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Patient ID</span>
+                                                <span className="font-mono">{selectedRoom.patientDisplayId}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-sm text-muted-foreground">No patient assigned to this room.</div>
                             )}
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Acuity</span>
-                                <span className="font-medium">{selectedRoom.acuity || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Isolation</span>
-                                <span className="font-medium">{selectedRoom.isIsolation ? 'Yes' : 'No'}</span>
-                            </div>
                         </div>
                     ) : (
                         <div className="text-sm text-muted-foreground">No room selected.</div>

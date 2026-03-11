@@ -28,6 +28,7 @@ type ForceGraphProps = {
     data: GraphVisualization;
     highlightTrace: InfectionTrace | null;
     isActive: boolean;
+    focusTrace?: boolean;
 };
 
 const GRAPH_HEIGHT = 500;
@@ -105,7 +106,7 @@ function filterGraphToTrace(data: GraphVisualization, trace: InfectionTrace | nu
     };
 }
 
-export default function ForceGraph({ data, highlightTrace, isActive }: ForceGraphProps) {
+export default function ForceGraph({ data, highlightTrace, isActive, focusTrace = false }: ForceGraphProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const workerRef = useRef<Worker | null>(null);
     const pendingWorkerIdRef = useRef(0);
@@ -125,7 +126,10 @@ export default function ForceGraph({ data, highlightTrace, isActive }: ForceGrap
     const linksRef = useRef<DrawLink[]>([]);
     const gridRef = useRef<Map<string, PositionedNode[]>>(new Map());
     const nodeByIdRef = useRef<Map<string, PositionedNode>>(new Map());
-    const displayData = useMemo(() => filterGraphToTrace(data, highlightTrace), [data, highlightTrace]);
+    const displayData = useMemo(
+        () => (focusTrace ? filterGraphToTrace(data, highlightTrace) : data),
+        [data, highlightTrace, focusTrace]
+    );
 
     useEffect(() => {
         latestHighlightRef.current = highlightTrace;
