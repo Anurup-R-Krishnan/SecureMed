@@ -463,40 +463,45 @@ class Command(BaseCommand):
         counter = 1
         # Seed 40 appointments for more realistic data
         for _ in range(40):
-            pat = random.choice(patients)
-            doc = random.choice(doctors)
-            days_offset = random.randint(-60, 60)
-            appt_date = date.today() + timedelta(days=days_offset)
-            
-            status = 'completed' if days_offset < -5 else ('scheduled' if days_offset > 0 else 'in_progress')
-            
-            reasons = [
-                "Routine Checkup",
-                "Follow-up Visit",
-                "Annual Physical Exam",
-                "Vaccination",
-                "Symptom Consultation",
-                "Chronic Disease Management",
-                "Lab Report Discussion",
-                "Prescription Renewal",
-                "Health Screening"
-            ]
-            
-            appt, created = Appointment.objects.get_or_create(
-                appointment_id=f"APT-{counter:05d}",
-                defaults={
-                    "patient": pat,
-                    "doctor": doc,
-                    "appointment_date": appt_date,
-                    "appointment_time": time(random.randint(9,16), random.choice([0, 30])),
-                    "status": status,
-                    "reason": random.choice(reasons),
-                    "created_by": pat.user
-                }
-            )
-            if created:
-                result.append(appt)
-                counter += 1
+            attempts = 0
+            while attempts < 10:
+                pat = random.choice(patients)
+                doc = random.choice(doctors)
+                days_offset = random.randint(-60, 60)
+                appt_date = date.today() + timedelta(days=days_offset)
+                appt_time = time(random.randint(9, 16), random.choice([0, 30]))
+
+                status = 'completed' if days_offset < -5 else ('scheduled' if days_offset > 0 else 'in_progress')
+
+                reasons = [
+                    "Routine Checkup",
+                    "Follow-up Visit",
+                    "Annual Physical Exam",
+                    "Vaccination",
+                    "Symptom Consultation",
+                    "Chronic Disease Management",
+                    "Lab Report Discussion",
+                    "Prescription Renewal",
+                    "Health Screening"
+                ]
+
+                appt, created = Appointment.objects.get_or_create(
+                    doctor=doc,
+                    appointment_date=appt_date,
+                    appointment_time=appt_time,
+                    defaults={
+                        "appointment_id": f"APT-{counter:05d}",
+                        "patient": pat,
+                        "status": status,
+                        "reason": random.choice(reasons),
+                        "created_by": pat.user
+                    }
+                )
+                if created:
+                    result.append(appt)
+                    counter += 1
+                    break
+                attempts += 1
         self.stdout.write(f"    Created {len(result)} appointments")
         return result
 
