@@ -46,9 +46,9 @@ function LoginPageContent() {
             onClose={() => {
                 // Preserve context: go back if there's history, otherwise go home
                 if (window.history.length > 1) {
-                    router.back();
+                    window.history.back();
                 } else {
-                    router.push('/');
+                    window.location.assign('/');
                 }
             }}
             redirectTo={effectiveRedirect}
