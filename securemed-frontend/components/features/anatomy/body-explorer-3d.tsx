@@ -21,6 +21,8 @@ interface BodyExplorer3DProps {
   activeCondition?: ConditionVisualization | null;
   activeConditionRegion?: string | null;
   onConditionRegionSelect?: (regionId: string) => void;
+  selection?: AnatomySelectionPayload;
+  showSliders?: boolean;
 }
 
 // ── Anatomical SVG paths ─────────────────────────────────────────────────────
@@ -171,6 +173,8 @@ export default function BodyExplorer3D({
   activeCondition = null,
   activeConditionRegion = null,
   onConditionRegionSelect,
+  selection,
+  showSliders = true,
 }: BodyExplorer3DProps) {
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [intensityByRegion, setIntensityByRegion] = useState<Record<string, number>>({});
@@ -179,23 +183,48 @@ export default function BodyExplorer3D({
   const callbackRef = useRef(onSelectionChange);
   useEffect(() => { callbackRef.current = onSelectionChange; }, [onSelectionChange]);
 
+  const isControlled = Boolean(selection);
   const conditionRegions = activeCondition?.regions ?? [];
   const conditionPins = activeCondition?.pins ?? [];
   const conditionPainLevels = activeCondition?.region_pain_levels ?? {};
 
-  const selectedSymptoms = useMemo(
-    () => deriveSymptomsFromRegions(selectedRegions),
-    [selectedRegions]
-  );
+  const effectiveSelectedRegions = isControlled ? selection?.selectedRegions ?? [] : selectedRegions;
+  const effectiveIntensity = isControlled ? selection?.intensityByRegion ?? {} : intensityByRegion;
+  const selectedSymptoms = useMemo(() => {
+    if (isControlled) {
+      return selection?.selectedSymptoms ?? deriveSymptomsFromRegions(effectiveSelectedRegions);
+    }
+    return deriveSymptomsFromRegions(selectedRegions);
+  }, [isControlled, selection?.selectedSymptoms, effectiveSelectedRegions, selectedRegions]);
 
   useEffect(() => {
-    if (mode !== 'selection' || !callbackRef.current) return;
+    if (mode !== 'selection' || !callbackRef.current || isControlled) return;
     callbackRef.current({ selectedRegions, selectedSymptoms, intensityByRegion });
-  }, [mode, selectedRegions, selectedSymptoms, intensityByRegion]);
+  }, [mode, selectedRegions, selectedSymptoms, intensityByRegion, isControlled]);
 
   const handleRegionClick = (id: string) => {
     if (mode === 'condition') {
       if (conditionRegions.includes(id)) onConditionRegionSelect?.(id);
+      return;
+    }
+    if (isControlled) {
+      const prevRegions = effectiveSelectedRegions;
+      const prevIntensity = effectiveIntensity;
+      let nextRegions = prevRegions;
+      let nextIntensity = prevIntensity;
+      if (prevRegions.includes(id)) {
+        nextRegions = prevRegions.filter((r) => r !== id);
+        nextIntensity = { ...prevIntensity };
+        delete (nextIntensity as Record<string, number>)[id];
+      } else {
+        nextRegions = [...prevRegions, id];
+        nextIntensity = { ...prevIntensity, [id]: prevIntensity[id] ?? 5 };
+      }
+      callbackRef.current?.({
+        selectedRegions: nextRegions,
+        selectedSymptoms: deriveSymptomsFromRegions(nextRegions),
+        intensityByRegion: nextIntensity,
+      });
       return;
     }
     setSelectedRegions((prev) => {
@@ -221,13 +250,13 @@ export default function BodyExplorer3D({
         >
           {/* Body regions */}
           {BODY_REGIONS.map((region) => {
-            const isSelected = mode === 'selection' && selectedRegions.includes(region.id);
+            const isSelected = mode === 'selection' && effectiveSelectedRegions.includes(region.id);
             const isHovered = hoveredRegion === region.id;
             const isCondition = mode === 'condition' && conditionRegions.includes(region.id);
             const isFocused = mode === 'condition' && activeConditionRegion === region.id;
             const isDimmed = mode === 'condition' && !isCondition;
             const isInteractive = mode === 'selection' || isCondition;
-            const pain = intensityByRegion[region.id] ?? 5;
+            const pain = effectiveIntensity[region.id] ?? 5;
             const conditionPain = isCondition ? (conditionPainLevels[region.id] ?? 5) : undefined;
 
             return (
@@ -272,10 +301,10 @@ export default function BodyExplorer3D({
           })}
 
           {/* Selected region pulsing markers */}
-          {mode === 'selection' && selectedRegions.map((id) => {
+          {mode === 'selection' && effectiveSelectedRegions.map((id) => {
             const centre = REGION_CENTRES[id];
             if (!centre) return null;
-            const pain = intensityByRegion[id] ?? 5;
+            const pain = effectiveIntensity[id] ?? 5;
             return (
               <circle key={`sel-${id}`} cx={centre[0]} cy={centre[1]} r={4} fill={painColor(pain)}>
                 <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
@@ -314,20 +343,20 @@ export default function BodyExplorer3D({
       </div>
 
       {/* Hint */}
-      {mode === 'selection' && selectedRegions.length === 0 && (
+      {mode === 'selection' && effectiveSelectedRegions.length === 0 && !compact && (
         <p className="text-center text-[11px] text-muted-foreground">
           Click a body region to select it
         </p>
       )}
 
       {/* Pain level sliders */}
-      {mode === 'selection' && selectedRegions.length > 0 && (
+      {mode === 'selection' && effectiveSelectedRegions.length > 0 && showSliders && !compact && (
         <div className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
             Pain Level
           </p>
-          {selectedRegions.map((regionId) => {
-            const pain = intensityByRegion[regionId] ?? 5;
+          {effectiveSelectedRegions.map((regionId) => {
+            const pain = effectiveIntensity[regionId] ?? 5;
             return (
               <div
                 key={regionId}
@@ -347,6 +376,14 @@ export default function BodyExplorer3D({
                   step={1}
                   onValueChange={(value) => {
                     const next = value?.[0] ?? 5;
+                    if (isControlled) {
+                      callbackRef.current?.({
+                        selectedRegions: effectiveSelectedRegions,
+                        selectedSymptoms: deriveSymptomsFromRegions(effectiveSelectedRegions),
+                        intensityByRegion: { ...effectiveIntensity, [regionId]: next },
+                      });
+                      return;
+                    }
                     setIntensityByRegion((old) => ({ ...old, [regionId]: next }));
                   }}
                   className="w-20"

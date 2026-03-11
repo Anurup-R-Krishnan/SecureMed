@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { AnatomySelectionPayload, REGION_LOOKUP } from '@/components/features/anatomy/region-map';
 import {
     AnatomyRegionExplainer,
@@ -58,9 +60,17 @@ export default function AnatomyEducationCard() {
     const [loading, setLoading] = useState(false);
     const [matching, setMatching] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
     // Derived: which mode does the canvas operate in?
     const canvasMode = activeConditionId && visualization ? 'condition' : 'selection';
+    const stepLabels = ['Select Regions', 'Rate Pain', 'Suggested Conditions', 'Anatomy Explainer'];
+    const canGoNext = useMemo(() => {
+        if (step === 1) return selection.selectedRegions.length > 0;
+        if (step === 2) return selection.selectedRegions.length > 0;
+        if (step === 3) return Boolean(activeConditionId || conditionMatches.length > 0);
+        return false;
+    }, [step, selection.selectedRegions.length, activeConditionId, conditionMatches.length]);
 
     const patientFocusScore = useMemo(() => {
         const r = selection.selectedRegions.length * 20;
@@ -106,6 +116,13 @@ export default function AnatomyEducationCard() {
     const handleSelectionChange = (payload: AnatomySelectionPayload) => {
         setSelection(payload);
         setActiveRegion(payload.selectedRegions[payload.selectedRegions.length - 1] || null);
+        if (payload.selectedRegions.length === 0) {
+            setStep(1);
+            setActiveConditionId('');
+            setConditionMatches([]);
+            return;
+        }
+        setStep((prev) => (prev < 2 ? 2 : prev));
     };
 
     // When a condition is selected, clear body selection (canvas switches to condition mode)
@@ -157,6 +174,23 @@ export default function AnatomyEducationCard() {
         setSelection({ selectedRegions: [], selectedSymptoms: [], intensityByRegion: {} });
         setActiveRegion(null);
         setConditionMatches([]);
+        setStep(1);
+    };
+
+    const handleNext = () => {
+        if (!canGoNext) return;
+        setStep((prev) => (prev < 4 ? ((prev + 1) as 2 | 3 | 4) : prev));
+    };
+
+    const handleBack = () => {
+        setStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3) : prev));
+    };
+
+    const updatePainLevel = (regionId: string, value: number) => {
+        setSelection((prev) => ({
+            ...prev,
+            intensityByRegion: { ...prev.intensityByRegion, [regionId]: value },
+        }));
     };
 
     const currentConditionPain = visualization && visualRegion
@@ -176,15 +210,14 @@ export default function AnatomyEducationCard() {
     );
 
     return (
-        <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
+        <Card className="p-8 bg-white/5 backdrop-blur-md border-white/10">
             {/* ── Header ─────────────────────────────────────────────── */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                 <div className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-blue-500" />
                     <h3 className="font-semibold text-lg">Anatomy Education &amp; Condition Visualization</h3>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                    {/* Mode indicator */}
                     {visualization ? (
                         <Badge variant="outline" className="gap-1.5 text-[11px]">
                             <Stethoscope className="h-3 w-3" />
@@ -206,169 +239,160 @@ export default function AnatomyEducationCard() {
                 </div>
             </div>
 
-            {/* ── Layout: [Body SVG] | [Info panel] ──────────────── */}
-            <div className="grid md:grid-cols-[280px_1fr] grid-cols-1 gap-6 items-start">
-
-                {/* ── Left: Body SVG ──────────────────────── */}
-                <div>
-                    <BodyExplorer3D
-                        mode={canvasMode}
-                        compact
-                        onSelectionChange={handleSelectionChange}
-                        activeCondition={visualization}
-                        activeConditionRegion={visualRegion}
-                        onConditionRegionSelect={handleConditionRegionSelect}
-                    />
-                </div>
-
-                {/* ── Right: Info panel ─────────────────────────────────── */}
-                <div className="space-y-5">
-
-                    {/* Condition selector always visible at top */}
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <Stethoscope className="h-4 w-4 text-muted-foreground" />
-                            <p className="text-sm font-semibold text-foreground">Condition Visualization</p>
-                            {catalogLoading && (
-                                <span className="text-[10px] text-muted-foreground">Loading...</span>
-                            )}
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] gap-8 items-start">
+                {/* ── Left: Body Explorer ─────────────────────────────── */}
+                <div className="space-y-4">
+                    <div className="rounded-2xl border border-border/50 bg-white/5 p-4">
+                        <BodyExplorer3D
+                            mode={canvasMode}
+                            compact
+                            showSliders={false}
+                            selection={selection}
+                            onSelectionChange={handleSelectionChange}
+                            activeCondition={visualization}
+                            activeConditionRegion={visualRegion}
+                            onConditionRegionSelect={handleConditionRegionSelect}
+                        />
+                    </div>
+                    <div className="rounded-2xl border border-border/50 bg-white/5 p-4 space-y-2">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Selected Regions</p>
+                        {selection.selectedRegions.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                                {selection.selectedRegions.map((regionId) => (
+                                    <span key={regionId} className="text-xs rounded-full px-2.5 py-1 bg-white/10 border border-border/50">
+                                        {REGION_LOOKUP[regionId]?.label || regionId}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">Tap a body region to begin.</p>
+                        )}
                         {selection.selectedRegions.length > 0 && !activeConditionId && (
                             <button
                                 onClick={handleClearSelection}
                                 className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                             >
-                                Clear selected regions
-                            </button>
-                        )}
-                        <select
-                            value={activeConditionId}
-                            onChange={(e) => handleConditionChange(e.target.value)}
-                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                            <option value="">— or select a condition —</option>
-                            {conditions.map((item) => (
-                                <option key={item.condition_id} value={item.condition_id}>{item.name}</option>
-                            ))}
-                        </select>
-                        {activeConditionId && (
-                            <button
-                                onClick={() => handleConditionChange('')}
-                                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                ← Back to explore mode
+                                Clear selection
                             </button>
                         )}
                     </div>
+                </div>
 
-                    <hr className="border-border/30" />
-
-                    {/* ── Condition panel ───────────────────── */}
-                    {visualization && (
-                        <div className="space-y-4">
-                            <div className="p-4 rounded-xl bg-white/5 border border-border/50 space-y-2">
-                                <p className="text-sm font-semibold text-foreground">{visualization.name}</p>
-                                <p className="text-xs text-muted-foreground leading-relaxed">{visualization.overview}</p>
-                            </div>
-
-                            {/* Affected regions as selectable chips */}
-                            {visualization.regions.length > 0 && (
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Affected Regions</p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {visualization.regions.map((regionId) => (
-                                            <button
-                                                key={regionId}
-                                                onClick={() => handleConditionRegionSelect(regionId)}
-                                                className={`text-xs rounded-full px-2.5 py-1 border font-medium transition-all ${visualRegion === regionId
-                                                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                                    : 'bg-white/5 text-muted-foreground border-border/50 hover:bg-white/10 hover:text-foreground'
-                                                    }`}
-                                            >
-                                                {REGION_LOOKUP[regionId]?.label || regionId}
-                                                {typeof visualization.region_pain_levels?.[regionId] === 'number' && (
-                                                    <span className="ml-1.5 rounded-full bg-black/20 px-1.5 py-0.5 text-[10px]">
-                                                        {visualization.region_pain_levels[regionId]}/10
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {visualRegion && currentInterpretation && (
-                                <div className={`rounded-xl border p-3 ${showEmergencyAlert ? 'bg-red-500/10 border-red-500/30' : 'bg-orange-500/10 border-orange-500/30'}`}>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Pain interpretation</p>
-                                    <p className="text-sm font-semibold text-foreground mb-1">
-                                        {REGION_LOOKUP[visualRegion]?.label || visualRegion}: {currentConditionPain}/10
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{currentInterpretation.message}</p>
-                                </div>
-                            )}
-
-                            {showEmergencyAlert && (
-                                <div className="rounded-xl border border-red-500/40 bg-red-500/15 p-3">
-                                    <div className="flex items-start gap-2">
-                                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5" />
-                                        <p className="text-xs text-red-200">
-                                            High-intensity pain in this pattern may indicate an urgent condition. Seek emergency care immediately.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Typical symptoms */}
-                            {visualization.typical_symptoms.length > 0 && (
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Typical Symptoms</p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {visualization.typical_symptoms.map((s) => (
-                                            <span key={s} className="text-xs rounded-full px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                                                {s}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Condition pins */}
-                            {visualization.pins.length > 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition Markers</p>
-                                    {visualization.pins.map((pin) => (
-                                        <div key={pin.id} className={`rounded-xl border p-3 space-y-0.5 ${SEVERITY_BADGE[pin.severity] || SEVERITY_BADGE.medium}`}>
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="text-xs font-semibold">{pin.label}</span>
-                                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">{pin.severity}</span>
-                                            </div>
-                                            <p className="text-[11px] leading-relaxed opacity-80">{pin.text}</p>
+                {/* ── Right: Guided Flow ─────────────────────────────── */}
+                <div className="space-y-6">
+                    {/* Step header */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {stepLabels.map((label, idx) => {
+                                const stepIndex = (idx + 1) as 1 | 2 | 3 | 4;
+                                const active = step === stepIndex;
+                                const completed = step > stepIndex;
+                                return (
+                                    <div key={label} className="flex items-center gap-2">
+                                        <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-semibold border ${active
+                                            ? 'bg-primary text-primary-foreground border-primary'
+                                            : completed
+                                                ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300'
+                                                : 'bg-white/5 text-muted-foreground border-border/50'
+                                            }`}>
+                                            {idx + 1}
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Seek care rules */}
-                            {visualization.seek_care_rules.length > 0 && (
-                                <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20">
-                                    <div className="flex items-center gap-1.5 mb-2">
-                                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-400">When to Seek Care</p>
+                                        {idx < stepLabels.length - 1 && (
+                                            <div className="h-[1px] w-6 bg-border/50" />
+                                        )}
                                     </div>
-                                    <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
-                                        {visualization.seek_care_rules.map((rule) => (
-                                            <li key={rule}>{rule}</li>
-                                        ))}
-                                    </ul>
+                                );
+                            })}
+                        </div>
+                        <span className="text-xs text-muted-foreground">Step {step} of 4</span>
+                    </div>
+
+                    {/* Step 1: Select Regions */}
+                    {step === 1 && (
+                        <div className="space-y-3">
+                            <h4 className="text-sm font-semibold text-foreground">Select the area that hurts</h4>
+                            <p className="text-xs text-muted-foreground">
+                                Tap one or more regions on the body to get tailored education and condition suggestions.
+                            </p>
+                            {selection.selectedRegions.length === 0 && (
+                                <div className="rounded-xl border border-dashed border-border/60 bg-white/5 p-6 text-center text-sm text-muted-foreground">
+                                    No regions selected yet.
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* ── Region explainer panel (explore mode) ── */}
-                    {!visualization && (
-                        <>
-                            {/* AI condition suggestions from body + pain input */}
+                    {/* Step 2: Rate Pain */}
+                    {step === 2 && (
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-semibold text-foreground">Rate your pain intensity</h4>
+                            {selection.selectedRegions.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">Select a region to rate pain.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {selection.selectedRegions.map((regionId) => {
+                                        const pain = selection.intensityByRegion[regionId] ?? 5;
+                                        return (
+                                            <div key={regionId} className="rounded-xl border border-border/60 bg-white/5 p-3 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-semibold text-foreground">
+                                                        {REGION_LOOKUP[regionId]?.label || regionId}
+                                                    </span>
+                                                    <span className="text-xs font-bold" style={{ color: pain >= 7 ? '#ef4444' : pain >= 4 ? '#f97316' : '#fbbf24' }}>
+                                                        {pain}/10
+                                                    </span>
+                                                </div>
+                                                <Slider
+                                                    value={[pain]}
+                                                    min={1}
+                                                    max={10}
+                                                    step={1}
+                                                    onValueChange={(value) => updatePainLevel(regionId, value?.[0] ?? 5)}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
+                                        <span className="text-amber-400">1 — Minimal</span>
+                                        <span className="text-orange-500">5 — Moderate</span>
+                                        <span className="text-red-500">10 — Worst</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Step 3: Suggested Conditions */}
+                    {step === 3 && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                                    <p className="text-sm font-semibold text-foreground">Condition Visualization</p>
+                                    {catalogLoading && (
+                                        <span className="text-[10px] text-muted-foreground">Loading...</span>
+                                    )}
+                                </div>
+                                <select
+                                    value={activeConditionId}
+                                    onChange={(e) => handleConditionChange(e.target.value)}
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                >
+                                    <option value="">— or select a condition —</option>
+                                    {conditions.map((item) => (
+                                        <option key={item.condition_id} value={item.condition_id}>{item.name}</option>
+                                    ))}
+                                </select>
+                                {activeConditionId && (
+                                    <button
+                                        onClick={() => handleConditionChange('')}
+                                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        ← Back to explore mode
+                                    </button>
+                                )}
+                            </div>
+
                             {selection.selectedRegions.length > 0 && (
                                 <div className="space-y-2 rounded-xl border border-border/50 p-3 bg-white/5">
                                     <div className="flex items-center justify-between gap-2">
@@ -407,7 +431,6 @@ export default function AnatomyEducationCard() {
                                 </div>
                             )}
 
-                            {/* Derived symptoms from selected regions */}
                             {selection.selectedSymptoms.length > 0 && (
                                 <div>
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Region-Derived Symptoms</p>
@@ -421,6 +444,108 @@ export default function AnatomyEducationCard() {
                                 </div>
                             )}
 
+                            {visualization && (
+                                <div className="space-y-4">
+                                    <div className="p-4 rounded-xl bg-white/5 border border-border/50 space-y-2">
+                                        <p className="text-sm font-semibold text-foreground">{visualization.name}</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">{visualization.overview}</p>
+                                    </div>
+
+                                    {visualization.regions.length > 0 && (
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Affected Regions</p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {visualization.regions.map((regionId) => (
+                                                    <button
+                                                        key={regionId}
+                                                        onClick={() => handleConditionRegionSelect(regionId)}
+                                                        className={`text-xs rounded-full px-2.5 py-1 border font-medium transition-all ${visualRegion === regionId
+                                                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                                            : 'bg-white/5 text-muted-foreground border-border/50 hover:bg-white/10 hover:text-foreground'
+                                                            }`}
+                                                    >
+                                                        {REGION_LOOKUP[regionId]?.label || regionId}
+                                                        {typeof visualization.region_pain_levels?.[regionId] === 'number' && (
+                                                            <span className="ml-1.5 rounded-full bg-black/20 px-1.5 py-0.5 text-[10px]">
+                                                                {visualization.region_pain_levels[regionId]}/10
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {visualRegion && currentInterpretation && (
+                                        <div className={`rounded-xl border p-3 ${showEmergencyAlert ? 'bg-red-500/10 border-red-500/30' : 'bg-orange-500/10 border-orange-500/30'}`}>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Pain interpretation</p>
+                                            <p className="text-sm font-semibold text-foreground mb-1">
+                                                {REGION_LOOKUP[visualRegion]?.label || visualRegion}: {currentConditionPain}/10
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">{currentInterpretation.message}</p>
+                                        </div>
+                                    )}
+
+                                    {showEmergencyAlert && (
+                                        <div className="rounded-xl border border-red-500/40 bg-red-500/15 p-3">
+                                            <div className="flex items-start gap-2">
+                                                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5" />
+                                                <p className="text-xs text-red-200">
+                                                    High-intensity pain in this pattern may indicate an urgent condition. Seek emergency care immediately.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {visualization.typical_symptoms.length > 0 && (
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Typical Symptoms</p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {visualization.typical_symptoms.map((s) => (
+                                                    <span key={s} className="text-xs rounded-full px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                        {s}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {visualization.pins.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition Markers</p>
+                                            {visualization.pins.map((pin) => (
+                                                <div key={pin.id} className={`rounded-xl border p-3 space-y-0.5 ${SEVERITY_BADGE[pin.severity] || SEVERITY_BADGE.medium}`}>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-semibold">{pin.label}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">{pin.severity}</span>
+                                                    </div>
+                                                    <p className="text-[11px] leading-relaxed opacity-80">{pin.text}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {visualization.seek_care_rules.length > 0 && (
+                                        <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20">
+                                            <div className="flex items-center gap-1.5 mb-2">
+                                                <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-400">When to Seek Care</p>
+                                            </div>
+                                            <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
+                                                {visualization.seek_care_rules.map((rule) => (
+                                                    <li key={rule}>{rule}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Step 4: Explainer */}
+                    {step === 4 && (
+                        <div className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <BookOpen className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm font-semibold text-foreground">Region Explainer</p>
@@ -477,14 +602,22 @@ export default function AnatomyEducationCard() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-16 text-center gap-3 rounded-xl border border-dashed border-white/10 bg-white/[0.02]">
+                                <div className="flex flex-col items-center justify-center py-12 text-center gap-3 rounded-xl border border-dashed border-white/10 bg-white/[0.02]">
                                     <BookOpen className="h-8 w-8 text-muted-foreground/30" />
-                                    <p className="text-sm text-muted-foreground">Click a body region<br />to read anatomy education</p>
-                                    <p className="text-xs text-muted-foreground/60">or select a condition above</p>
+                                    <p className="text-sm text-muted-foreground">Select a body region to load anatomy education.</p>
                                 </div>
                             )}
-                        </>
+                        </div>
                     )}
+
+                    <div className="flex items-center justify-between pt-2">
+                        <Button variant="outline" onClick={handleBack} disabled={step === 1}>
+                            Back
+                        </Button>
+                        <Button onClick={handleNext} disabled={!canGoNext || step === 4}>
+                            {step === 4 ? 'Done' : 'Next'}
+                        </Button>
+                    </div>
                 </div>
             </div>
 
