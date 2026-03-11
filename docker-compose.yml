@@ -42,6 +42,10 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    volumes:
+      - ./securemed-backend:/app
+      - backend_media:/app/media
+      - backend_static:/app/staticfiles
     environment:
       DB_ENGINE: django.db.backends.postgresql
       DB_NAME: ${DB_NAME:-securemed}
@@ -56,9 +60,7 @@ services:
       ALLOWED_HOSTS: "localhost,127.0.0.1,backend"
       SECRET_KEY: ${SECRET_KEY:-ci-secret-key}
       DEBUG: ${DEBUG:-True}
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2"
+      DEV_SERVER: "true"
     depends_on:
       db:
         condition: service_healthy
@@ -74,6 +76,10 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    volumes:
+      - ./securemed-frontend:/app
+      - /app/node_modules
+      - /app/.next
     environment:
       BACKEND_URL: http://backend:8000
       NEXT_PUBLIC_API_URL: /api
@@ -83,3 +89,5 @@ services:
 
 volumes:
   postgres_data:
+  backend_media:
+  backend_static:
