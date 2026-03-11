@@ -133,6 +133,20 @@ function normalizeGraphVisualization(payload: unknown): GraphVisualization {
         }];
     });
 
+    const filteredLinks = links.filter(
+        (link) => link.relationship !== 'PART_OF' && link.relationship !== 'BELONGS_TO'
+    );
+    const connectedIds = new Set<string>();
+    for (const link of filteredLinks) {
+        connectedIds.add(link.source);
+        connectedIds.add(link.target);
+    }
+    const filteredNodes = nodes.filter((node) => connectedIds.has(node.id));
+
+    if (filteredNodes.length >= 10 && filteredLinks.length >= 10) {
+        return { nodes: filteredNodes, links: filteredLinks };
+    }
+
     return { nodes, links };
 }
 
