@@ -71,14 +71,14 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
+    # 'apps.platform.core.security_middleware.SecurityHeadersMiddleware', # COMMENT THIS
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     #'apps.accounts.users.middleware.RoleMiddleware',
-    'apps.platform.core.security_middleware.RateLimitMiddleware',
-    'apps.platform.core.security_middleware.RequestLoggingMiddleware',
+    # 'apps.platform.core.security_middleware.RateLimitMiddleware',       # COMMENT THIS
+    # 'apps.platform.core.security_middleware.RequestLoggingMiddleware',   # COMMENT THIS
     'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -204,7 +204,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'apps.platform.core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
-    'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
+    #'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
 }
 
 # Custom User Model
