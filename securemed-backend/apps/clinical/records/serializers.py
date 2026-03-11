@@ -3,10 +3,10 @@ from .models import (
     MedicalRecord,
     Prescription,
     VitalSign,
-    DrugInteraction,
     PharmacyOrder,
     MedicationAdherenceLog,
     MedicationHistoryEvent,
+    MedicationInteractionKnowledge,
     MedicationInteractionReport,
     MedicationInteractionReportItem,
 )
@@ -93,11 +93,14 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
         model = MedicalRecord
         fields = [
             'id', 'record_id', 'record_type', 'record_type_display', 
-            'record_date', 'doctor_name', 'patient', 'patient_name', 'patient_display_id',
-            'diagnosis', 'file', 'file_url',
+            'record_date', 'doctor', 'doctor_name', 'patient', 'patient_name', 'patient_display_id',
+            'diagnosis', 'symptoms', 'treatment', 'file', 'file_url',
             'prescriptions', 'created_at', 'source', 'is_attested', 'notes',
             'private_notes'
         ]
+        extra_kwargs = {
+            'doctor': {'write_only': True, 'required': False}
+        }
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -189,10 +192,20 @@ class VitalSignSerializer(serializers.ModelSerializer):
         return data
 
 
-class DrugInteractionSerializer(serializers.ModelSerializer):
+class MedicationInteractionKnowledgeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = DrugInteraction
-        fields = '__all__'
+        model = MedicationInteractionKnowledge
+        fields = [
+            'id',
+            'medications',
+            'combination_size',
+            'severity',
+            'side_effect',
+            'description',
+            'source',
+            'source_version',
+            'created_at',
+        ]
 
 
 class MedicationInteractionReportItemSerializer(serializers.ModelSerializer):

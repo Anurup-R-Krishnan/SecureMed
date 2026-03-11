@@ -3,10 +3,8 @@ from itertools import combinations
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from django.core.cache import cache
-from django.db.models import Q
 
 from .models import (
-    DrugInteraction,
     MedicationInteractionKnowledge,
     MedicationInteractionReport,
     MedicationInteractionReportJob,
@@ -71,6 +69,22 @@ def resolve_medications_for_knowledge(medications: Sequence[str]) -> List[str]:
     return sorted(set(resolved))
 
 
+def _build_medication_display_resolver(
+    normalized_meds: Sequence[str],
+    original_inputs: Sequence[str],
+) -> Dict[str, str]:
+    original_map = {
+        normalize_medication_name(med): med
+        for med in original_inputs
+        if med
+    }
+    if not normalized_meds:
+        return original_map
+    refs = MedicationReference.objects.filter(identifier__in=normalized_meds).order_by("id")
+    display_map = {ref.identifier: ref.display_name for ref in refs}
+    return {**original_map, **display_map}
+
+
 def _get_active_medications_for_patient(patient_id: int) -> List[str]:
     rows = Prescription.objects.filter(
         medical_record__patient_id=patient_id,
@@ -127,28 +141,6 @@ def _knowledge_findings_for_combos(combo_groups: Iterable[Tuple[str, ...]]) -> L
     return findings
 
 
-def _fallback_pair_findings(pair_groups: Iterable[Tuple[str, str]]) -> List[Dict]:
-    findings: List[Dict] = []
-    for a, b in pair_groups:
-        inter = DrugInteraction.objects.filter(
-            Q(drug_a__iexact=a, drug_b__iexact=b) | Q(drug_a__iexact=b, drug_b__iexact=a)
-        ).first()
-        if inter:
-            findings.append(
-                {
-                    "finding_type": "interaction",
-                    "medications": [a, b],
-                    "combination_size": 2,
-                    "side_effect": inter.description or f"Interaction between {a} and {b}",
-                    "severity": inter.severity,
-                    "description": inter.description,
-                    "source": "SecureMed Seed",
-                    "source_reference": "",
-                }
-            )
-    return findings
-
-
 def _compute_medication_safety(medications: Sequence[str]) -> Dict:
     normalized = resolve_medications_for_knowledge(medications)
     if not normalized:
@@ -171,7 +163,6 @@ def _compute_medication_safety(medications: Sequence[str]) -> Dict:
     findings.extend(_single_drug_findings(normalized))
     findings.extend(_knowledge_findings_for_combos(triplets))
     findings.extend(_knowledge_findings_for_combos(pairs))
-    findings.extend(_fallback_pair_findings(pairs))
 
     # Deduplicate by semantic identity.
     dedup_key = set()
@@ -232,6 +223,7 @@ def bump_safety_cache_namespace() -> str:
 
 
 def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
+    original_inputs = list(medications)
     normalized = resolve_medications_for_knowledge(medications)
     signature = canonical_signature(normalized)
     if not signature:
@@ -246,6 +238,20 @@ def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
         return cached
 
     result = _compute_medication_safety(normalized)
+    display_resolver = _build_medication_display_resolver(
+        result.get("medications", []),
+        original_inputs,
+    )
+    if display_resolver:
+        result["medications"] = [
+            display_resolver.get(med, med)
+            for med in result.get("medications", [])
+        ]
+        for finding in result.get("findings", []):
+            finding["medications"] = [
+                display_resolver.get(med, med)
+                for med in finding.get("medications", [])
+            ]
     try:
         cache.set(key, result, SAFETY_CACHE_TTL_SECONDS)
     except Exception:
@@ -321,7 +327,7 @@ def enqueue_report_generation(
     trigger_event: str = "manual_refresh",
     candidate_medications: Optional[Sequence[str]] = None,
 ) -> MedicationInteractionReportJob:
-    from .tasks import generate_interaction_report_job
+    from django.conf import settings
 
     task_id = uuid4().hex
     candidate_meds = [normalize_medication_name(m) for m in (candidate_medications or []) if m]
@@ -333,6 +339,16 @@ def enqueue_report_generation(
         candidate_medications=candidate_meds,
         status="queued",
     )
+    if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False) or getattr(settings, "DEBUG", False):
+        try:
+            run_report_job(job.id)
+            job.refresh_from_db()
+        except Exception as exc:
+            job.status = "failed"
+            job.error_message = str(exc)
+            job.save(update_fields=["status", "error_message"])
+        return job
+    from .tasks import generate_interaction_report_job
     try:
         generate_interaction_report_job.delay(job.id)
     except Exception as exc:

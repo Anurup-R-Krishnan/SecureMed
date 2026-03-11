@@ -437,13 +437,17 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         prescription, interaction_result = self.perform_create(serializer)
         response_serializer = self.get_serializer(prescription)
         response_payload = dict(response_serializer.data)
+        findings = interaction_result.get("findings", []) or []
+        findings_limit = 25
         response_payload["interaction_check"] = {
-            "has_findings": len(interaction_result.get("findings", [])) > 0,
-            "total_findings": len(interaction_result.get("findings", [])),
+            "has_findings": len(findings) > 0,
+            "total_findings": len(findings),
             "totals": interaction_result.get("totals", {}),
             "evaluated_combination_depth": interaction_result.get("evaluated_combination_depth", 3),
             "not_evaluated_depths": interaction_result.get("not_evaluated_depths", []),
-            "findings": interaction_result.get("findings", []),
+            "findings_limit": findings_limit,
+            "findings_truncated": len(findings) > findings_limit,
+            "findings": findings[:findings_limit],
         }
         headers = self.get_success_headers(response_serializer.data)
         return Response(response_payload, status=status.HTTP_201_CREATED, headers=headers)
@@ -573,11 +577,11 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         return Response({"status": "cancelled"})
 
 
-class DrugInteractionViewSet(viewsets.ModelViewSet):
-    from .models import DrugInteraction, MedicationInteractionReport, MedicationInteractionReportJob
-    from .serializers import DrugInteractionSerializer, MedicationInteractionReportSerializer
-    queryset = DrugInteraction.objects.all()
-    serializer_class = DrugInteractionSerializer
+class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
+    from .models import MedicationInteractionKnowledge, MedicationInteractionReport, MedicationInteractionReportJob
+    from .serializers import MedicationInteractionKnowledgeSerializer, MedicationInteractionReportSerializer
+    queryset = MedicationInteractionKnowledge.objects.all()
+    serializer_class = MedicationInteractionKnowledgeSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def _resolve_patient(self, request):
@@ -734,6 +738,7 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
         from django.utils import timezone
         from datetime import timedelta
+        from django.conf import settings
         recent_cutoff = timezone.now() - timedelta(minutes=10)
         existing_job = (
             self.MedicationInteractionReportJob.objects
@@ -741,6 +746,13 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             .first()
         )
         if existing_job:
+            if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False) or getattr(settings, "DEBUG", False):
+                from .interaction_service import run_report_job
+                try:
+                    run_report_job(existing_job.id)
+                    existing_job.refresh_from_db()
+                except Exception:
+                    pass
             return Response(
                 {
                     "task_id": existing_job.task_id,
