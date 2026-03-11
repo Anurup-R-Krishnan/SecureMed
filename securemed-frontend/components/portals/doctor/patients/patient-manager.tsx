@@ -24,7 +24,7 @@ export interface DoctorPatient {
 interface PatientManagerProps {
     patients: DoctorPatient[];
     loading: boolean;
-    onEmergencyAccess: (patient: DoctorPatient) => void;
+    onEmergencyAccess: (patient?: DoctorPatient) => void;
     onRefer: (patient: DoctorPatient) => void;
     onViewPatient?: (patient: DoctorPatient) => void;
 }
@@ -82,7 +82,7 @@ export default function PatientManager({
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button variant="destructive" size="sm" className="font-bold shrink-0" onClick={() => onEmergencyAccess({} as any)}>
+                    <Button variant="destructive" size="sm" className="font-bold shrink-0" onClick={() => onEmergencyAccess()}>
                         <ShieldAlert className="h-4 w-4 md:mr-2" />
                         <span className="hidden md:inline">Emergency Access</span>
                     </Button>
