@@ -76,7 +76,7 @@ export const drugInteractionService = {
     async checkInteractions(medications: string[], patientId?: number): Promise<InteractionCheckResult> {
         const response = await api.post('/medical-records/drug-interactions/check/', {
             medications,
-            limit_findings: 80,
+            limit_findings: 30,
             ...(patientId ? { patient_id: patientId } : {}),
         });
         return response.data;
@@ -85,8 +85,15 @@ export const drugInteractionService = {
     async getLatestReport(patientId?: number): Promise<InteractionReport | null> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/reports/latest/', { params });
-        return response.data || null;
+        try {
+            const response = await api.get('/medical-records/drug-interactions/reports/latest/', { params });
+            return response.data || null;
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                return null;
+            }
+            throw error;
+        }
     },
 
     async getReportHistory(patientId?: number): Promise<InteractionReport[]> {

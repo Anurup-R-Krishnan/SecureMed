@@ -135,9 +135,18 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const interactionFindings = findings.filter((f) => f.combination_size >= 2);
     const singleDrugFindings = findings.filter((f) => f.combination_size < 2);
     const visibleFindings = interactionFindings.length > 0 ? interactionFindings : singleDrugFindings;
+    const maxVisibleFindings = 30;
+    const truncatedFindings = visibleFindings.length > maxVisibleFindings;
+    const limitedVisibleFindings = visibleFindings.slice(0, maxVisibleFindings);
     const hasInteractions = interactionFindings.length > 0;
-    const groupedInteractionFindings = useMemo(() => buildFindingGroups(interactionFindings), [interactionFindings]);
-    const groupedSingleDrugFindings = useMemo(() => buildFindingGroups(singleDrugFindings), [singleDrugFindings]);
+    const groupedInteractionFindings = useMemo(
+        () => buildFindingGroups(limitedVisibleFindings.filter((f) => f.combination_size >= 2)),
+        [limitedVisibleFindings]
+    );
+    const groupedSingleDrugFindings = useMemo(
+        () => buildFindingGroups(limitedVisibleFindings.filter((f) => f.combination_size < 2)),
+        [limitedVisibleFindings]
+    );
 
     const addMedication = (name: string) => {
         if (selected.some((s) => s.toLowerCase() === name.toLowerCase())) {
@@ -419,7 +428,7 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                 )}
 
                 <AnimatePresence mode="wait">
-                    {!checking && visibleFindings.length === 0 ? (
+                    {!checking && limitedVisibleFindings.length === 0 ? (
                         <motion.div
                             key="empty"
                             initial={{ opacity: 0 }}
@@ -430,6 +439,11 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                         </motion.div>
                     ) : (
                         <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 space-y-4">
+                            {truncatedFindings && (
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                    Showing the top {maxVisibleFindings} findings. Refine medications to narrow results.
+                                </div>
+                            )}
                             {groupedInteractionFindings.length > 0 && (
                                 <div className="space-y-2">
                                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">

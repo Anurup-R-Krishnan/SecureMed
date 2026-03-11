@@ -682,11 +682,11 @@ class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
             raise ValidationError({"medications": "Must be a list of medication names."})
         include_active = request.data.get("include_active", True)
         include_active = str(include_active).lower() not in {"false", "0", "no"}
-        raw_limit = request.data.get("limit_findings", 80)
+        raw_limit = request.data.get("limit_findings", 30)
         try:
-            limit_findings = max(1, min(int(raw_limit), 200))
+            limit_findings = max(1, min(int(raw_limit), 30))
         except (TypeError, ValueError):
-            limit_findings = 80
+            limit_findings = 30
 
         patient = self._resolve_patient(request)
         active_meds = get_active_medications_for_patient(patient.id) if (patient and include_active) else []
