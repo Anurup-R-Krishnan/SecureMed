@@ -117,7 +117,8 @@ function CompletedTestsView() {
         const fetchHistory = async () => {
             try {
                 const response = await api.get('/labs/results/');
-                setData(response.data);
+                const payload = Array.isArray(response.data) ? response.data : (response.data?.results || []);
+                setData(payload);
             } catch (error) {
                 console.error('Error fetching lab history:', error);
             } finally {
@@ -130,7 +131,8 @@ function CompletedTestsView() {
     const refreshHistory = async () => {
         try {
             const response = await api.get('/labs/results/');
-            setData(response.data);
+            const payload = Array.isArray(response.data) ? response.data : (response.data?.results || []);
+            setData(payload);
         } catch (error) {
             console.error('Error fetching lab history:', error);
         }
