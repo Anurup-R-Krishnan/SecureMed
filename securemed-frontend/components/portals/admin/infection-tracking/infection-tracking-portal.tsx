@@ -29,6 +29,8 @@ type InfectionTrackingPortalProps = {
 };
 
 const DEFAULT_CACHE_TTL_MS = 60_000;
+const MIN_CONTACT_LINKS = 10;
+const MIN_CONTACT_RATIO = 0.2;
 
 export default function InfectionTrackingPortal({
     isActive = true,
@@ -47,6 +49,18 @@ export default function InfectionTrackingPortal({
     const activeTrace = selectedTrace ?? traces?.[0] ?? null;
 
     const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
+    const isCacheUsable = useCallback((cache: InfectionTrackingCacheData | null) => {
+        if (!cache) return false;
+        const links = cache.graphData?.links ?? [];
+        if (!links.length) return false;
+        const contactLinks = links.filter(
+            (link) => link.relationship !== 'PART_OF' && link.relationship !== 'BELONGS_TO'
+        );
+        if (contactLinks.length < MIN_CONTACT_LINKS) return false;
+        if (contactLinks.length / Math.max(links.length, 1) < MIN_CONTACT_RATIO) return false;
+        if (!Array.isArray(cache.traces) || cache.traces.length === 0) return false;
+        return true;
+    }, []);
 
     useEffect(() => {
         if (!isActive) return;
@@ -58,7 +72,8 @@ export default function InfectionTrackingPortal({
             const hasValidCache = Boolean(
                 initialData
                 && Date.now() - initialData.fetchedAt <= cacheTtlMs
-                && refreshToken === 0,
+                && refreshToken === 0
+                && isCacheUsable(initialData),
             );
             if (hasValidCache && initialData) {
                 setGraphData(initialData.graphData);
@@ -180,14 +195,20 @@ export default function InfectionTrackingPortal({
                         </p>
                     </div>
                 </div>
-                {stats && (
-                    <div className="flex gap-6 text-sm">
-                        <StatBadge label="Patients" value={stats.nodes?.Patient ?? 0} />
-                        <StatBadge label="Doctors" value={stats.nodes?.Doctor ?? 0} />
-                        <StatBadge label="Rooms" value={stats.nodes?.Room ?? 0} />
-                        <StatBadge label="Traces" value={traces.length} accent />
-                    </div>
-                )}
+                <div className="flex flex-col items-end gap-3">
+                    <Button variant="outline" size="sm" onClick={refresh}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh Data
+                    </Button>
+                    {stats && (
+                        <div className="flex gap-6 text-sm">
+                            <StatBadge label="Patients" value={stats.nodes?.Patient ?? 0} />
+                            <StatBadge label="Doctors" value={stats.nodes?.Doctor ?? 0} />
+                            <StatBadge label="Rooms" value={stats.nodes?.Room ?? 0} />
+                            <StatBadge label="Traces" value={traces.length} accent />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {graphData && (
