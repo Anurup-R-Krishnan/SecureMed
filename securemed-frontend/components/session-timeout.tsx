@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 
 interface SessionTimeoutProps {
     idleTimeout?: number; // milliseconds (default: 15 minutes)
@@ -14,28 +15,17 @@ export default function SessionTimeout({
     warningTime = 2 * 60 * 1000   // 2 minutes
 }: SessionTimeoutProps) {
     const router = useRouter();
+    const { logout } = useAuth();
     const [showWarning, setShowWarning] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState(0);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-    const logout = useCallback(async () => {
-        try {
-            // Call logout API
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout/`, {
-                method: 'POST',
-                credentials: 'include',
-            });
-        } catch (error) {
-            console.error('Logout error:', error);
-        } finally {
-            // Clear tokens and redirect
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            router.push('/login?session_expired=true');
-        }
-    }, [router]);
+    const handleLogout = useCallback(async () => {
+        await logout();
+        router.replace('/');
+    }, [logout, router]);
 
     const resetTimer = useCallback(() => {
         // Clear existing timers
@@ -63,9 +53,9 @@ export default function SessionTimeout({
 
         // Set logout timer
         timeoutRef.current = setTimeout(() => {
-            logout();
+            handleLogout();
         }, idleTimeout);
-    }, [idleTimeout, warningTime, logout]);
+    }, [idleTimeout, warningTime, handleLogout]);
 
     const handleUserActivity = useCallback(() => {
         if (!showWarning) {
