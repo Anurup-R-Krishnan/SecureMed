@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Stethoscope } from 'lucide-react';
+import { AlertTriangle, Stethoscope, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { REGION_LOOKUP } from '@/components/features/anatomy/region-map';
 import {
@@ -62,10 +62,15 @@ export default function PatientAnatomyCard() {
     : null;
 
   return (
-    <Card className="p-5 rounded-2xl border border-border shadow-sm space-y-3">
-      <div className="flex items-center gap-2">
-        <Stethoscope className="h-4 w-4 text-primary" />
-        <p className="text-sm font-semibold text-foreground">Condition Pain Map (Doctor View)</p>
+    <Card className="p-5 rounded-2xl border border-border shadow-sm space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Stethoscope className="h-4 w-4 text-primary" />
+          <p className="text-sm font-semibold text-foreground">Condition Pain Map</p>
+        </div>
+        {activeConditionId && (
+          <span className="text-[10px] text-muted-foreground">Doctor view</span>
+        )}
       </div>
 
       <select
@@ -83,33 +88,42 @@ export default function PatientAnatomyCard() {
 
       {loading && <p className="text-xs text-muted-foreground">Loading visualization...</p>}
 
-      {visualization && (
-        <div className="space-y-3">
-          <BodyExplorer3D
-            mode="condition"
-            compact
-            activeCondition={visualization}
-            activeConditionRegion={activeRegion}
-            onConditionRegionSelect={setActiveRegion}
-          />
-          <div className="flex flex-wrap gap-1.5">
-            {visualization.regions.map((region) => (
-              <button
-                key={region}
-                onClick={() => setActiveRegion(region)}
-                className={`text-xs rounded-full px-2.5 py-1 border ${activeRegion === region
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-white/5 border-border/50 text-muted-foreground hover:text-foreground'
-                  }`}
-              >
-                {REGION_LOOKUP[region]?.label || region}
-                {typeof visualization.region_pain_levels?.[region] === 'number' && (
-                  <span className="ml-1.5 text-[10px]">
-                    {visualization.region_pain_levels[region]}/10
-                  </span>
-                )}
-              </button>
-            ))}
+      {visualization ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border/60 bg-white/5 p-3">
+            <BodyExplorer3D
+              mode="condition"
+              compact
+              activeCondition={visualization}
+              activeConditionRegion={activeRegion}
+              onConditionRegionSelect={setActiveRegion}
+            />
+          </div>
+
+          <div className="rounded-xl border border-border/60 bg-white/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Affected Regions</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {visualization.regions.map((region) => (
+                <button
+                  key={region}
+                  onClick={() => setActiveRegion(region)}
+                  className={`text-xs rounded-full px-2.5 py-1 border ${activeRegion === region
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-white/5 border-border/50 text-muted-foreground hover:text-foreground'
+                    }`}
+                >
+                  {REGION_LOOKUP[region]?.label || region}
+                  {typeof visualization.region_pain_levels?.[region] === 'number' && (
+                    <span className="ml-1.5 text-[10px]">
+                      {visualization.region_pain_levels[region]}/10
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {activeRegion && interpretation && (
@@ -118,6 +132,23 @@ export default function PatientAnatomyCard() {
                 {REGION_LOOKUP[activeRegion]?.label || activeRegion}: {regionPain}/10
               </p>
               <p className="text-xs text-muted-foreground mt-1">{interpretation.message}</p>
+            </div>
+          )}
+
+          {visualization.pins?.length > 0 && (
+            <div className="rounded-xl border border-border/60 bg-white/5 p-3 space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Condition Markers</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {visualization.pins.map((pin) => (
+                  <div key={pin.id} className="rounded-lg border border-border/50 p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold">{pin.label}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{pin.severity}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">{pin.text}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -132,8 +163,11 @@ export default function PatientAnatomyCard() {
             </div>
           )}
         </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border/60 bg-white/5 p-6 text-center text-xs text-muted-foreground">
+          Select a condition to view region pain map and guidance.
+        </div>
       )}
     </Card>
   );
 }
-
