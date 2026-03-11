@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -191,7 +192,14 @@ export default function SettingsPage() {
                                 onClick={() => fileInputRef.current?.click()}
                             >
                                 {avatarPreview ? (
-                                    <img src={avatarPreview} alt="Doctor avatar" className="absolute inset-0 h-full w-full object-cover" />
+                                    <Image
+                                        src={avatarPreview}
+                                        alt="Doctor avatar"
+                                        fill
+                                        sizes="128px"
+                                        className="object-cover"
+                                        unoptimized
+                                    />
                                 ) : (
                                     <div className="absolute inset-0 flex items-center justify-center text-4xl font-black text-muted-foreground bg-slate-100 dark:bg-slate-800">
                                         DR
