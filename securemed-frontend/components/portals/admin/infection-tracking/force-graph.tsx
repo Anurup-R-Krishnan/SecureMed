@@ -31,7 +31,7 @@ type ForceGraphProps = {
     focusTrace?: boolean;
 };
 
-const GRAPH_HEIGHT = 500;
+const GRAPH_HEIGHT = 560;
 const HIT_CELL_SIZE = 56;
 const MAX_DPR = 1.5;
 
@@ -365,8 +365,25 @@ export default function ForceGraph({ data, highlightTrace, isActive, focusTrace 
 
     const hasNoGraphData = !Array.isArray(data?.nodes) || data.nodes.length === 0;
 
+    const nodeCount = displayData?.nodes?.length ?? 0;
+    const linkCount = displayData?.links?.length ?? 0;
+
     return (
-        <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden relative">
+        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-slate-950/5 via-background to-slate-950/10 shadow-sm">
+            <div className="absolute inset-0 pointer-events-none opacity-40" aria-hidden="true">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:28px_28px]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(239,68,68,0.08),transparent_40%),radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.08),transparent_45%)]" />
+            </div>
+
+            <div className="absolute right-4 top-4 z-10 flex gap-2 text-[11px] font-semibold text-muted-foreground">
+                <span className="rounded-full border border-border/60 bg-background/80 px-2.5 py-1">
+                    {nodeCount} nodes
+                </span>
+                <span className="rounded-full border border-border/60 bg-background/80 px-2.5 py-1">
+                    {linkCount} links
+                </span>
+            </div>
+
             <div className="relative" style={{ height: GRAPH_HEIGHT }}>
                 <canvas
                     ref={canvasRef}
