@@ -6,22 +6,38 @@ from django.core.management import call_command
 
 
 class Command(BaseCommand):
-    help = "Seed HODDI interactions from a dataset path (fallback to /tmp/HODDI/dataset/HODDI_v2)."
+    help = "Seed HODDI interactions from a dataset path (prefers local data/hoddi)."
 
     def handle(self, *args, **options):
-        dataset_path = os.environ.get("HODDI_DATASET_PATH") or "/tmp/HODDI/dataset/HODDI_v2"
+        candidates = [
+            os.environ.get("HODDI_DATASET_PATH"),
+            "/app/data/hoddi/HODDI_v2",
+            "/app/.data/hoddi/HODDI_v2",
+            "/tmp/HODDI/dataset/HODDI_v2",
+        ]
+        dataset_path = next((path for path in candidates if path and Path(path).exists()), None)
         dataset_version = os.environ.get("HODDI_DATASET_VERSION", "HODDI_v2")
         side_effect_map = os.environ.get("HODDI_SIDE_EFFECT_MAP")
         drug_map = os.environ.get("HODDI_DRUG_MAP")
         include_negative = os.environ.get("HODDI_INCLUDE_NEGATIVE", "").lower() in {"1", "true", "yes"}
 
-        if not Path(dataset_path).exists():
+        if not dataset_path:
             self.stdout.write(
                 self.style.WARNING(
-                    f"HODDI dataset not found at {dataset_path}. Skipping HODDI import."
+                    "HODDI dataset not found. Set HODDI_DATASET_PATH or place data under "
+                    "/app/data/hoddi/HODDI_v2."
                 )
             )
             return
+
+        if not side_effect_map:
+            candidate = Path(dataset_path) / "dictionary/Side_effects_unique.csv"
+            if candidate.exists():
+                side_effect_map = str(candidate)
+        if not drug_map:
+            candidate = Path(dataset_path) / "dictionary/Drugbank_ID_SMILE_all_structure links.csv"
+            if candidate.exists():
+                drug_map = str(candidate)
 
         kwargs = {
             "path": dataset_path,

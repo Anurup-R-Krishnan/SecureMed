@@ -88,6 +88,12 @@ db.sqlite3-journal
 media/
 staticfiles/
 
+# Local HODDI datasets (kept out of git)
+securemed-backend/data/hoddi/
+
+# Local artifacts
+securemed-backend/tmp/
+
 # Python packaging / builds
 build/
 dist/
