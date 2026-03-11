@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/card';
 import { Calendar, Clock } from 'lucide-react';
@@ -14,7 +14,14 @@ import LabResultsCard from './lab-results-card';
 import RecentRecordsCard from './recent-records-card';
 import BillingSummaryCard from './billing-summary-card';
 const HealthInsightsCard = dynamic(() => import('./health-insights-card'), { ssr: false });
-const AnatomyEducationCard = dynamic(() => import('./anatomy-education-card'), { ssr: false });
+const AnatomyEducationCard = dynamic(() => import('./anatomy-education-card'), {
+    ssr: false,
+    loading: () => (
+        <div className="p-8 text-center text-muted-foreground bg-card border border-border/60 rounded-2xl">
+            Loading anatomy module…
+        </div>
+    ),
+});
 import { getDashboardStats } from '@/lib/api';
 import { getAccessToken } from '@/lib/auth-utils';
 
@@ -31,8 +38,6 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [dashboardStats, setDashboardStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const anatomyRef = useRef<HTMLDivElement | null>(null);
-    const [showAnatomy, setShowAnatomy] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -80,20 +85,6 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
 
         fetchData();
     }, []);
-
-    useEffect(() => {
-        if (!anatomyRef.current || showAnatomy) return;
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries.some((entry) => entry.isIntersecting)) {
-                    setShowAnatomy(true);
-                }
-            },
-            { rootMargin: '120px' }
-        );
-        observer.observe(anatomyRef.current);
-        return () => observer.disconnect();
-    }, [showAnatomy]);
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -180,15 +171,7 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
             <HealthInsightsCard insights={dashboardStats?.health_insights || null} />
 
             {/* Row 4: Anatomy Education & Condition Visualization */}
-            <div ref={anatomyRef}>
-                {showAnatomy ? (
-                    <AnatomyEducationCard />
-                ) : (
-                    <div className="p-8 text-center text-muted-foreground bg-card border border-border/60 rounded-2xl">
-                        Loading anatomy module…
-                    </div>
-                )}
-            </div>
+            <AnatomyEducationCard />
 
             {/* Row 5: Upcoming Appointments */}
             <Card className="p-6 bg-white/5 backdrop-blur-md border-white/10">
