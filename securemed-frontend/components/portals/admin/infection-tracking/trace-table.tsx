@@ -461,12 +461,24 @@ function describeStep(from: PathNode, relationship: PathRelationship, to: PathNo
 
     switch (relationship.relationship) {
         case 'VISITED':
+            if (from.type === 'Room' && to.type === 'Patient') {
+                return `${toLabel} visited ${fromLabel}${atTime}.`;
+            }
             return `${fromLabel} visited ${toLabel}${atTime}.`;
         case 'SAW':
+            if (from.type === 'Doctor' && to.type === 'Patient') {
+                return `${toLabel} consulted ${doctorLabel(fromLabel)}${atTime}.`;
+            }
             return `${fromLabel} consulted ${doctorLabel(toLabel)}${atTime}.`;
         case 'WORKED_IN':
+            if (from.type === 'Room' && to.type === 'Doctor') {
+                return `${doctorLabel(toLabel)} worked in ${fromLabel}${atTime}.`;
+            }
             return `${doctorLabel(fromLabel)} worked in ${toLabel}${atTime}.`;
         case 'USED_EQUIPMENT':
+            if (from.type === 'Equipment' && to.type === 'Patient') {
+                return `${toLabel} used ${fromLabel}${atTime}.`;
+            }
             return `${fromLabel} used ${toLabel}${atTime}.`;
         case 'PART_OF':
             return `${fromLabel} belongs to ${toLabel}.`;
