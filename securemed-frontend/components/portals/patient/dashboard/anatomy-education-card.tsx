@@ -49,7 +49,13 @@ const SEVERITY_BADGE: Record<string, string> = {
     high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800',
 };
 
-export default function AnatomyEducationCard() {
+export default function AnatomyEducationCard({
+    role = 'patient',
+    compact = false,
+}: {
+    role?: 'patient' | 'doctor';
+    compact?: boolean;
+}) {
     const [selection, setSelection] = useState<AnatomySelectionPayload>({
         selectedRegions: [],
         selectedSymptoms: [],
@@ -112,34 +118,34 @@ export default function AnatomyEducationCard() {
     useEffect(() => {
         let mounted = true;
         setCatalogLoading(true);
-        fetchConditionCatalog('top20', 'patient')
+        fetchConditionCatalog('top20', role)
             .then((data) => { if (mounted) { setConditions(data); setError(null); } })
             .catch((e: any) => { if (mounted) setError(e?.response?.data?.error || 'Unable to load conditions.'); })
             .finally(() => { if (mounted) setCatalogLoading(false); });
         return () => { mounted = false; };
-    }, []);
+    }, [role]);
 
     useEffect(() => {
         if (!activeRegion) { setExplainer(null); return; }
         let mounted = true;
         setExplainerLoading(true);
-        fetchRegionExplainer(activeRegion, 'patient')
+        fetchRegionExplainer(activeRegion, role)
             .then((data) => { if (mounted) { setExplainer(data); setError(null); } })
             .catch((e: any) => { if (mounted) { setExplainer(null); setError(e?.response?.data?.error || 'Unable to load explainer.'); } })
             .finally(() => { if (mounted) setExplainerLoading(false); });
         return () => { mounted = false; };
-    }, [activeRegion]);
+    }, [activeRegion, role]);
 
     useEffect(() => {
         if (!activeConditionId) { setVisualization(null); setVisualRegion(null); return; }
         let mounted = true;
         setLoading(true);
-        fetchConditionVisualization(activeConditionId, 'patient')
+        fetchConditionVisualization(activeConditionId, role)
             .then((data) => { if (mounted) { setVisualization(data); setVisualRegion(data.regions[0] ?? null); setError(null); } })
             .catch((e: any) => { if (mounted) { setVisualization(null); setVisualRegion(null); setError(e?.response?.data?.error || 'Unable to load condition.'); } })
             .finally(() => { if (mounted) setLoading(false); });
         return () => { mounted = false; };
-    }, [activeConditionId]);
+    }, [activeConditionId, role]);
 
     const handleSelectionChange = (payload: AnatomySelectionPayload) => {
         setSelection(payload);
@@ -216,7 +222,7 @@ export default function AnatomyEducationCard() {
 
     return (
         <>
-            <Card className="p-8 bg-white/5 backdrop-blur-md border-white/10">
+            <Card className={`${compact ? 'p-6' : 'p-8'} bg-white/5 backdrop-blur-md border-white/10`}>
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-2">
                         <Activity className="h-5 w-5 text-blue-500" />
