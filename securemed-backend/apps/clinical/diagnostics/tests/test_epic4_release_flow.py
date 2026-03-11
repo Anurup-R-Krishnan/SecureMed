@@ -91,7 +91,9 @@ class LabResultReleaseFlowTest(TestCase):
         self.client.force_authenticate(user=self.patient_user)
         response = self.client.get('/api/labs/results/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        payload = response.data
+        results = payload.get('results', []) if isinstance(payload, dict) else payload
+        self.assertEqual(len(results), 0)
 
         # Doctor releases result
         self.client.force_authenticate(user=self.doctor_user)
@@ -105,5 +107,7 @@ class LabResultReleaseFlowTest(TestCase):
         self.client.force_authenticate(user=self.patient_user)
         response = self.client.get('/api/labs/results/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], result.id)
+        payload = response.data
+        results = payload.get('results', []) if isinstance(payload, dict) else payload
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['id'], result.id)
