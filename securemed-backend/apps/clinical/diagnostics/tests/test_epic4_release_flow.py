@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.patients.models import Patient
 from apps.clinical.diagnostics.models import LabTest, LabOrder, LabResult
+from apps.scheduling.availability.models import Department, Doctor
 
 User = get_user_model()
 
@@ -54,6 +55,27 @@ class LabResultReleaseFlowTest(TestCase):
             code='CBC',
             category='Hematology',
             turnaround_time='2 hours'
+        )
+
+        self.department = Department.objects.create(
+            name='General Medicine',
+            code='GEN',
+            description='General Medicine',
+            floor=1,
+            building='Main',
+            phone='+10000000001',
+            email='gen@test.com',
+        )
+        self.doctor_profile = Doctor.objects.create(
+            user=self.doctor_user,
+            doctor_id='DOC-REL-001',
+            specialization='general',
+            license_number='LIC-REL-001',
+            qualification='MBBS',
+            experience_years=5,
+            department=self.department,
+            consultation_fee=100.00,
+            phone='+10000000002',
         )
 
         self.order = LabOrder.objects.create(
