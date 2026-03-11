@@ -74,7 +74,7 @@ MIDDLEWARE = [
     'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     #'apps.accounts.users.middleware.RoleMiddleware',
     'apps.platform.core.security_middleware.RateLimitMiddleware',
