@@ -33,7 +33,7 @@ type ForceGraphProps = {
 
 const GRAPH_HEIGHT = 580;
 const HIT_CELL_SIZE = 56;
-const MAX_DPR = 1.5;
+const MAX_DPR = 1.25;
 
 function getCanvasSize(canvas: HTMLCanvasElement): { width: number; height: number } {
     return {
@@ -298,7 +298,7 @@ export default function ForceGraph({ data, highlightTrace, isActive, focusTrace 
             links,
             width,
             height,
-            iterations: 120,
+            iterations: 90,
         });
     }, [displayData, isActive, canvasSize, scheduleDraw]);
 
