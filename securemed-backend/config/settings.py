@@ -163,10 +163,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Update your existing CORS block (around line 144)
 _default_cors_origins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://0.0.0.0:3000',
+    'https://securemed-finale-569ldd705.vercel.app',
+    'https://securemed-finale.vercel.app',
 ]
 
 CORS_ALLOWED_ORIGINS = config(
@@ -174,15 +177,14 @@ CORS_ALLOWED_ORIGINS = config(
     default=','.join(_default_cors_origins)
 ).split(',')
 
-for _origin in _default_cors_origins:
-    if _origin not in CORS_ALLOWED_ORIGINS:
-        CORS_ALLOWED_ORIGINS.append(_origin)
+# Temporary Emergency Fix: Uncomment the line below if specific origins still fail
+# CORS_ALLOW_ALL_ORIGINS = True 
 
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000'
+    default='http://localhost:3000,http://127.0.0.1:3000,https://securemed-finale-569ldd705.vercel.app,https://securemed-finale.vercel.app'
 ).split(',')
 
 # REST Framework Settings
