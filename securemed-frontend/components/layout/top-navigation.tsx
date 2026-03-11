@@ -29,7 +29,7 @@ interface TopNavigationProps {
 }
 
 export function TopNavigation({ userType }: TopNavigationProps) {
-    const pathname = usePathname();
+    const pathname = usePathname() ?? '';
     const router = useRouter();
     const { user, logout } = useAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -79,6 +79,7 @@ export function TopNavigation({ userType }: TopNavigationProps) {
         { name: 'Staff', href: '/admin/staff' },
         { name: 'Patients', href: '/admin/patients' },
         { name: 'Billing', href: '/admin/billing' },
+        { name: 'Ward Map', href: '/admin/ward-map' },
         { name: 'Infections', href: '/admin/infection-tracking' },
         { name: 'Audit Logs', href: '/admin/audit-logs' },
     ];
@@ -128,7 +129,9 @@ export function TopNavigation({ userType }: TopNavigationProps) {
                 {/* Desktop Navigation */}
                 <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center mx-4 bg-muted/30 p-1.5 rounded-full border border-border/50">
                     {navItems.map((item) => {
-                        const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                        const isActive = pathname
+                            ? pathname === item.href || pathname.startsWith(item.href + '/')
+                            : false;
                         return (
                             <Link
                                 key={item.href}

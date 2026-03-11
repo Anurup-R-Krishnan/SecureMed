@@ -21,6 +21,11 @@ export interface InteractionCheckResult {
     visible_findings_count: number;
     findings_truncated: boolean;
     limit_findings: number;
+    summary?: {
+        total_findings: number;
+        total_combinations: number;
+        top_effects: string[];
+    };
     evaluated_combination_depth?: number;
     max_supported_combination_size?: number;
     not_evaluated_depths?: number[];

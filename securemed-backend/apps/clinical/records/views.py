@@ -699,6 +699,15 @@ class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
         interaction_findings = [finding for finding in findings if finding.get("combination_size", 0) >= 2]
         side_effect_findings = [finding for finding in findings if finding.get("combination_size", 0) < 2]
         visible_findings = (interaction_findings + side_effect_findings)[:limit_findings]
+        effect_counts = {}
+        combo_keys = set()
+        for finding in visible_findings:
+            effect = (finding.get("side_effect") or "").strip()
+            if effect:
+                effect_counts[effect] = effect_counts.get(effect, 0) + 1
+            meds_key = sorted([m for m in finding.get("medications", []) if m])
+            combo_keys.add(f"{finding.get('combination_size')}|{'|'.join(meds_key)}")
+        top_effects = [k for k, _ in sorted(effect_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]
 
         result["findings"] = visible_findings
         result["interaction_findings_total"] = len(interaction_findings)
@@ -706,6 +715,11 @@ class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
         result["visible_findings_count"] = len(visible_findings)
         result["findings_truncated"] = len(visible_findings) < len(findings)
         result["limit_findings"] = limit_findings
+        result["summary"] = {
+            "total_findings": len(visible_findings),
+            "total_combinations": len(combo_keys),
+            "top_effects": top_effects,
+        }
         result["requested_medications"] = meds
         result["active_medications_added"] = active_meds
         result["include_active"] = include_active

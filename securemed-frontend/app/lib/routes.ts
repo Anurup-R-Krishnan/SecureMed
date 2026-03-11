@@ -41,7 +41,7 @@ export const ROUTES = {
 // Valid URL tab segments per portal (must match portal component tab types)
 // ---------------------------------------------------------------------------
 export const VALID_TABS = {
-  admin: ['dashboard', 'analytics', 'hospitals', 'staff', 'patients', 'billing', 'infection-tracking', 'audit-logs'] as const,
+  admin: ['dashboard', 'analytics', 'hospitals', 'staff', 'patients', 'billing', 'ward-map', 'infection-tracking', 'audit-logs'] as const,
   lab: ['worklist', 'completed', 'reports', 'settings'] as const,
   pharmacy: ['dashboard', 'orders', 'inventory'] as const,
 };

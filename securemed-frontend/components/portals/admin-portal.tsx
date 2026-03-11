@@ -5,6 +5,7 @@ import ClinicalAnalytics from '@/components/portals/admin/dashboard/clinical-ana
 import HospitalManager from '@/components/portals/admin/hospitals/hospital-manager';
 import StaffManager from '@/components/portals/admin/staff/staff-manager';
 import PatientManager from '@/components/portals/admin/patients/patient-manager';
+import { WardMap } from '@/components/features/ward/ward-map';
 import AuditLogViewer from '@/components/portals/admin/security/audit-log-viewer';
 import InfectionTrackingPortal, { type InfectionTrackingCacheData } from '@/components/portals/admin/infection-tracking/infection-tracking-portal';
 import { Button } from '@/components/ui/button';
@@ -234,6 +235,7 @@ export default function AdminPortal({ onLogout, onSwitchRole, currentTab, onTabC
         />
       )}
       {activeTab === 'billing' && <InsuranceVerification />}
+      {activeTab === 'ward-map' && <WardMap />}
       {activeTab === 'infection-tracking' && (
         <InfectionTrackingPortal
           isActive={activeTab === 'infection-tracking'}

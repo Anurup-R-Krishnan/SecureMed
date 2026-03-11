@@ -139,6 +139,13 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const truncatedFindings = visibleFindings.length > maxVisibleFindings;
     const limitedVisibleFindings = visibleFindings.slice(0, maxVisibleFindings);
     const summary = useMemo(() => {
+        if (checkResult?.summary) {
+            return {
+                totalFindings: checkResult.summary.total_findings,
+                totalCombos: checkResult.summary.total_combinations,
+                topEffects: checkResult.summary.top_effects,
+            };
+        }
         const effectCounts = new Map<string, number>();
         const combos = new Set<string>();
         for (const finding of limitedVisibleFindings) {
