@@ -68,18 +68,14 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # MUST be first
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    # 'apps.platform.core.security_middleware.SecurityHeadersMiddleware', # COMMENT THIS
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    #'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  <-- KEEP COMMENTED
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    #'apps.accounts.users.middleware.RoleMiddleware',
-    # 'apps.platform.core.security_middleware.RateLimitMiddleware',       # COMMENT THIS
-    # 'apps.platform.core.security_middleware.RequestLoggingMiddleware',   # COMMENT THIS
-    'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware',
+    # 'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware', <-- COMMENT THIS TEMPORARILY
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -260,8 +256,9 @@ CSRF_COOKIE_HTTPONLY = False
 # HTTPS-only cookies (enabled in production via DJANGO_SECURE_SSL env var)
 # For localhost development: DJANGO_SECURE_SSL should not be set (defaults to False)
 # For production deployment: set DJANGO_SECURE_SSL=True in environment
-SESSION_COOKIE_SECURE = SECURE_SSL
-CSRF_COOKIE_SECURE = SECURE_SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Google reCAPTCHA Configuration
 # For local development, uses Google's test keys (always pass)
