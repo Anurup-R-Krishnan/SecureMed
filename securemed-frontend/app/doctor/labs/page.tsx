@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import api from '@/lib/api';
 import LabOrderForm from '@/components/portals/doctor/labs/lab-order-form';
@@ -30,6 +31,8 @@ interface LabResultItem {
 
 export default function LabsPage() {
     const { isAuthenticated } = useAuth();
+    const searchParams = useSearchParams();
+    const preselectPatientId = searchParams?.get('patient_id') || '';
     const [loading, setLoading] = useState(true);
     const [patients, setPatients] = useState<DoctorPatient[]>([]);
     const [results, setResults] = useState<LabResultItem[]>([]);
@@ -218,6 +221,7 @@ export default function LabsPage() {
             </div>
             <LabOrderForm
                 patients={patients}
+                initialPatientId={preselectPatientId}
                 onSubmitOrder={async (order) => {
                     try {
                         const res = await api.post('/labs/orders/', order);

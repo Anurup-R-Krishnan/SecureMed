@@ -43,6 +43,7 @@ interface Patient {
 interface LabOrderFormProps {
     patients: Patient[];
     onSubmitOrder: (order: any) => Promise<void>;
+    initialPatientId?: string;
 }
 
 const PRIORITY_OPTIONS = [
@@ -51,7 +52,7 @@ const PRIORITY_OPTIONS = [
     { value: 'stat', label: 'STAT', description: 'Immediate processing required' },
 ];
 
-export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
+export function LabOrderForm({ patients, onSubmitOrder, initialPatientId }: LabOrderFormProps) {
     const [selectedPatient, setSelectedPatient] = useState<string>('');
     const [selectedTests, setSelectedTests] = useState<LabTest[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -92,6 +93,11 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
         fetchTests();
     }, []);
 
+    useEffect(() => {
+        if (!initialPatientId) return;
+        setSelectedPatient(initialPatientId);
+    }, [initialPatientId]);
+
     const filteredTests = labTests.filter(test => {
         const matchesSearch = test.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             test.code.toLowerCase().includes(searchQuery.toLowerCase());
@@ -115,14 +121,13 @@ export function LabOrderForm({ patients, onSubmitOrder }: LabOrderFormProps) {
         setIsSubmitting(true);
 
         try {
-            await api.post('/labs/orders/', {
+            await onSubmitOrder({
                 patient_id: selectedPatient,
                 items: selectedTests.map(t => t.id),
                 priority,
                 clinical_notes: clinicalNotes,
                 fasting_required: fasting,
             });
-
             setSubmitted(true);
         } catch (error) {
             console.error('Error submitting order:', error);

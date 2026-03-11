@@ -22,6 +22,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface Patient {
     id: number;
@@ -32,9 +33,10 @@ interface Patient {
 interface PrescriptionWriterProps {
     patients: Patient[];
     onSuccess?: () => void;
+    initialPatientId?: string;
 }
 
-export default function PrescriptionWriter({ patients, onSuccess }: PrescriptionWriterProps) {
+export default function PrescriptionWriter({ patients, onSuccess, initialPatientId }: PrescriptionWriterProps) {
     const [selectedPatient, setSelectedPatient] = useState<string>('');
     const [patientSearch, setPatientSearch] = useState('');
     const [medicationName, setMedicationName] = useState('');
@@ -51,6 +53,11 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
         if (!term) return true;
         return patient.name.toLowerCase().includes(term) || patient.displayId.toLowerCase().includes(term);
     });
+
+    useEffect(() => {
+        if (!initialPatientId) return;
+        setSelectedPatient(initialPatientId);
+    }, [initialPatientId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,7 +93,7 @@ export default function PrescriptionWriter({ patients, onSuccess }: Prescription
                 ? Object.values(detail).flat().join(', ')
                 : (detail || 'Failed to create prescription');
             console.error('Error creating prescription:', msg, error);
-            alert(`Error: ${msg}`);
+            toast.error(`Error: ${msg}`);
         } finally {
             setIsSubmitting(false);
         }

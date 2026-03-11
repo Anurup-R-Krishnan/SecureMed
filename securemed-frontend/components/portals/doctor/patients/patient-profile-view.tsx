@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, Download, Pill, ShieldAlert, CheckCircle2, TrendingUp, Clock, RefreshCw, Microscope, Eye } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, AlertTriangle, Download, Pill, ShieldAlert, CheckCircle2, TrendingUp, Clock, RefreshCw, Microscope, Eye, FileText, FlaskConical } from 'lucide-react';
 import PatientTimeline from './patient-timeline';
 import PatientNotes from './patient-notes';
 import PatientAnatomyCard from './patient-anatomy-card';
@@ -40,6 +41,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function PatientProfileView({ patient, onBack }: PatientProfileViewProps) {
+  const router = useRouter();
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,23 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
             <span className="font-medium">Back to Patients</span>
           </button>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/doctor/prescriptions?patient_id=${patient.id}`)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Write Prescription
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/doctor/labs?patient_id=${patient.id}`)}
+            >
+              <FlaskConical className="h-4 w-4 mr-2" />
+              Order Labs
+            </Button>
             <Button
               variant="outline"
               size="sm"

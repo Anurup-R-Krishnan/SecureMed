@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import api from '@/lib/api';
 import PrescriptionWriter from '@/components/portals/doctor/prescriptions/prescription-writer';
@@ -17,6 +18,8 @@ interface DoctorPatient {
 
 export default function PrescriptionsPage() {
     const { isAuthenticated } = useAuth();
+    const searchParams = useSearchParams();
+    const preselectPatientId = searchParams?.get('patient_id') || '';
     const [loading, setLoading] = useState(true);
     const [patients, setPatients] = useState<DoctorPatient[]>([]);
     const [recentPrescriptions, setRecentPrescriptions] = useState<any[]>([]);
@@ -62,6 +65,7 @@ export default function PrescriptionsPage() {
 
             <PrescriptionWriter
                 patients={patients}
+                initialPatientId={preselectPatientId}
                 onSuccess={() => {
                     toast.success("Prescription created");
                     fetchRecentPrescriptions();

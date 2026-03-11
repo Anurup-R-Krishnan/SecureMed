@@ -133,13 +133,13 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
       const res = await api.get(`/labs/results/${id}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
-        setReportError('This lab result does not have an attachment.');
+        setLabError('This lab result does not have an attachment.');
         return;
       }
       const viewUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
       window.open(viewUrl, '_blank', 'noopener,noreferrer');
     } catch {
-      setReportError('Unable to open lab attachment.');
+      setLabError('Unable to open lab attachment.');
     }
   };
 
