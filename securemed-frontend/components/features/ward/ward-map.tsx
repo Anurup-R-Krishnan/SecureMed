@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { User, Bed, AlertTriangle, Shield } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -33,6 +33,7 @@ interface WardMapProps {
 
 export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
     const router = useRouter();
+    const pathname = usePathname() ?? '';
     const [rooms, setRooms] = useState<RoomData[]>([]);
     const [loading, setLoading] = useState(true);
     const [detailOpen, setDetailOpen] = useState(false);
@@ -144,7 +145,7 @@ export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
                                     ) : (
                                         <div className="text-center text-muted-foreground text-xs font-medium">
                                             <Bed className="h-6 w-6 mx-auto mb-1 opacity-40" />
-                                            Vancant
+                                            Vacant
                                         </div>
                                     )}
 
@@ -231,24 +232,32 @@ export function WardMap({ filter = 'all', onRoomsChange }: WardMapProps) {
                         <div className="text-sm text-muted-foreground">No room selected.</div>
                     )}
                     <DialogFooter>
-                        {selectedRoom?.patientId && (
+                        {selectedRoom?.patientId && pathname.startsWith('/admin') && (
                             <Button onClick={() => {
                                 setDetailOpen(false);
-                                router.push(`/doctor/patients/${selectedRoom.patientId}`);
+                                router.push(`/admin/patients?patientId=${selectedRoom.patientId}`);
                             }}>
                                 View Patient Profile
                             </Button>
                         )}
-                        {selectedRoom?.patientId && (
-                            <Button
-                                variant="outline"
-                                onClick={() => {
+                        {selectedRoom?.patientId && pathname.startsWith('/doctor') && (
+                            <>
+                                <Button onClick={() => {
                                     setDetailOpen(false);
-                                    router.push(`/doctor/records?patient_id=${selectedRoom.patientId}`);
-                                }}
-                            >
-                                Open Patient Records
-                            </Button>
+                                    router.push(`/doctor/patients/${selectedRoom.patientId}`);
+                                }}>
+                                    View Patient Profile
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setDetailOpen(false);
+                                        router.push(`/doctor/records?patient_id=${selectedRoom.patientId}`);
+                                    }}
+                                >
+                                    Open Patient Records
+                                </Button>
+                            </>
                         )}
                         <Button variant="outline" onClick={() => setDetailOpen(false)}>Close</Button>
                     </DialogFooter>

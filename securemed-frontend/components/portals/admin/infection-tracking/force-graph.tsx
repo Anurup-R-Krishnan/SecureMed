@@ -363,21 +363,6 @@ export default function ForceGraph({ data, highlightTrace, isActive }: ForceGrap
 
     return (
         <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden relative">
-            <div className="px-6 py-4 border-b border-border/40 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Activity className="h-5 w-5 text-primary" />
-                    <h2 className="font-bold text-foreground">Contact Network Graph</h2>
-                </div>
-                <div className="flex items-center gap-4 text-xs font-bold">
-                    {Object.entries(NODE_COLORS).map(([type, color]) => (
-                        <span key={type} className="flex items-center gap-1.5">
-                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                            {type}
-                        </span>
-                    ))}
-                </div>
-            </div>
-
             <div className="relative" style={{ height: GRAPH_HEIGHT }}>
                 <canvas
                     ref={canvasRef}

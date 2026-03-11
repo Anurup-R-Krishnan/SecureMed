@@ -12,6 +12,7 @@ import {
 import ForceGraph from './force-graph';
 import TraceTable from './trace-table';
 import GraphLegend from './graph-legend';
+import { NODE_COLORS } from './constants';
 
 export type InfectionTrackingCacheData = {
     graphData: GraphVisualization;
@@ -191,12 +192,24 @@ export default function InfectionTrackingPortal({
             {graphData && (
                 <div className="space-y-4">
                     <div className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm">
-                        <h2 className="text-lg font-bold text-foreground">Contact Graph</h2>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            {activeTrace
-                                ? 'Focused on the selected trace only, so the contact path and timing are easier to read.'
-                                : 'Showing the full hospital contact network. Select a trace above to isolate its chain.'}
-                        </p>
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-bold text-foreground">Contact Network Graph</h2>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    {activeTrace
+                                        ? 'Focused on the selected trace only, so the contact path and timing are easier to read.'
+                                        : 'Showing the full hospital contact network. Select a trace above to isolate its chain.'}
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-muted-foreground">
+                                {Object.entries(NODE_COLORS).map(([type, color]) => (
+                                    <span key={type} className="flex items-center gap-1.5">
+                                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                                        {type}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                     <ForceGraph data={graphData} highlightTrace={activeTrace} isActive={isActive} />
                 </div>

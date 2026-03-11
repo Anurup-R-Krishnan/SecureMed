@@ -189,6 +189,11 @@ class Command(BaseCommand):
             call_command("seed_anatomy_content")
         except Exception as exc:
             self.stdout.write(self.style.WARNING(f"  [!] Anatomy content seed skipped: {exc}"))
+        try:
+            self.stdout.write("[-] Seeding infection tracking graph...")
+            call_command("ensure_infection_demo_data")
+        except Exception as exc:
+            self.stdout.write(self.style.WARNING(f"  [!] Infection graph seed skipped: {exc}"))
 
         self.stdout.write(self.style.SUCCESS("\n[+] Seeding complete!"))
         self._print_role_summary()

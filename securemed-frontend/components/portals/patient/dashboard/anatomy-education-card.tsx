@@ -14,7 +14,19 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { AnatomySelectionPayload, REGION_LOOKUP } from '@/components/features/anatomy/region-map';
+import {
+    AnatomySelectionPayload,
+    REGION_LOOKUP,
+    deriveSymptomsFromRegions,
+} from '@/components/features/anatomy/region-map';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     AnatomyRegionExplainer,
     ConditionCatalogItem,
@@ -61,6 +73,10 @@ export default function AnatomyEducationCard() {
     const [matching, setMatching] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+    const [wizardOpen, setWizardOpen] = useState(false);
+    const [wizardRegion, setWizardRegion] = useState('chest');
+    const [wizardPain, setWizardPain] = useState(6);
+    const [wizardConcern, setWizardConcern] = useState('pain');
 
     // Derived: which mode does the canvas operate in?
     const canvasMode = activeConditionId && visualization ? 'condition' : 'selection';
@@ -177,6 +193,15 @@ export default function AnatomyEducationCard() {
         setStep(1);
     };
 
+    const applySelection = (regions: string[], intensity: Record<string, number>) => {
+        const selectedSymptoms = deriveSymptomsFromRegions(regions);
+        setSelection({ selectedRegions: regions, selectedSymptoms, intensityByRegion: intensity });
+        setActiveRegion(regions[regions.length - 1] || null);
+        setActiveConditionId('');
+        setConditionMatches([]);
+        setStep(2);
+    };
+
     const handleNext = () => {
         if (!canGoNext) return;
         setStep((prev) => (prev < 4 ? ((prev + 1) as 2 | 3 | 4) : prev));
@@ -210,12 +235,32 @@ export default function AnatomyEducationCard() {
     );
 
     return (
-        <Card className="p-8 bg-white/5 backdrop-blur-md border-white/10">
+        <>
+            <Card className="p-8 bg-white/5 backdrop-blur-md border-white/10">
             {/* ── Header ─────────────────────────────────────────────── */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                 <div className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-blue-500" />
                     <h3 className="font-semibold text-lg">Anatomy Education &amp; Condition Visualization</h3>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                    <Button variant="outline" size="sm" onClick={() => setWizardOpen(true)}>
+                        Guided Start
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => applySelection(['chest'], { chest: 7 })}
+                    >
+                        Example: Chest pain
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => applySelection(['head'], { head: 6 })}
+                    >
+                        Example: Headache
+                    </Button>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                     {visualization ? (
@@ -624,6 +669,71 @@ export default function AnatomyEducationCard() {
             </div>
 
             {error && <p className="mt-4 text-xs text-destructive">{error}</p>}
-        </Card>
+            </Card>
+
+            <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Guided Symptom Wizard</DialogTitle>
+                        <DialogDescription>
+                            Pick a region and pain level to generate educational suggestions. Not a diagnosis.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 text-sm">
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Primary Concern</label>
+                            <select
+                                value={wizardConcern}
+                                onChange={(e) => setWizardConcern(e.target.value)}
+                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="pain">Pain or discomfort</option>
+                                <option value="swelling">Swelling</option>
+                                <option value="weakness">Weakness / numbness</option>
+                                <option value="other">Other symptoms</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Region</label>
+                            <select
+                                value={wizardRegion}
+                                onChange={(e) => setWizardRegion(e.target.value)}
+                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                {Object.values(REGION_LOOKUP).map((region) => (
+                                    <option key={region.id} value={region.id}>
+                                        {region.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Pain Level</label>
+                            <Slider
+                                value={[wizardPain]}
+                                min={1}
+                                max={10}
+                                step={1}
+                                onValueChange={(value) => setWizardPain(value?.[0] ?? 5)}
+                            />
+                            <div className="text-xs text-muted-foreground">Selected: {wizardPain}/10</div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            onClick={() => {
+                                applySelection([wizardRegion], { [wizardRegion]: wizardPain });
+                                setWizardOpen(false);
+                            }}
+                        >
+                            Apply Selection
+                        </Button>
+                        <Button variant="outline" onClick={() => setWizardOpen(false)}>
+                            Cancel
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
