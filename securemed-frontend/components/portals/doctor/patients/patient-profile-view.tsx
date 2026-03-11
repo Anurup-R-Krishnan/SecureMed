@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, Download, Pill, ShieldAlert, CheckCircle2, TrendingUp, Clock, RefreshCw } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Download, Pill, ShieldAlert, CheckCircle2, TrendingUp, Clock, RefreshCw, Microscope, Eye } from 'lucide-react';
 import PatientTimeline from './patient-timeline';
 import PatientNotes from './patient-notes';
 import PatientAnatomyCard from './patient-anatomy-card';
@@ -10,6 +10,7 @@ import { PatientInfoCard } from '@/components/ui/patient-info-card';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
 import { drugInteractionService, type InteractionReport } from '@/services/drug-interactions';
+import { API_ORIGIN } from '@/lib/urls';
 
 interface Patient {
   id: string;
@@ -47,6 +48,9 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
   const [interactionReport, setInteractionReport] = useState<InteractionReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [labResults, setLabResults] = useState<any[]>([]);
+  const [labLoading, setLabLoading] = useState(false);
+  const [labError, setLabError] = useState<string | null>(null);
 
   const handleDownloadReport = async () => {
     setDownloadingPDF(true);
@@ -91,18 +95,25 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
     async function fetchData() {
       try {
         setReportLoading(true);
-        const [rxRes, report] = await Promise.all([
+        setLabLoading(true);
+        setLabError(null);
+        const [rxRes, report, labRes] = await Promise.all([
           api.get(`/medical-records/prescriptions/`, { params: { patient_id: patient.id } }),
           drugInteractionService.getLatestReport(parseInt(patient.id)).catch(() => null),
+          api.get('/labs/results/', { params: { patient_id: patient.id } }).catch(() => ({ data: [] })),
         ]);
         const data = Array.isArray(rxRes.data) ? rxRes.data : (rxRes.data.results || []);
         setPrescriptions(data);
         setInteractionReport(report);
+        const labPayload = Array.isArray(labRes?.data) ? labRes.data : (labRes?.data?.results || []);
+        setLabResults(labPayload);
       } catch (err) {
         console.error('Failed to fetch data', err);
+        setLabError('Unable to load lab results.');
       } finally {
         setLoading(false);
         setReportLoading(false);
+        setLabLoading(false);
       }
     }
     fetchData();
@@ -208,6 +219,118 @@ export default function PatientProfileView({ patient, onBack }: PatientProfileVi
               </div>
             ) : (
               <div className="py-10 text-center text-sm text-muted-foreground">No active prescriptions.</div>
+            )}
+          </div>
+
+          {/* Lab Results */}
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <Microscope className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-bold text-foreground">Lab Results</h2>
+              {labLoading && (
+                <span className="ml-auto text-xs text-muted-foreground">Loading…</span>
+              )}
+            </div>
+
+            {labError && (
+              <div className="px-5 py-3 text-xs text-destructive">{labError}</div>
+            )}
+
+            {labLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="h-5 w-5 rounded-full border-2 border-muted border-t-primary animate-spin" />
+              </div>
+            ) : labResults.length > 0 ? (
+              <div className="divide-y divide-border">
+                {labResults.slice(0, 6).map((result) => (
+                  <div key={result.id} className="px-5 py-3.5 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{result.test_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {result.result_value} {result.units || ''} {result.reference_range ? `· Ref ${result.reference_range}` : ''}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {result.processed_at ? new Date(result.processed_at).toLocaleString() : 'Pending'}
+                        </p>
+                      </div>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                        result.flag === 'Critical'
+                          ? 'border-red-200 bg-red-50 text-red-700'
+                          : result.flag === 'High' || result.flag === 'Low'
+                          ? 'border-amber-200 bg-amber-50 text-amber-700'
+                          : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      }`}>
+                        {result.flag || 'Normal'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await api.get(`/labs/results/${result.id}/presigned/`);
+                            const url = res.data?.url as string | undefined;
+                            if (!url) return;
+                            const viewUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
+                            window.open(viewUrl, '_blank', 'noopener,noreferrer');
+                          } catch {
+                            setLabError('Unable to open lab attachment.');
+                          }
+                        }}
+                      >
+                        <Eye className="h-3.5 w-3.5 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const res = await api.get(`/labs/results/${result.id}/download/`, { responseType: 'blob' });
+                            const blob = new Blob([res.data]);
+                            const link = document.createElement('a');
+                            const url = URL.createObjectURL(blob);
+                            link.href = url;
+                            link.download = result.file_attachment_name || `lab_result_${result.id}`;
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            URL.revokeObjectURL(url);
+                          } catch {
+                            setLabError('Unable to download lab attachment.');
+                          }
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1" />
+                        Download
+                      </Button>
+                      {!result.released_to_patient && (
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await api.post(`/labs/results/${result.id}/release/`);
+                              setLabResults((prev) =>
+                                prev.map((r) => (r.id === result.id ? { ...r, released_to_patient: true } : r))
+                              );
+                            } catch {
+                              setLabError('Unable to release result to patient.');
+                            }
+                          }}
+                        >
+                          Release to Patient
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                No lab results available for this patient.
+              </div>
             )}
           </div>
 

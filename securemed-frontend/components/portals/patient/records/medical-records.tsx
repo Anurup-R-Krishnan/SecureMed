@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Download } from 'lucide-react';
+import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Download, Microscope } from 'lucide-react';
 import { medicalRecordService } from '@/services/appointments';
 import { drugInteractionService } from '@/services/drug-interactions';
 import FHIRExportButton from '@/components/portals/patient/records/fhir-export-button';
@@ -19,6 +19,9 @@ interface MedicalRecordsProps {
 export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [labResults, setLabResults] = useState<any[]>([]);
+  const [labLoading, setLabLoading] = useState(false);
+  const [labError, setLabError] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -30,17 +33,24 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
 
   const fetchRecords = async () => {
     setLoading(true);
+    setLabLoading(true);
+    setLabError('');
     try {
-      const [recordsData, prescriptionsData] = await Promise.all([
+      const [recordsData, prescriptionsData, labRes] = await Promise.all([
         medicalRecordService.getMedicalRecords(),
-        medicalRecordService.getPrescriptions()
+        medicalRecordService.getPrescriptions(),
+        api.get('/labs/results/'),
       ]);
       setMedicalRecords(recordsData);
       setPrescriptions(prescriptionsData);
+      const labPayload = Array.isArray(labRes.data) ? labRes.data : (labRes.data?.results || []);
+      setLabResults(labPayload);
     } catch (error) {
       console.error("Failed to fetch data", error);
+      setLabError('Unable to load lab results.');
     } finally {
       setLoading(false);
+      setLabLoading(false);
     }
   };
 
@@ -115,6 +125,21 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
       }
     } finally {
       setDownloadingReport(false);
+    }
+  };
+
+  const handleViewLabAttachment = async (id: number) => {
+    try {
+      const res = await api.get(`/labs/results/${id}/presigned/`);
+      const url = res.data?.url as string | undefined;
+      if (!url) {
+        setReportError('This lab result does not have an attachment.');
+        return;
+      }
+      const viewUrl = url.startsWith('http') ? url : `${API_ORIGIN}${url}`;
+      window.open(viewUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      setReportError('Unable to open lab attachment.');
     }
   };
 
@@ -264,6 +289,66 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-6">
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-2">
+            <Microscope className="h-5 w-5 text-purple-500" />
+            <h3 className="text-lg font-bold text-foreground">Lab Results</h3>
+          </div>
+          {labLoading && (
+            <span className="text-xs text-muted-foreground">Loading…</span>
+          )}
+        </div>
+        {labError && (
+          <p className="text-xs text-amber-700 mb-3">{labError}</p>
+        )}
+        {labLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Loading lab results…</div>
+        ) : labResults.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground">
+            <Microscope className="h-12 w-12 mx-auto mb-3 opacity-20" />
+            <p>No lab results available</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {labResults.slice(0, 8).map((result) => (
+              <div key={result.id} className="p-4 rounded-xl border border-border bg-white/5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-foreground">{result.test_name}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {result.result_value} {result.units || ''} {result.reference_range ? `· Ref ${result.reference_range}` : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {result.processed_at ? new Date(result.processed_at).toLocaleString() : 'Pending'}
+                    </p>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full border ${
+                    result.flag === 'Critical'
+                      ? 'border-red-200 bg-red-50 text-red-700'
+                      : result.flag === 'High' || result.flag === 'Low'
+                      ? 'border-amber-200 bg-amber-50 text-amber-700'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  }`}>
+                    {result.flag || 'Normal'}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleViewLabAttachment(result.id)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View Report
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Card>

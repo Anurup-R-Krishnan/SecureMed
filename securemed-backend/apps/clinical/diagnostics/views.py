@@ -95,9 +95,50 @@ class LabResultViewSet(viewsets.ModelViewSet):
     serializer_class = LabResultSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def _resolve_patient_user(self, request):
+        patient_id = (request.query_params.get('patient_id') or '').strip()
+        if not patient_id:
+            return None
+
+        from apps.accounts.patients.models import Patient
+        try:
+            try:
+                pk = int(patient_id)
+                patient = Patient.objects.get(id=pk)
+            except (ValueError, TypeError):
+                patient = Patient.objects.get(patient_id=patient_id)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError({"patient_id": "Invalid patient ID"})
+
+        # Access control mirrors medical records + drug interaction access.
+        if request.user.is_staff or request.user.role == 'admin':
+            return patient.user
+        if hasattr(request.user, 'patient_profile'):
+            if request.user.patient_profile.id != patient.id:
+                raise PermissionDenied("No permission to access this patient.")
+            return patient.user
+        if hasattr(request.user, 'doctor_profile') or request.user.role == 'doctor':
+            from apps.clinical.records.models import MedicalRecord, EmergencyAccessLog
+            has_access = MedicalRecord.objects.filter(
+                patient=patient,
+                doctor=request.user.doctor_profile
+            ).exists()
+            if not has_access:
+                has_access = EmergencyAccessLog.objects.filter(
+                    patient=patient,
+                    accessed_by=request.user
+                ).exists()
+            if not has_access:
+                raise PermissionDenied("No permission to access this patient.")
+            return patient.user
+        raise PermissionDenied("No permission to access this patient.")
+
     def get_queryset(self):
         user = self.request.user
         qs = LabResult.objects.select_related('order', 'test').order_by('-processed_at', '-id')
+        resolved_patient_user = self._resolve_patient_user(self.request)
+        if resolved_patient_user:
+            return qs.filter(order__patient=resolved_patient_user)
         if hasattr(user, 'patient_profile'):
             return qs.filter(order__patient=user, released_to_patient=True)
         if hasattr(user, 'doctor_profile') or user.role == 'doctor':
