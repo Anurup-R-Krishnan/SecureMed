@@ -87,7 +87,7 @@ export default function AppointmentBooking({
         available: true,
       } as Doctor;
     });
-  }, [initialDoctorId]);
+  }, [initialDoctorId, initialDoctorName]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
