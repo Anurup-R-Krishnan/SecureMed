@@ -181,10 +181,18 @@ CORS_ALLOWED_ORIGINS = config(
 
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = config(
-    'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000,https://securemed-finale-569ldd705.vercel.app,https://securemed-finale.vercel.app'
-).split(',')
+# Hardcode for deployment to eliminate environment variable issues
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://securemed-finale-569ldd705.vercel.app',
+    'https://securemed-finale.vercel.app',
+    'https://securemed-backend.onrender.com', # Add the backend itself
+]
+
+# This is the "Magic" setting to stop 403s on cross-domain APIs
+CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework Settings
 REST_FRAMEWORK = {
