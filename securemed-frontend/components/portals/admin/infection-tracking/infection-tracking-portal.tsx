@@ -74,7 +74,7 @@ export default function InfectionTrackingPortal({
 
             try {
                 const [graphRes, tracesRes, statsRes] = await Promise.all([
-                    infectionTrackingService.getGraphVisualization(320, { signal: controller.signal }),
+                    infectionTrackingService.getGraphVisualization(420, { signal: controller.signal }),
                     infectionTrackingService.getTraces({ signal: controller.signal }),
                     infectionTrackingService.getGraphStats({ signal: controller.signal }),
                 ]);

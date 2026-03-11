@@ -31,7 +31,7 @@ type ForceGraphProps = {
     focusTrace?: boolean;
 };
 
-const GRAPH_HEIGHT = 560;
+const GRAPH_HEIGHT = 580;
 const HIT_CELL_SIZE = 56;
 const MAX_DPR = 1.5;
 
@@ -185,8 +185,8 @@ export default function ForceGraph({ data, highlightTrace, isActive, focusTrace 
             ctx.beginPath();
             ctx.moveTo(link.sourceNode.x, link.sourceNode.y);
             ctx.lineTo(link.targetNode.x, link.targetNode.y);
-            ctx.strokeStyle = isHighlighted ? '#ef4444' : REL_COLORS[link.relationship] || '#33333330';
-            ctx.lineWidth = isHighlighted ? 3 : 1;
+            ctx.strokeStyle = isHighlighted ? '#ef4444' : REL_COLORS[link.relationship] || '#94a3b8b3';
+            ctx.lineWidth = isHighlighted ? 3.2 : 1.4;
             ctx.stroke();
         }
 
@@ -208,15 +208,15 @@ export default function ForceGraph({ data, highlightTrace, isActive, focusTrace 
             ctx.shadowBlur = 0;
 
             ctx.strokeStyle = isHighlighted ? '#fca5a5' : '#ffffff';
-            ctx.lineWidth = isHighlighted ? 2 : 1.5;
+            ctx.lineWidth = isHighlighted ? 2.2 : 1.6;
             ctx.stroke();
 
             if (renderLabels) {
                 const raw = node.label || node.id;
                 const label = raw.length > 12 ? `${raw.slice(0, 10)}...` : raw;
-                ctx.font = `bold ${node.radius > 12 ? 10 : 8}px Inter, system-ui, sans-serif`;
+                ctx.font = `600 ${node.radius > 12 ? 11 : 9}px "Space Grotesk", system-ui, sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#0f172a';
                 ctx.fillText(label, node.x, node.y + 3);
             }
         }
@@ -369,17 +369,16 @@ export default function ForceGraph({ data, highlightTrace, isActive, focusTrace 
     const linkCount = displayData?.links?.length ?? 0;
 
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-slate-950/5 via-background to-slate-950/10 shadow-sm">
-            <div className="absolute inset-0 pointer-events-none opacity-40" aria-hidden="true">
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:28px_28px]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(239,68,68,0.08),transparent_40%),radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.08),transparent_45%)]" />
+        <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-white shadow-sm">
+            <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden="true">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[size:32px_32px]" />
             </div>
 
-            <div className="absolute right-4 top-4 z-10 flex gap-2 text-[11px] font-semibold text-muted-foreground">
-                <span className="rounded-full border border-border/60 bg-background/80 px-2.5 py-1">
+            <div className="absolute right-4 top-4 z-10 flex gap-2 text-[11px] font-semibold text-slate-600">
+                <span className="rounded-full border border-border/70 bg-white/90 px-2.5 py-1">
                     {nodeCount} nodes
                 </span>
-                <span className="rounded-full border border-border/60 bg-background/80 px-2.5 py-1">
+                <span className="rounded-full border border-border/70 bg-white/90 px-2.5 py-1">
                     {linkCount} links
                 </span>
             </div>
