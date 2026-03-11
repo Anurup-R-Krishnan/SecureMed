@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,23 +18,64 @@ import {
 import api from '@/lib/api';
 
 
-// Supported insurance providers
-const SUPPORTED_PROVIDERS = [
-    { id: 'ins_001', name: 'National Health Insurance', code: 'NHI' },
-    { id: 'ins_002', name: 'Star Health Insurance', code: 'STAR' },
-    { id: 'ins_003', name: 'ICICI Lombard', code: 'ICICI' },
-    { id: 'ins_004', name: 'Max Bupa Health', code: 'MAXB' },
-];
-
-const recentVerifications: any[] = [];
+type InsuranceProvider = { id: string; name: string; code: string };
+type BillingSummary = {
+    summary: {
+        total_billed: number;
+        total_paid: number;
+        total_count: number;
+        paid_count: number;
+        overdue_count: number;
+        open_count: number;
+    };
+    recent_invoices: Array<{
+        invoice_id: string;
+        patient: string;
+        status: string;
+        total: number;
+        paid: number;
+        balance: number;
+        issue_date: string;
+    }>;
+};
 
 export default function InsuranceVerification() {
+    const [providers, setProviders] = useState<InsuranceProvider[]>([]);
+    const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+    const [loadingSummary, setLoadingSummary] = useState(false);
     const [selectedProvider, setSelectedProvider] = useState('');
     const [policyNumber, setPolicyNumber] = useState('');
     const [patientId, setPatientId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [verificationResult, setVerificationResult] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchProviders = async () => {
+            try {
+                const response = await api.get('/billing/insurance/providers/');
+                setProviders(response.data?.providers || []);
+            } catch (err) {
+                console.error('Failed to load insurance providers:', err);
+            }
+        };
+        fetchProviders();
+    }, []);
+
+    useEffect(() => {
+        const fetchBillingSummary = async () => {
+            setLoadingSummary(true);
+            try {
+                const response = await api.get('/billing/admin/summary/');
+                setBillingSummary(response.data || null);
+            } catch (err) {
+                console.error('Failed to load billing summary:', err);
+            } finally {
+                setLoadingSummary(false);
+            }
+        };
+        fetchBillingSummary();
+    }, []);
 
     const handleVerify = async () => {
         if (!selectedProvider || !policyNumber || !patientId) {
@@ -104,6 +145,52 @@ export default function InsuranceVerification() {
                 </div>
             </Card>
 
+            {/* Billing Overview */}
+            <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-foreground">Billing Overview</h3>
+                    {loadingSummary && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                    <div className="rounded-lg border border-border p-4">
+                        <p className="text-xs uppercase text-muted-foreground">Total Billed</p>
+                        <p className="text-xl font-semibold text-foreground">
+                            ₹{Number(billingSummary?.summary?.total_billed || 0).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-4">
+                        <p className="text-xs uppercase text-muted-foreground">Total Paid</p>
+                        <p className="text-xl font-semibold text-foreground">
+                            ₹{Number(billingSummary?.summary?.total_paid || 0).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-4">
+                        <p className="text-xs uppercase text-muted-foreground">Open Invoices</p>
+                        <p className="text-xl font-semibold text-foreground">
+                            {Number(billingSummary?.summary?.open_count || 0).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-4">
+                        <p className="text-xs uppercase text-muted-foreground">Overdue</p>
+                        <p className="text-xl font-semibold text-foreground">
+                            {Number(billingSummary?.summary?.overdue_count || 0).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-4">
+                        <p className="text-xs uppercase text-muted-foreground">Paid Invoices</p>
+                        <p className="text-xl font-semibold text-foreground">
+                            {Number(billingSummary?.summary?.paid_count || 0).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-border p-4">
+                        <p className="text-xs uppercase text-muted-foreground">Total Invoices</p>
+                        <p className="text-xl font-semibold text-foreground">
+                            {Number(billingSummary?.summary?.total_count || 0).toLocaleString()}
+                        </p>
+                    </div>
+                </div>
+            </Card>
+
             {/* Verification Form */}
             <Card className="p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -122,11 +209,17 @@ export default function InsuranceVerification() {
                             className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="">Select Provider</option>
-                            {SUPPORTED_PROVIDERS.map((provider) => (
-                                <option key={provider.id} value={provider.id}>
-                                    {provider.name}
+                            {providers.length === 0 ? (
+                                <option value="" disabled>
+                                    No providers available
                                 </option>
-                            ))}
+                            ) : (
+                                providers.map((provider) => (
+                                    <option key={provider.id} value={provider.id}>
+                                        {provider.name}
+                                    </option>
+                                ))
+                            )}
                         </select>
                     </div>
 
@@ -242,32 +335,45 @@ export default function InsuranceVerification() {
                         <thead>
                             <tr className="border-b border-border">
                                 <th className="text-left py-3 px-4 font-semibold text-foreground">Patient</th>
-                                <th className="text-left py-3 px-4 font-semibold text-foreground">Policy Number</th>
-                                <th className="text-left py-3 px-4 font-semibold text-foreground">Provider</th>
+                                <th className="text-left py-3 px-4 font-semibold text-foreground">Invoice ID</th>
                                 <th className="text-left py-3 px-4 font-semibold text-foreground">Status</th>
-                                <th className="text-left py-3 px-4 font-semibold text-foreground">Timestamp</th>
+                                <th className="text-left py-3 px-4 font-semibold text-foreground">Issued</th>
+                                <th className="text-left py-3 px-4 font-semibold text-foreground">Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {recentVerifications.map((verification: any) => (
-                                <tr key={verification.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                                    <td className="py-3 px-4 font-medium text-foreground">{verification.patientName}</td>
-                                    <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{verification.policyNumber}</td>
-                                    <td className="py-3 px-4 text-foreground flex items-center gap-2">
-                                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                                        {verification.provider}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <span className={`text-xs font-medium px-2 py-1 rounded-full inline-flex items-center gap-1 ${getStatusColor(verification.status)}`}>
-                                            {getStatusIcon(verification.status)}
-                                            {verification.status}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-muted-foreground">
-                                        {new Date(verification.timestamp).toLocaleString()}
+                            {loadingSummary ? (
+                                <tr>
+                                    <td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                                        Loading recent invoices...
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (billingSummary?.recent_invoices ?? []).length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                                        No recent invoices found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                (billingSummary?.recent_invoices ?? []).slice(0, 5).map((invoice) => (
+                                    <tr key={invoice.invoice_id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                        <td className="py-3 px-4 font-medium text-foreground">{invoice.patient}</td>
+                                        <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{invoice.invoice_id}</td>
+                                        <td className="py-3 px-4">
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-full inline-flex items-center gap-1 ${getStatusColor(invoice.status)}`}>
+                                                {getStatusIcon(invoice.status)}
+                                                {invoice.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-4 text-muted-foreground">
+                                            {new Date(invoice.issue_date).toLocaleDateString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-muted-foreground">
+                                            ${Number(invoice.total || 0).toFixed(2)}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

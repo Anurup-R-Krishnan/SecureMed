@@ -1,6 +1,8 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db import models
+from django.db.models import Sum, Count
 from .models import Invoice, Payment
 from .serializers import InvoiceSerializer, PaymentSerializer
 from apps.accounts.users.permissions import IsPatient
@@ -14,6 +16,59 @@ PROVIDER_CODE_MAP = {
     'ins_003': 'icici lombard',
     'ins_004': 'max bupa health',
 }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_insurance_providers(request):
+    providers = [
+        {"id": key, "name": value.title(), "code": key.split('_')[-1].upper()}
+        for key, value in PROVIDER_CODE_MAP.items()
+    ]
+    return Response({"providers": providers})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_billing_summary(request):
+    user = request.user
+    if not user.is_staff and user.role != 'admin':
+        return Response({"error": "Unauthorized"}, status=403)
+
+    invoices = Invoice.objects.select_related('patient', 'patient__user').order_by('-issue_date')
+    totals = invoices.aggregate(
+        total_billed=Sum('total_amount'),
+        total_paid=Sum('paid_amount'),
+        total_count=Count('id'),
+        paid_count=Count('id', filter=models.Q(status='paid')),
+        overdue_count=Count('id', filter=models.Q(status='overdue')),
+        open_count=Count('id', filter=models.Q(status__in=['issued', 'partially_paid'])),
+    )
+
+    recent = []
+    for inv in invoices[:10]:
+        patient_name = inv.patient.user.get_full_name() if inv.patient and inv.patient.user else inv.patient.patient_id
+        recent.append({
+            "invoice_id": inv.invoice_id,
+            "patient": patient_name,
+            "status": inv.status,
+            "total": float(inv.total_amount),
+            "paid": float(inv.paid_amount),
+            "balance": float(inv.total_amount - inv.paid_amount),
+            "issue_date": inv.issue_date.isoformat(),
+        })
+
+    return Response({
+        "summary": {
+            "total_billed": float(totals.get('total_billed') or 0),
+            "total_paid": float(totals.get('total_paid') or 0),
+            "total_count": totals.get('total_count') or 0,
+            "paid_count": totals.get('paid_count') or 0,
+            "overdue_count": totals.get('overdue_count') or 0,
+            "open_count": totals.get('open_count') or 0,
+        },
+        "recent_invoices": recent,
+    })
 
 def get_patient_profile(user):
     if hasattr(user, 'patient_profile'):
