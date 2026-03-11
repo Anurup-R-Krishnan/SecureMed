@@ -72,6 +72,20 @@ export function runSimulation(
 ): void {
     const cx = width / 2;
     const cy = height / 2;
+    if (nodes.length > 260) {
+        const maxRadius = Math.max(20, Math.min(width, height) / 2 - 24);
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+        for (let i = 0; i < nodes.length; i++) {
+            const t = nodes.length > 1 ? i / (nodes.length - 1) : 0;
+            const r = Math.sqrt(t) * maxRadius;
+            const angle = i * goldenAngle;
+            nodes[i].x = cx + r * Math.cos(angle);
+            nodes[i].y = cy + r * Math.sin(angle);
+            nodes[i].vx = 0;
+            nodes[i].vy = 0;
+        }
+        return;
+    }
 
     for (let iter = 0; iter < iterations; iter++) {
         const alpha = 1 - iter / iterations;
