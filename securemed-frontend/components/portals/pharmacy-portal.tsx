@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { LogOut, CheckCircle, ShieldCheck, Search, QrCode, CameraOff, Pill, List } from 'lucide-react';
 import { pharmacyService, PharmacyOrder } from '@/services/pharmacy';
 import PharmacyInventory from './pharmacy/inventory-management';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,8 @@ export default function PharmacyPortal({ onLogout, currentTab: currentTabProp, o
     try {
       const data = await pharmacyService.getOrders();
       setOrders(data);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Unable to load pharmacy orders.');
     } finally {
       setLoading(false);
     }
@@ -87,6 +90,9 @@ export default function PharmacyPortal({ onLogout, currentTab: currentTabProp, o
     try {
       await pharmacyService.verifyOrder(orderId, verifyNotes[orderId] || '');
       await fetchOrders();
+      toast.success('Order verified.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to verify order.');
     } finally {
       setWorkingId(null);
     }
@@ -97,6 +103,9 @@ export default function PharmacyPortal({ onLogout, currentTab: currentTabProp, o
     try {
       await pharmacyService.fulfillOrder(orderId, pickupCode[orderId] || '');
       await fetchOrders();
+      toast.success('Order fulfilled.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to fulfill order.');
     } finally {
       setWorkingId(null);
     }
