@@ -400,7 +400,6 @@ def register_view(request):
 
 
 @api_view(['POST'])
-@authentication_classes([])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='5/m', block=True)
 def login_view(request):
