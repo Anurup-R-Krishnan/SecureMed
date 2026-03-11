@@ -44,6 +44,7 @@ export default function AnatomyEducationCard() {
     });
     const [activeRegion, setActiveRegion] = useState<string | null>(null);
     const [explainer, setExplainer] = useState<AnatomyRegionExplainer | null>(null);
+    const [explainerLoading, setExplainerLoading] = useState(false);
 
     // ── condition state ─────────────────────────────────────────────────────
     const [conditions, setConditions] = useState<ConditionCatalogItem[]>([]);
@@ -51,6 +52,7 @@ export default function AnatomyEducationCard() {
     const [visualization, setVisualization] = useState<ConditionVisualization | null>(null);
     const [visualRegion, setVisualRegion] = useState<string | null>(null);
     const [conditionMatches, setConditionMatches] = useState<ConditionMatchResult[]>([]);
+    const [catalogLoading, setCatalogLoading] = useState(false);
 
     // ── ui state ────────────────────────────────────────────────────────────
     const [loading, setLoading] = useState(false);
@@ -70,6 +72,7 @@ export default function AnatomyEducationCard() {
     // Fetch condition catalog once
     useEffect(() => {
         let mounted = true;
+        setCatalogLoading(true);
         fetchConditionCatalog('top20', 'patient')
             .then((data) => { if (mounted) { setConditions(data); setError(null); } })
             .catch((e: any) => { if (mounted) setError(e?.response?.data?.error || 'Unable to load conditions.'); });
@@ -80,9 +83,11 @@ export default function AnatomyEducationCard() {
     useEffect(() => {
         if (!activeRegion) { setExplainer(null); return; }
         let mounted = true;
+        setExplainerLoading(true);
         fetchRegionExplainer(activeRegion, 'patient')
             .then((data) => { if (mounted) { setExplainer(data); setError(null); } })
-            .catch((e: any) => { if (mounted) { setExplainer(null); setError(e?.response?.data?.error || 'Unable to load explainer.'); } });
+            .catch((e: any) => { if (mounted) { setExplainer(null); setError(e?.response?.data?.error || 'Unable to load explainer.'); } })
+            .finally(() => { if (mounted) setExplainerLoading(false); });
         return () => { mounted = false; };
     }, [activeRegion]);
 
@@ -146,6 +151,12 @@ export default function AnatomyEducationCard() {
     const handleConditionRegionSelect = (regionId: string) => {
         setVisualRegion(regionId);
         setActiveRegion(regionId);
+    };
+
+    const handleClearSelection = () => {
+        setSelection({ selectedRegions: [], selectedSymptoms: [], intensityByRegion: {} });
+        setActiveRegion(null);
+        setConditionMatches([]);
     };
 
     const currentConditionPain = visualization && visualRegion
@@ -218,7 +229,18 @@ export default function AnatomyEducationCard() {
                         <div className="flex items-center gap-2">
                             <Stethoscope className="h-4 w-4 text-muted-foreground" />
                             <p className="text-sm font-semibold text-foreground">Condition Visualization</p>
+                            {catalogLoading && (
+                                <span className="text-[10px] text-muted-foreground">Loading...</span>
+                            )}
                         </div>
+                        {selection.selectedRegions.length > 0 && !activeConditionId && (
+                            <button
+                                onClick={handleClearSelection}
+                                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                Clear selected regions
+                            </button>
+                        )}
                         <select
                             value={activeConditionId}
                             onChange={(e) => handleConditionChange(e.target.value)}
@@ -402,6 +424,9 @@ export default function AnatomyEducationCard() {
                             <div className="flex items-center gap-2">
                                 <BookOpen className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm font-semibold text-foreground">Region Explainer</p>
+                                {explainerLoading && (
+                                    <span className="text-[10px] text-muted-foreground">Loading...</span>
+                                )}
                             </div>
 
                             {activeRegion && explainer ? (
