@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface WorklistItem {
     id: number;
@@ -77,6 +78,7 @@ export default function LabTechnicianWorklist() {
             setWorklist(response.data);
         } catch (error) {
             console.error('Error fetching worklist:', error);
+            toast.error('Unable to load lab worklist.');
         } finally {
             setLoading(false);
         }
@@ -124,11 +126,14 @@ export default function LabTechnicianWorklist() {
 
                 // Show alert for critical values
                 if (response.data.is_critical) {
-                    alert('CRITICAL VALUE: Alert sent to ordering physician');
+                    toast.error('Critical value detected. Alert sent to ordering physician.');
+                } else {
+                    toast.success('Result submitted');
                 }
             }
         } catch (error) {
             console.error('Error submitting result:', error);
+            toast.error('Failed to submit result');
         } finally {
             setSubmitting(false);
         }
@@ -137,9 +142,10 @@ export default function LabTechnicianWorklist() {
     const handleFlagCritical = async (resultId: number) => {
         try {
             await api.post(`/labs/worklist/${resultId}/flag_critical/`);
-            alert('Result flagged as critical. Alert sent to ordering physician.');
+            toast.error('Result flagged as critical. Alert sent to ordering physician.');
         } catch (error) {
             console.error('Error flagging critical:', error);
+            toast.error('Failed to flag result as critical');
         }
     };
 

@@ -121,6 +121,7 @@ function CompletedTestsView() {
                 setData(payload);
             } catch (error) {
                 console.error('Error fetching lab history:', error);
+                toast({ title: 'Load failed', description: 'Could not load lab history.', variant: 'destructive' });
             } finally {
                 setLoading(false);
             }
@@ -135,6 +136,7 @@ function CompletedTestsView() {
             setData(payload);
         } catch (error) {
             console.error('Error fetching lab history:', error);
+            toast({ title: 'Refresh failed', description: 'Could not refresh lab history.', variant: 'destructive' });
         }
     };
 
