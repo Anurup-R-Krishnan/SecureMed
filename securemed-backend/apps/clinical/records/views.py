@@ -719,7 +719,7 @@ class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
         report = self.MedicationInteractionReport.objects.filter(patient=patient).prefetch_related('items').first()
         if not report:
             return Response({"detail": "No report found."}, status=status.HTTP_404_NOT_FOUND)
-        serializer = self.MedicationInteractionReportSerializer(report)
+        serializer = self.MedicationInteractionReportSerializer(report, context={"items_limit": 30})
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='reports')
@@ -728,7 +728,7 @@ class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
         if not patient:
             raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
         reports = self.MedicationInteractionReport.objects.filter(patient=patient).prefetch_related('items')[:20]
-        serializer = self.MedicationInteractionReportSerializer(reports, many=True)
+        serializer = self.MedicationInteractionReportSerializer(reports, many=True, context={"items_limit": 30})
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='reports/generate')

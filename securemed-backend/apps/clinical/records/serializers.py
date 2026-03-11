@@ -225,7 +225,10 @@ class MedicationInteractionReportItemSerializer(serializers.ModelSerializer):
 
 
 class MedicationInteractionReportSerializer(serializers.ModelSerializer):
-    items = MedicationInteractionReportItemSerializer(many=True, read_only=True)
+    items = serializers.SerializerMethodField()
+    items_total = serializers.SerializerMethodField()
+    items_truncated = serializers.SerializerMethodField()
+    items_limit = serializers.SerializerMethodField()
 
     class Meta:
         model = MedicationInteractionReport
@@ -250,7 +253,47 @@ class MedicationInteractionReportSerializer(serializers.ModelSerializer):
             'source_version',
             'created_at',
             'items',
+            'items_total',
+            'items_truncated',
+            'items_limit',
         ]
+
+    def _get_items_cache(self, obj):
+        cache_attr = "_report_items_cache"
+        if not hasattr(obj, cache_attr):
+            raw_items = list(obj.items.all())
+            deduped = []
+            seen = set()
+            for item in raw_items:
+                key = (
+                    item.finding_type,
+                    tuple(sorted(item.medications or [])),
+                    (item.side_effect or "").strip().lower(),
+                    item.severity,
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(item)
+            setattr(obj, cache_attr, deduped)
+        return getattr(obj, cache_attr)
+
+    def _get_items_limit(self):
+        return int(self.context.get("items_limit", 30))
+
+    def get_items(self, obj):
+        items = self._get_items_cache(obj)
+        limit = self._get_items_limit()
+        return MedicationInteractionReportItemSerializer(items[:limit], many=True).data
+
+    def get_items_total(self, obj):
+        return len(self._get_items_cache(obj))
+
+    def get_items_truncated(self, obj):
+        return len(self._get_items_cache(obj)) > self._get_items_limit()
+
+    def get_items_limit(self, obj):
+        return self._get_items_limit()
 
 
 class PharmacyOrderSerializer(serializers.ModelSerializer):
