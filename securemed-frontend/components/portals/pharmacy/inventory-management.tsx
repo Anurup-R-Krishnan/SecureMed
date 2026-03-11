@@ -87,9 +87,10 @@ export default function PharmacyInventory() {
         api.get('/pharmacy/transactions/')
       ]);
 
-      setDrugs(drugsRes.data.results || []);
-      setBatches(batchesRes.data.results || []);
-      setTransactions(transactionsRes.data.results || []);
+      const normalize = (res: any) => (Array.isArray(res.data) ? res.data : (res.data?.results || []));
+      setDrugs(normalize(drugsRes));
+      setBatches(normalize(batchesRes));
+      setTransactions(normalize(transactionsRes));
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
