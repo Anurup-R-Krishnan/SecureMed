@@ -13,6 +13,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from django.core.management import call_command
 from django.utils import timezone
 
 User = get_user_model()
@@ -183,6 +184,11 @@ class Command(BaseCommand):
         self._seed_referrals(patients, doctors, depts)
         self._seed_invoices(patients, appointments)
         self._seed_wellness_tips()
+        try:
+            self.stdout.write("[-] Seeding anatomy education content...")
+            call_command("seed_anatomy_content")
+        except Exception as exc:
+            self.stdout.write(self.style.WARNING(f"  [!] Anatomy content seed skipped: {exc}"))
 
         self.stdout.write(self.style.SUCCESS("\n[+] Seeding complete!"))
         self._print_role_summary()
@@ -503,6 +509,31 @@ class Command(BaseCommand):
                     break
                 attempts += 1
         self.stdout.write(f"    Created {len(result)} appointments")
+
+        # Ensure two spotlight patients have multi-doctor histories.
+        if len(patients) >= 2 and len(doctors) >= 2:
+            spotlight_patients = patients[:2]
+            spotlight_doctors = doctors[:min(3, len(doctors))]
+            for p_index, pat in enumerate(spotlight_patients, start=1):
+                for d_index, doc in enumerate(spotlight_doctors, start=1):
+                    appt_date = date.today() - timedelta(days=10 + (p_index * 2) + d_index)
+                    appt_time = time(9 + (d_index % 4), 0)
+                    appt_id = f"APT-SPOT-{p_index}{d_index}-{pat.id}-{doc.id}"
+                    appt, created = Appointment.objects.get_or_create(
+                        appointment_id=appt_id,
+                        defaults={
+                            "patient": pat,
+                            "doctor": doc,
+                            "appointment_date": appt_date,
+                            "appointment_time": appt_time,
+                            "status": "completed",
+                            "reason": "Multi-specialist follow-up",
+                            "created_by": pat.user,
+                        },
+                    )
+                    if created:
+                        result.append(appt)
+            self.stdout.write("    Added spotlight multi-doctor appointment history")
         return result
 
     def _seed_pharmacy_data(self):

@@ -425,7 +425,9 @@ export default function AnatomyEducationCard() {
                                         </div>
                                     ) : (
                                         <p className="text-xs text-muted-foreground">
-                                            {matching ? 'Generating AI matches...' : 'Select regions and pain levels to get AI-matched conditions.'}
+                                            {matching
+                                                ? 'Generating matches from your selected regions...'
+                                                : 'Select one or more regions and rate pain to see educational condition suggestions. This is not a diagnosis.'}
                                         </p>
                                     )}
                                 </div>
