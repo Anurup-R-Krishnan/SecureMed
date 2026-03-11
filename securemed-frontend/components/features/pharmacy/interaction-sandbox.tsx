@@ -138,6 +138,28 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
     const maxVisibleFindings = 30;
     const truncatedFindings = visibleFindings.length > maxVisibleFindings;
     const limitedVisibleFindings = visibleFindings.slice(0, maxVisibleFindings);
+    const summary = useMemo(() => {
+        const effectCounts = new Map<string, number>();
+        const combos = new Set<string>();
+        for (const finding of limitedVisibleFindings) {
+            if (finding.side_effect) {
+                const key = finding.side_effect.trim();
+                effectCounts.set(key, (effectCounts.get(key) || 0) + 1);
+            }
+            const meds = [...finding.medications].sort().join(' + ');
+            combos.add(`${finding.combination_size}|${meds}`);
+        }
+        const topEffects = Array.from(effectCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([effect, count]) => `${effect} (${count})`);
+
+        return {
+            totalFindings: limitedVisibleFindings.length,
+            totalCombos: combos.size,
+            topEffects,
+        };
+    }, [limitedVisibleFindings]);
     const hasInteractions = interactionFindings.length > 0;
     const groupedInteractionFindings = useMemo(
         () => buildFindingGroups(limitedVisibleFindings.filter((f) => f.combination_size >= 2)),
@@ -439,6 +461,15 @@ export function MedicationSandbox({ mode, patientId }: MedicationSandboxProps) {
                         </motion.div>
                     ) : (
                         <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 space-y-4">
+                            <div className="rounded-lg border bg-background p-3 text-xs text-muted-foreground">
+                                <div className="flex flex-wrap gap-3">
+                                    <span><strong className="text-foreground">{summary.totalFindings}</strong> findings</span>
+                                    <span><strong className="text-foreground">{summary.totalCombos}</strong> combinations</span>
+                                    {summary.topEffects.length > 0 && (
+                                        <span className="text-foreground">Top effects: {summary.topEffects.join(', ')}</span>
+                                    )}
+                                </div>
+                            </div>
                             {truncatedFindings && (
                                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                                     Showing the top {maxVisibleFindings} findings. Refine medications to narrow results.

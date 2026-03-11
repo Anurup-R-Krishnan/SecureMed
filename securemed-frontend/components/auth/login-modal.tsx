@@ -66,7 +66,6 @@ export default function LoginModal({ isOpen, onClose, redirectTo }: LoginModalPr
     };
 
     const handleRegisterClick = () => {
-        onClose();
         const registerUrl = redirectTo ? `/register?next=${encodeURIComponent(redirectTo)}` : '/register';
         router.push(registerUrl);
     };
