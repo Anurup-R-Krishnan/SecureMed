@@ -64,7 +64,8 @@ export default function LabsPage() {
     const fetchResults = async () => {
         setResultsLoading(true);
         try {
-            const res = await api.get('/labs/results/');
+            const params = preselectPatientId ? { patient_id: preselectPatientId } : undefined;
+            const res = await api.get('/labs/results/', { params });
             const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
             setResults(data);
         } catch (error) {
@@ -77,7 +78,7 @@ export default function LabsPage() {
     useEffect(() => {
         if (!isAuthenticated) return;
         fetchResults();
-    }, [isAuthenticated]);
+    }, [isAuthenticated, preselectPatientId]);
 
     const handleRelease = async (id: number) => {
         setReleaseId(id);
