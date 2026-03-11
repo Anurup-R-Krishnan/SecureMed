@@ -245,9 +245,12 @@ function CompletedTestsView() {
             ),
         },
         {
-            accessorKey: 'completed_at',
+            accessorKey: 'processed_at',
             header: 'Completed At',
-            cell: ({ row }) => new Date(row.getValue('completed_at')).toLocaleString(),
+            cell: ({ row }) => {
+                const value = row.getValue('processed_at');
+                return value ? new Date(value as string).toLocaleString() : '—';
+            },
         },
     ];
 
@@ -317,7 +320,7 @@ function ReportsView() {
                 row.result_value || '',
                 row.units || '',
                 row.flag || '',
-                row.completed_at || '',
+                row.processed_at || '',
             ]));
             const csv = [header, ...lines]
                 .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
