@@ -187,7 +187,7 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                             <div key={apt.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors group">
                                 <div className="flex items-center gap-4">
                                     <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold shrink-0">
-                                        {apt.doctor_name ? apt.doctor_name.charAt(4) : 'D'}
+                                        {apt.doctor_name?.trim().charAt(0) || 'D'}
                                     </div>
                                     <div className="min-w-0">
                                         <p className="font-semibold text-foreground truncate">{apt.doctor_name || 'Doctor'}</p>
