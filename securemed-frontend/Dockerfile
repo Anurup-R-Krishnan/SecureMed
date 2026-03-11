@@ -21,11 +21,8 @@ ENV NODE_ENV=production \
     PORT=8080 \
     HOSTNAME=0.0.0.0
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends shadow \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system --gid 1001 nodejs \
-    && useradd --system --uid 1001 --gid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs \
+    && useradd --system --uid 1001 --gid 1001 --gid nodejs nextjs
 
 # output: 'standalone' copies server.js to .next/standalone/ — copy its contents into /app
 COPY --from=builder --chown=nextjs:nodejs /app/public               ./public
