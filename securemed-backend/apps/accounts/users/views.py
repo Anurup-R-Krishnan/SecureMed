@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.mail import send_mail
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 try:
     from django_ratelimit.decorators import ratelimit
 except ImportError:
@@ -398,7 +399,7 @@ def register_view(request):
     print("="*70 + "\n")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='5/m', block=True)
