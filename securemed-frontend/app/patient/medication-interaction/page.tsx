@@ -1,12 +1,15 @@
 'use client';
 
 import React from 'react';
+import { useAuth } from '@/context/auth-context';
 import { MedicationSandbox } from '@/components/features/pharmacy/interaction-sandbox';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Info } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PatientMedicationInteractionPage() {
+    const { user } = useAuth();
+    const patientId = user?.patient_profile?.patient_id;
     return (
         <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6 animate-in fade-in duration-500">
             <div className="flex items-center gap-4 border-b pb-4">
@@ -33,7 +36,10 @@ export default function PatientMedicationInteractionPage() {
             </div>
 
             <div className="bg-card border rounded-2xl shadow-sm overflow-hidden">
-                <MedicationSandbox mode="patient" />
+                <MedicationSandbox
+                    mode="patient"
+                    patientId={patientId ? parseInt(patientId, 10) : undefined}
+                />
             </div>
         </div>
     );

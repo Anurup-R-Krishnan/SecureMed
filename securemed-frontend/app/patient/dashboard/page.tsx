@@ -102,7 +102,7 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            <PatientDashboard onNavigate={handleNavigate} />
+            <PatientDashboard onNavigate={handleNavigate} patientId={user?.patient_profile?.patient_id} />
 
             {user?.patient_profile?.patient_id && (
                 <div className="mt-8">

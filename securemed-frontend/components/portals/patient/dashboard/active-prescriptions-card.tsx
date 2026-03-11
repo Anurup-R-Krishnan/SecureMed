@@ -22,9 +22,10 @@ interface Prescription {
 interface ActivePrescriptionsCardProps {
     prescriptions: Prescription[];
     onNavigate: (tab: any, params?: Record<string, string>) => void;
+    patientId?: string;
 }
 
-export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: ActivePrescriptionsCardProps) {
+export default function ActivePrescriptionsCard({ prescriptions, onNavigate, patientId }: ActivePrescriptionsCardProps) {
     const [downloadingReport, setDownloadingReport] = useState(false);
     const [reportError, setReportError] = useState('');
 
@@ -32,7 +33,8 @@ export default function ActivePrescriptionsCard({ prescriptions, onNavigate }: A
         try {
             setDownloadingReport(true);
             setReportError('');
-            const blob = await drugInteractionService.downloadReportPDFWithGeneration();
+            const resolvedPatientId = patientId ? parseInt(patientId, 10) : undefined;
+            const blob = await drugInteractionService.downloadReportPDFWithGeneration(resolvedPatientId);
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

@@ -95,7 +95,8 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
     try {
       setDownloadingReport(true);
       setReportError('');
-      const blob = await drugInteractionService.downloadReportPDFWithGeneration();
+      const resolvedPatientId = patientId ? parseInt(patientId, 10) : undefined;
+      const blob = await drugInteractionService.downloadReportPDFWithGeneration(resolvedPatientId);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

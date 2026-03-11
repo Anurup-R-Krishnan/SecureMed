@@ -32,9 +32,10 @@ interface Appointment extends Omit<BaseAppointment, 'doctor_name'> {
 
 interface PatientDashboardProps {
     onNavigate: (tab: any, params?: Record<string, string>) => void;
+    patientId?: string;
 }
 
-export default function PatientDashboard({ onNavigate }: PatientDashboardProps) {
+export default function PatientDashboard({ onNavigate, patientId }: PatientDashboardProps) {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [dashboardStats, setDashboardStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -160,6 +161,7 @@ export default function PatientDashboard({ onNavigate }: PatientDashboardProps) 
                 <ActivePrescriptionsCard
                     prescriptions={dashboardStats?.active_prescriptions || []}
                     onNavigate={onNavigate}
+                    patientId={patientId}
                 />
                 <LabResultsCard
                     results={dashboardStats?.recent_lab_results || []}
