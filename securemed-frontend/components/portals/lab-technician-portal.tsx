@@ -127,7 +127,7 @@ function CompletedTestsView() {
             }
         };
         fetchHistory();
-    }, []);
+    }, [toast]);
 
     const refreshHistory = async () => {
         try {
