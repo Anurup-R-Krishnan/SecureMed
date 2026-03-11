@@ -16,4 +16,4 @@ if [ "${DEV_SERVER:-false}" = "true" ]; then
   exec python manage.py runserver 0.0.0.0:8000
 fi
 
-exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --timeout 120 --workers 2
+exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --timeout 120 --workers 8 --worker-class gthread --threads 2

@@ -111,6 +111,7 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='securemed_db_password'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
+        'CONN_MAX_AGE': 60,
     }
 }
 
@@ -327,6 +328,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_TASK_ALWAYS_EAGER', '').lower() in {'1', 'true', 'yes'}
 
 # Cache Configuration (Redis-first)
 CACHES = {
