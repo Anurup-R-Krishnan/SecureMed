@@ -21,6 +21,14 @@ export default function AdminTabPage() {
     useEffect(() => {
         if (isLoading) return;
         if (!isAuthenticated) {
+            if (typeof window !== 'undefined') {
+                const postLogout = window.localStorage.getItem('post_logout_redirect');
+                if (postLogout) {
+                    window.localStorage.removeItem('post_logout_redirect');
+                    router.replace(postLogout);
+                    return;
+                }
+            }
             router.push(ROUTES.LOGIN);
             return;
         }

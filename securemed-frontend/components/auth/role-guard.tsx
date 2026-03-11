@@ -20,6 +20,14 @@ export default function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
     useEffect(() => {
         if (isLoading) return;
         if (!isAuthenticated) {
+            if (typeof window !== 'undefined') {
+                const postLogout = window.localStorage.getItem('post_logout_redirect');
+                if (postLogout) {
+                    window.localStorage.removeItem('post_logout_redirect');
+                    router.replace(postLogout);
+                    return;
+                }
+            }
             const next = encodeURIComponent(pathname);
             router.replace(`${ROUTES.LOGIN}?next=${next}`);
         }

@@ -382,6 +382,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setTokens(null);
         localStorage.removeItem('auth_tokens');
         localStorage.removeItem('auth_user');
+        localStorage.setItem('post_logout_redirect', '/');
 
         toast({
             title: 'Logged out',
