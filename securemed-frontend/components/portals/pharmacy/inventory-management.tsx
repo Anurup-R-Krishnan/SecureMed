@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { AlertCircle, Package, TrendingDown, Calendar, Plus, AlertTriangle, LogOut, Search } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import api from '@/lib/api';
+import { toast } from 'sonner';
 
 interface Drug {
   id: number;
@@ -93,6 +94,7 @@ export default function PharmacyInventory() {
       setTransactions(normalize(transactionsRes));
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Unable to load pharmacy inventory data.');
     } finally {
       setLoading(false);
     }
@@ -106,9 +108,11 @@ export default function PharmacyInventory() {
         setShowAddDrug(false);
         setDrugForm({ drug_code: '', name: '', generic_name: '', manufacturer: '', dosage_form: 'tablet', strength: '', unit_price: '', reorder_level: '' });
         fetchData();
+        toast.success('Drug added.');
       }
     } catch (error) {
       console.error('Error adding drug:', error);
+      toast.error('Failed to add drug.');
     }
   };
 
@@ -120,9 +124,11 @@ export default function PharmacyInventory() {
         setShowAddBatch(false);
         setBatchForm({ drug: '', batch_number: '', quantity: '', expiry_date: '', supplier: '', purchase_price: '' });
         fetchData();
+        toast.success('Batch added.');
       }
     } catch (error) {
       console.error('Error adding batch:', error);
+      toast.error('Failed to add batch.');
     }
   };
 
@@ -134,17 +140,22 @@ export default function PharmacyInventory() {
         setShowTransaction(false);
         setTransactionForm({ drug: '', transaction_type: 'purchase', quantity: '', notes: '' });
         fetchData();
+        toast.success('Transaction recorded.');
       }
     } catch (error) {
       console.error('Error creating transaction:', error);
+      toast.error('Failed to record transaction.');
     }
   };
 
-  const filteredDrugs = drugs.filter(d =>
-    d.name.toLowerCase().includes(search.toLowerCase()) ||
-    d.generic_name.toLowerCase().includes(search.toLowerCase()) ||
-    d.drug_code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredDrugs = drugs.filter((d) => {
+    const term = search.toLowerCase();
+    return (
+      String(d.name || '').toLowerCase().includes(term) ||
+      String(d.generic_name || '').toLowerCase().includes(term) ||
+      String(d.drug_code || '').toLowerCase().includes(term)
+    );
+  });
 
   const lowStockDrugs = drugs.filter(d => d.needs_reorder);
   const expiringBatches = batches.filter(b => !b.is_expired && b.days_to_expiry <= 90);
