@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import logging
 import os
+import secrets
 from pathlib import Path
 from decouple import config
 
@@ -20,10 +22,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-SECRET_KEY = config(
-    'SECRET_KEY',
-    default='django-insecure-9n6%5e1y^f7v8t4x2qz0p3m8k1b6c9d2r5w7u3a1s0d4h8j'
-)
+_logger = logging.getLogger('security')
+_secret_key = config('SECRET_KEY', default=None)
+if _secret_key:
+    SECRET_KEY = _secret_key
+else:
+    SECRET_KEY = secrets.token_urlsafe(64)
+    _logger.warning('SECRET_KEY not set; generated ephemeral key for this process.')
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 
@@ -108,7 +113,7 @@ DATABASES = {
         'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
         'NAME': config('DB_NAME', default='securemed'),
         'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='securemed_db_password'),
+        'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
         'CONN_MAX_AGE': 60,
@@ -243,15 +248,27 @@ SECURE_SSL = os.environ.get('DJANGO_SECURE_SSL', 'False') == 'True'
 
 # MFA Feature Flag (disabled by default)
 MFA_ENABLED = os.environ.get('MFA_ENABLED', 'True') == 'True'
+MFA_TOTP_VALID_WINDOW = max(
+    1,
+    min(config('MFA_TOTP_VALID_WINDOW', default=1, cast=int), 2)
+)
 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # HTTPS-only cookies (enabled in production via DJANGO_SECURE_SSL env var)
 # For localhost development: DJANGO_SECURE_SSL should not be set (defaults to False)
 # For production deployment: set DJANGO_SECURE_SSL=True in environment
 SESSION_COOKIE_SECURE = SECURE_SSL
 CSRF_COOKIE_SECURE = SECURE_SSL
+if SECURE_SSL:
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Google reCAPTCHA Configuration
 # For local development, uses Google's test keys (always pass)
@@ -345,7 +362,7 @@ CACHES = {
 # Neo4j Graph Database Configuration
 NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
 NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
-NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'securemed_graph')
+NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', '')
 
 # Google Gemini AI — set GOOGLE_GEMINI_API_KEY in your .env file
 GOOGLE_GEMINI_API_KEY = config('GOOGLE_GEMINI_API_KEY', default='')

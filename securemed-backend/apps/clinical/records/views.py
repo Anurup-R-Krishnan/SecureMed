@@ -1,4 +1,5 @@
 from django.shortcuts import render
+import logging
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.exceptions import ValidationError, PermissionDenied
@@ -15,6 +16,8 @@ from .interaction_service import (
     evaluate_medication_safety,
     get_active_medications_for_patient,
 )
+
+logger = logging.getLogger('security')
 
 class MedicalRecordViewSet(viewsets.ModelViewSet):
     serializer_class = MedicalRecordSerializer
@@ -1115,8 +1118,8 @@ def patient_dashboard_stats(request):
                      health_score -= 5
                      
                 health_score = max(0, min(100, int(health_score)))
-            except Exception as e:
-                print(f"Error calculating health score: {e}")
+            except Exception:
+                logger.exception("Health score calculation failed; using fallback.")
                 health_score = 85
         
         # 3. Active Prescriptions (FULL DETAILS - NO MOCK DATA)
@@ -1226,10 +1229,8 @@ def patient_dashboard_stats(request):
             "health_insights": health_insights,
             "patient_name": f"{user.first_name} {user.last_name}"
         })
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"CRITICAL ERROR in patient_dashboard_stats: {str(e)}")
+    except Exception:
+        logger.exception("Patient dashboard stats failed.")
         return Response(
             {"error": "Failed to load dashboard data. Please try again."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

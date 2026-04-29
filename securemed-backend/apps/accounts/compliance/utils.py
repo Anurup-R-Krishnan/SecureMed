@@ -1,4 +1,6 @@
 from django.utils import timezone
+from django.db import DatabaseError
+import logging
 from .models import Consent
 
 
@@ -106,7 +108,8 @@ class PrivacyEngine:
         except Consent.DoesNotExist:
             # No consent record found - anonymize by default
             return PrivacyEngine.anonymize_name(full_name)
-        except Exception as e:
+        except DatabaseError:
             # Any other error - fail safe by anonymizing
-            print(f"Error checking consent: {e}")
+            logger.exception("Consent lookup failed; anonymizing patient name.")
             return PrivacyEngine.anonymize_name(full_name)
+logger = logging.getLogger('security')

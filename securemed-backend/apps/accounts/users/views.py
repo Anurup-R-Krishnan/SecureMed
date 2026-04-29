@@ -1,8 +1,10 @@
 from datetime import timedelta
+import logging
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.mail import send_mail
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 try:
     from django_ratelimit.decorators import ratelimit
@@ -16,6 +18,7 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 import pyotp
 import jwt
 import secrets
@@ -41,6 +44,7 @@ from .serializers import (
 from apps.platform.analytics.audit import log_audit, get_client_ip
 
 User = get_user_model()
+logger = logging.getLogger('security')
 
 # Constants
 MAX_FAILED_ATTEMPTS = 5
@@ -95,38 +99,29 @@ def verify_temp_token(token):
         payload = jwt.decode(token, settings.JWT_SIGNING_KEY, algorithms=['HS256'])
         
         # Check if token type is correct
-        if payload.get('type') == 'mfa_temp':
-            user_id = payload.get('user_id')
-            print(f"[MFA] Token verified successfully for user_id: {user_id}")
-            return user_id
-        else:
-            print(f"[MFA] Token verification failed: Invalid token type '{payload.get('type')}' (expected 'mfa_temp')")
+        if payload.get('type') != 'mfa_temp':
+            logger.warning("MFA temp token rejected: invalid token type.")
             return None
+        user_id = payload.get('user_id')
+        if not user_id:
+            logger.warning("MFA temp token rejected: missing user_id.")
+            return None
+        return user_id
             
-    except jwt.ExpiredSignatureError as e:
-        print(f"[MFA] Token verification failed: Token has expired")
-        print(f"[MFA] Error details: {str(e)}")
+    except jwt.ExpiredSignatureError:
+        logger.info("MFA temp token expired.")
         return None
         
-    except jwt.InvalidSignatureError as e:
-        print(f"[MFA] Token verification failed: Invalid signature (possible key mismatch)")
-        print(f"[MFA] Error details: {str(e)}")
+    except jwt.InvalidSignatureError:
+        logger.warning("MFA temp token rejected: invalid signature.")
         return None
         
-    except jwt.DecodeError as e:
-        print(f"[MFA] Token verification failed: Decode error (malformed token)")
-        print(f"[MFA] Error details: {str(e)}")
+    except jwt.DecodeError:
+        logger.warning("MFA temp token rejected: decode error.")
         return None
         
-    except jwt.InvalidTokenError as e:
-        print(f"[MFA] Token verification failed: Invalid token")
-        print(f"[MFA] Error details: {str(e)}")
-        return None
-        
-    except Exception as e:
-        print(f"[MFA] Token verification failed: Unexpected error")
-        print(f"[MFA] Error type: {type(e).__name__}")
-        print(f"[MFA] Error details: {str(e)}")
+    except jwt.InvalidTokenError:
+        logger.warning("MFA temp token rejected: invalid token.")
         return None
 
 
@@ -138,46 +133,45 @@ def get_user_data_with_profile(user):
     data = UserSerializer(user).data
     
     # Enrich with doctor profile data if available
-    if hasattr(user, 'doctor_profile'):
-        try:
-            doctor = user.doctor_profile
-            data['doctor_profile'] = {
-                'doctor_id': doctor.doctor_id,
-                'specialization': doctor.specialization,
-                'specialization_display': doctor.get_specialization_display(),
-                'qualification': doctor.qualification,
-                'experience_years': doctor.experience_years,
-                'department_name': doctor.department.name if doctor.department else None,
-                'department_code': doctor.department.code if doctor.department else None,
-                'consultation_fee': str(doctor.consultation_fee),
-                'rating': str(doctor.rating),
-                'reviews': doctor.reviews,
-                'is_available': doctor.is_available,
-            }
-        except Exception as e:
-            print(f"[USER PROFILE] Error loading doctor profile: {e}")
+    try:
+        doctor = user.doctor_profile
+    except ObjectDoesNotExist:
+        doctor = None
+    if doctor:
+        data['doctor_profile'] = {
+            'doctor_id': doctor.doctor_id,
+            'specialization': doctor.specialization,
+            'specialization_display': doctor.get_specialization_display(),
+            'qualification': doctor.qualification,
+            'experience_years': doctor.experience_years,
+            'department_name': doctor.department.name if doctor.department else None,
+            'department_code': doctor.department.code if doctor.department else None,
+            'consultation_fee': str(doctor.consultation_fee),
+            'rating': str(doctor.rating),
+            'reviews': doctor.reviews,
+            'is_available': doctor.is_available,
+        }
             
-    # Enrich with patient profile data if available
-    if hasattr(user, 'patient_profile'):
-        try:
-            patient = user.patient_profile
-            data['patient_profile'] = {
-                'patient_id': patient.patient_id,
-                'date_of_birth': patient.date_of_birth,
-                'gender': patient.gender,
-                'blood_group': patient.blood_group,
-                'phone': patient.phone,
-                'address': patient.address,
-                'city': patient.city,
-                'state': patient.state,
-                'postal_code': patient.postal_code,
-                'insurance_provider': patient.insurance_provider,
-                'insurance_number': patient.insurance_number,
-                'allergies': patient.allergies,
-                'chronic_conditions': patient.chronic_conditions,
-            }
-        except Exception as e:
-            print(f"[USER PROFILE] Error loading patient profile: {e}")
+    try:
+        patient = user.patient_profile
+    except ObjectDoesNotExist:
+        patient = None
+    if patient:
+        data['patient_profile'] = {
+            'patient_id': patient.patient_id,
+            'date_of_birth': patient.date_of_birth,
+            'gender': patient.gender,
+            'blood_group': patient.blood_group,
+            'phone': patient.phone,
+            'address': patient.address,
+            'city': patient.city,
+            'state': patient.state,
+            'postal_code': patient.postal_code,
+            'insurance_provider': patient.insurance_provider,
+            'insurance_number': patient.insurance_number,
+            'allergies': patient.allergies,
+            'chronic_conditions': patient.chronic_conditions,
+        }
     
     return data
 
@@ -281,20 +275,12 @@ def register_view(request):
     if x_forwarded_for:
         ip_address = x_forwarded_for.split(',')[0].strip()
     
-    # Log registration attempt
-    print("\n" + "="*70)
-    print("REGISTRATION ATTEMPT - AUDIT LOG")
-    print("="*70)
-    print(f"Timestamp: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-    print(f"IP Address: {ip_address}")
-    print(f"Email: {request.data.get('email', 'Not provided')}")
-    print(f"Username: {request.data.get('username', 'Not provided')}")
+    logger.info("Registration attempt from ip %s", ip_address)
     
     # Validate invitation token before proceeding
     token = request.data.get('token')
     if not token:
-        print(f"Status: FAILED - No invitation token provided")
-        print("="*70 + "\n")
+        logger.warning("Registration failed: missing invitation token (ip %s)", ip_address)
         return Response({
             'error': 'Invitation token is required for registration'
         }, status=status.HTTP_400_BAD_REQUEST)
@@ -305,38 +291,26 @@ def register_view(request):
         
         # Check if invitation is valid
         if invitation.is_used:
-            print(f"Status: FAILED - Invitation already used")
-            print(f"Used by: {invitation.used_by.username if invitation.used_by else 'Unknown'}")
-            print(f"Used at: {invitation.used_at}")
-            print("="*70 + "\n")
+            logger.warning("Registration failed: invitation already used (ip %s)", ip_address)
             return Response({
                 'error': 'This invitation has already been used'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         if timezone.now() > invitation.expires_at:
-            print(f"Status: FAILED - Invitation expired")
-            print(f"Expired at: {invitation.expires_at}")
-            print("="*70 + "\n")
+            logger.warning("Registration failed: invitation expired (ip %s)", ip_address)
             return Response({
                 'error': 'This invitation has expired'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Verify email matches invitation
         if request.data.get('email') != invitation.email:
-            print(f"Status: FAILED - Email mismatch")
-            print(f"Expected: {invitation.email}")
-            print(f"Provided: {request.data.get('email')}")
-            print("="*70 + "\n")
+            logger.warning("Registration failed: invitation email mismatch (ip %s)", ip_address)
             return Response({
                 'error': 'Email does not match invitation'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        print(f"Invitation Token: Valid")
-        print(f"Invited by: {invitation.sent_by.username}")
-        
     except Invitation.DoesNotExist:
-        print(f"Status: FAILED - Invalid invitation token")
-        print("="*70 + "\n")
+        logger.warning("Registration failed: invalid invitation token (ip %s)", ip_address)
         return Response({
             'error': 'Invalid invitation token'
         }, status=status.HTTP_404_NOT_FOUND)
@@ -371,7 +345,6 @@ def register_view(request):
                 state=request.data.get('state', 'Not provided'),
                 postal_code=request.data.get('postal_code', '000000'),
             )
-            print(f"Patient profile created: {patient_id}")
         
         # Audit: registration
         log_audit(
@@ -382,20 +355,14 @@ def register_view(request):
             description=f'New user registered: {user.email} (role: {user.role})',
             ip_address=get_client_ip(request),
         )
-        
-        print(f"Status: SUCCESS - User registered")
-        print(f"User ID: {user.id}")
-        print(f"Invitation marked as used")
-        print("="*70 + "\n")
+        logger.info("Registration succeeded for user_id=%s", user.id)
         
         return Response({
             'message': 'User registered successfully',
             'user': UserSerializer(user).data
         }, status=status.HTTP_201_CREATED)
     
-    print(f"Status: FAILED - Validation errors")
-    print(f"Errors: {serializer.errors}")
-    print("="*70 + "\n")
+    logger.warning("Registration failed: validation errors")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -620,9 +587,7 @@ def mfa_verify_view(request):
             description=f'MFA enabled for {user.email}',
             ip_address=get_client_ip(request),
         )
-        
-        print(f"[MFA VERIFY] MFA enabled for user {user.username}")
-        print(f"[MFA VERIFY] Generated {len(plain_codes)} recovery codes")
+        logger.info("MFA enabled for user_id=%s", user.id)
         
         return Response({
             'message': 'MFA enabled successfully',
@@ -654,51 +619,33 @@ def mfa_deactivate_view(request):
     """
     if not getattr(settings, 'MFA_ENABLED', False):
         return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    print("\n" + "="*70)
-    print("[MFA DEACTIVATE] Request received")
-    print("="*70)
     
     # Validate request data (includes password check in serializer)
     serializer = MFADeactivateSerializer(data=request.data, context={'request': request})
     if not serializer.is_valid():
-        print(f"[MFA DEACTIVATE] Validation failed: {serializer.errors}")
-        print("="*70 + "\n")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     user = request.user
     otp = serializer.validated_data['otp']
     
-    print(f"[MFA DEACTIVATE] User: {user.username} (ID: {user.id})")
-    print(f"[MFA DEACTIVATE] Password verified: ✓")
-    print(f"[MFA DEACTIVATE] MFA currently enabled: {user.mfa_enabled}")
-    
     # Verify MFA secret exists
     if not user.mfa_secret:
-        print(f"[MFA DEACTIVATE] FAILED - No MFA secret found")
-        print("="*70 + "\n")
         return Response({
             'error': 'MFA secret not found'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     # Verify OTP with valid_window=3 (allows ±90 seconds time drift)
     totp = pyotp.TOTP(user.mfa_secret)
-    print(f"[MFA DEACTIVATE] Verifying OTP with valid_window=3")
-    print(f"[MFA DEACTIVATE] OTP received: {otp}")
     
     otp_valid = totp.verify(otp, valid_window=3)
-    print(f"[MFA DEACTIVATE] OTP verification result: {otp_valid}")
     
     if not otp_valid:
-        print(f"[MFA DEACTIVATE] FAILED - Invalid OTP code")
-        print("="*70 + "\n")
+        logger.warning("MFA deactivation failed: invalid OTP (user_id=%s)", user.id)
         return Response({
             'error': 'Invalid OTP code'
         }, status=status.HTTP_401_UNAUTHORIZED)
     
     # Both password and OTP verified - deactivate MFA
-    print(f"[MFA DEACTIVATE] Both password and OTP verified ✓")
-    print(f"[MFA DEACTIVATE] Deactivating MFA for user {user.username}")
     
     # Clear MFA settings
     user.mfa_enabled = False
@@ -714,15 +661,7 @@ def mfa_deactivate_view(request):
         description=f'MFA disabled for {user.email}',
         ip_address=get_client_ip(request),
     )
-    
-    # Audit log
-    print(f"[MFA DEACTIVATE] ✅ SUCCESS")
-    print(f"[MFA DEACTIVATE] User: {user.username} (ID: {user.id})")
-    print(f"[MFA DEACTIVATE] Email: {user.email}")
-    print(f"[MFA DEACTIVATE] Timestamp: {timezone.now()}")
-    print(f"[MFA DEACTIVATE] MFA enabled: {user.mfa_enabled}")
-    print(f"[MFA DEACTIVATE] MFA secret cleared: {user.mfa_secret is None}")
-    print("="*70 + "\n")
+    logger.info("MFA disabled for user_id=%s", user.id)
     
     return Response({
         'message': 'MFA deactivated successfully'
@@ -748,37 +687,20 @@ def regenerate_recovery_codes_view(request):
     """
     if not getattr(settings, 'MFA_ENABLED', False):
         return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    print("\n" + "="*70)
-    print("[RECOVERY CODES] Regeneration request received")
-    print("="*70)
     
     # Validate request data (includes password check in serializer)
     serializer = RegenerateRecoveryCodesSerializer(data=request.data, context={'request': request})
     if not serializer.is_valid():
-        print(f"[RECOVERY CODES] Validation failed: {serializer.errors}")
-        print("="*70 + "\n")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     user = request.user
-    
-    print(f"[RECOVERY CODES] User: {user.username} (ID: {user.id})")
-    print(f"[RECOVERY CODES] Password verified: ✓")
-    print(f"[RECOVERY CODES] Old recovery codes count: {len(user.mfa_recovery_codes) if user.mfa_recovery_codes else 0}")
     
     # Generate new recovery codes
     plain_codes = generate_recovery_codes(count=10, length=8)
     hashed_codes = [make_password(code) for code in plain_codes]
     user.mfa_recovery_codes = hashed_codes
     user.save()
-    
-    # Audit log
-    print(f"[RECOVERY CODES] ✅ SUCCESS")
-    print(f"[RECOVERY CODES] User: {user.username} (ID: {user.id})")
-    print(f"[RECOVERY CODES] Email: {user.email}")
-    print(f"[RECOVERY CODES] Timestamp: {timezone.now()}")
-    print(f"[RECOVERY CODES] New recovery codes generated: {len(plain_codes)}")
-    print("="*70 + "\n")
+    logger.info("MFA recovery codes regenerated for user_id=%s", user.id)
     
     return Response({
         'recovery_codes': plain_codes
@@ -809,67 +731,40 @@ def mfa_login_view(request):
     """
     if not getattr(settings, 'MFA_ENABLED', False):
         return Response({'error': 'MFA is temporarily disabled'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    print("\n" + "="*70)
-    print("[MFA LOGIN] Request received")
-    print("="*70)
     
     # Validate request data
     serializer = MFALoginSerializer(data=request.data)
     if not serializer.is_valid():
-        print(f"[MFA LOGIN] Validation failed: {serializer.errors}")
-        print("="*70 + "\n")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     temp_token = serializer.validated_data['temp_token']
     otp = serializer.validated_data.get('otp')
     recovery_code = serializer.validated_data.get('recovery_code')
     
-    print(f"[MFA LOGIN] Temp token: {temp_token[:30]}...")
-    if otp:
-        print(f"[MFA LOGIN] OTP code: {otp}")
-    if recovery_code:
-        print(f"[MFA LOGIN] Recovery code: {recovery_code}")
-    
     # Verify temp token
     user_id = verify_temp_token(temp_token)
     if not user_id:
-        print(f"[MFA LOGIN] FAILED - Invalid or expired temporary token")
-        print("="*70 + "\n")
         return Response({
             'error': 'Invalid or expired temporary token'
         }, status=status.HTTP_401_UNAUTHORIZED)
     
-    print(f"[MFA LOGIN] Extracted user_id from token: {user_id}")
-    
     # Get user from database
     try:
         user = User.objects.get(id=user_id)
-        print(f"[MFA LOGIN] User found: {user.username} (ID: {user.id})")
-        print(f"[MFA LOGIN] MFA enabled: {user.mfa_enabled}")
-        print(f"[MFA LOGIN] MFA secret exists: {bool(user.mfa_secret)}")
     except User.DoesNotExist:
-        print(f"[MFA LOGIN] FAILED - User not found for ID: {user_id}")
-        print("="*70 + "\n")
         return Response({
             'error': 'User not found'
         }, status=status.HTTP_404_NOT_FOUND)
     
     # Check if MFA is enabled
     if not user.mfa_enabled or not user.mfa_secret:
-        print(f"[MFA LOGIN] FAILED - MFA not properly configured for user {user.username}")
-        print("="*70 + "\n")
         return Response({
             'error': 'MFA not enabled for this user'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     # Handle recovery code login
     if recovery_code:
-        print(f"[MFA LOGIN] Attempting recovery code login")
-        
         if not user.mfa_recovery_codes:
-            print(f"[MFA LOGIN] FAILED - No recovery codes available")
-            print("="*70 + "\n")
             return Response({
                 'error': 'No recovery codes available'
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -878,26 +773,21 @@ def mfa_login_view(request):
         code_found = False
         for i, hashed_code in enumerate(user.mfa_recovery_codes):
             if check_password(recovery_code, hashed_code):
-                print(f"[MFA LOGIN] ✅ Recovery code matched (index {i})")
                 # Remove used recovery code
                 user.mfa_recovery_codes.pop(i)
                 user.save()
                 code_found = True
-                print(f"[MFA LOGIN] Recovery code deleted. Remaining codes: {len(user.mfa_recovery_codes)}")
                 break
         
         if not code_found:
-            print(f"[MFA LOGIN] FAILED - Invalid recovery code")
-            print("="*70 + "\n")
+            logger.warning("MFA login failed: invalid recovery code (user_id=%s)", user.id)
             return Response({
                 'error': 'Invalid recovery code'
             }, status=status.HTTP_401_UNAUTHORIZED)
         
         # Recovery code valid - return JWT tokens
-        print(f"[MFA LOGIN] SUCCESS - Generating JWT tokens for user {user.username}")
         tokens = get_tokens_for_user(user)
-        print(f"[MFA LOGIN] Access token: {tokens['access'][:40]}...")
-        print("="*70 + "\n")
+        logger.info("MFA login via recovery code succeeded for user_id=%s", user.id)
         
         # Audit: MFA login via recovery code
         log_audit(
@@ -923,55 +813,13 @@ def mfa_login_view(request):
         }, status=status.HTTP_200_OK)
     
     # Handle OTP login (existing logic)
-    # SAFETY RESET: Verify OTP with extended time window for development
-    # valid_window=6 allows ±3 minutes (180 seconds) time drift
     totp = pyotp.TOTP(user.mfa_secret)
-    expected_otp = totp.now()
-    
-    # Get current time for comparison
-    import time
-    current_timestamp = int(time.time())
-    otp_timestamp = current_timestamp // 30  # TOTP uses 30-second intervals
-    
-    print(f"[MFA LOGIN] ⚠️  DEVELOPMENT MODE: valid_window=6 (allows ±180 seconds time drift)")
-    print(f"[MFA LOGIN] OTP received from client: {otp}")
-    print(f"[MFA LOGIN] Expected OTP at current time: {expected_otp}")
-    print(f"[MFA LOGIN] Server time: {timezone.now()}")
-    print(f"[MFA LOGIN] Server timestamp: {current_timestamp}")
-    print(f"[MFA LOGIN] TOTP interval: {otp_timestamp} (changes every 30 seconds)")
-    
-    # Calculate interval offset by checking which interval the received OTP matches
-    interval_offset = None
-    for offset in range(-6, 7):  # Check -6 to +6 intervals
-        test_time = current_timestamp + (offset * 30)
-        test_otp = totp.at(test_time)
-        if test_otp == otp:
-            interval_offset = offset
-            time_offset_seconds = offset * 30
-            print(f"[MFA LOGIN] 🎯 MATCH FOUND at interval offset: {offset}")
-            print(f"[MFA LOGIN] 🎯 Time offset: {time_offset_seconds} seconds ({abs(time_offset_seconds/60):.1f} minutes)")
-            if offset < 0:
-                print(f"[MFA LOGIN] 🎯 Client is {abs(time_offset_seconds)} seconds BEHIND server")
-            elif offset > 0:
-                print(f"[MFA LOGIN] 🎯 Client is {time_offset_seconds} seconds AHEAD of server")
-            else:
-                print(f"[MFA LOGIN] 🎯 Client and server are synchronized")
-            break
-    
-    if interval_offset is None:
-        print(f"[MFA LOGIN] ❌ No match found in range -6 to +6 intervals")
-        print(f"[MFA LOGIN] ❌ This suggests a SECRET KEY MISMATCH, not just time drift")
-        print(f"[MFA LOGIN] ❌ User may need to re-scan QR code or reset MFA secret")
-    
-    otp_valid = totp.verify(otp, valid_window=6)
-    print(f"[MFA LOGIN] OTP verification result: {otp_valid}")
+    otp_valid = totp.verify(otp, valid_window=settings.MFA_TOTP_VALID_WINDOW)
     
     if otp_valid:
         # OTP valid - return JWT tokens
-        print(f"[MFA LOGIN] SUCCESS - Generating JWT tokens for user {user.username}")
         tokens = get_tokens_for_user(user)
-        print(f"[MFA LOGIN] Access token: {tokens['access'][:40]}...")
-        print("="*70 + "\n")
+        logger.info("MFA login via OTP succeeded for user_id=%s", user.id)
         
         # Audit: MFA login via OTP
         log_audit(
@@ -995,13 +843,6 @@ def mfa_login_view(request):
             'requires_policy_acceptance': requires_policy,
             'latest_policy_version': latest_policy
         }, status=status.HTTP_200_OK)
-    
-    print(f"[MFA LOGIN] FAILED - Invalid OTP code")
-    print(f"[MFA LOGIN] OTP mismatch - received '{otp}' but expected '{expected_otp}'")
-    print(f"[MFA LOGIN] Note: valid_window=6 checks codes from {otp_timestamp-6} to {otp_timestamp+6}")
-    print(f"[MFA LOGIN] 💡 TIP: If this keeps failing, the MFA secret may be out of sync")
-    print(f"[MFA LOGIN] 💡 TIP: Run the reset script to regenerate MFA secret for user")
-    print("="*70 + "\n")
     
     return Response({
         'error': 'Invalid OTP code'
@@ -1084,24 +925,26 @@ class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            refresh_token = request.data["refresh"]
             token = RefreshToken(refresh_token)
             token.blacklist()
-            
-            # Audit: logout
-            log_audit(
-                actor=request.user,
-                action='logout',
-                resource_type='User',
-                resource_id=str(request.user.id),
-                description=f'User {request.user.email} logged out',
-                ip_address=get_client_ip(request),
-            )
-            
-            return Response({"message": "Successfully logged out"}, status=status.HTTP_205_RESET_CONTENT)
-        except Exception as e:
+        except TokenError:
             return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Audit: logout
+        log_audit(
+            actor=request.user,
+            action='logout',
+            resource_type='User',
+            resource_id=str(request.user.id),
+            description=f'User {request.user.email} logged out',
+            ip_address=get_client_ip(request),
+        )
+        
+        return Response({"message": "Successfully logged out"}, status=status.HTTP_205_RESET_CONTENT)
 
 
 class PasswordResetRequestView(APIView):
@@ -1333,22 +1176,31 @@ class SendInviteView(APIView):
         
         # Generate registration link
         registration_link = f"{settings.FRONTEND_URL}/register?token={invitation.token}"
-        
-        # Log email sending - print to console
-        print("\n" + "="*70)
-        print("INVITATION EMAIL (LOG)")
-        print("="*70)
-        print(f"To: {email}")
-        print(f"From: {request.user.email}")
-        print(f"Subject: You're invited to join SecureMed")
-        print("\nMessage:")
-        print(f"Hello,")
-        print(f"\nYou have been invited to join SecureMed by {request.user.get_full_name()}.")
-        print(f"\nPlease click the link below to complete your registration:")
-        print(f"{registration_link}")
-        print(f"\nThis invitation will expire in 48 hours.")
-        print(f"Expires at: {invitation.expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        print("="*70 + "\n")
+        subject = "You're invited to join SecureMed"
+        message = (
+            "Hello,\n\n"
+            f"You have been invited to join SecureMed by {request.user.get_full_name() or 'an administrator'}.\n\n"
+            "Please click the link below to complete your registration:\n"
+            f"{registration_link}\n\n"
+            "This invitation will expire in 48 hours.\n"
+            f"Expires at: {invitation.expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+        )
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        log_audit(
+            actor=request.user,
+            action='invitation_sent',
+            resource_type='Invitation',
+            resource_id=str(invitation.id),
+            description='Registration invitation sent',
+            ip_address=get_client_ip(request),
+        )
+        logger.info("Invitation sent for invitation_id=%s", invitation.id)
         
         return Response({
             "message": "Invitation sent successfully",
@@ -1742,19 +1594,14 @@ class RequestAccountDeletionView(APIView):
         user.is_active = False
         
         user.save(update_fields=['deletion_requested_at', 'is_active'])
-        
-        # Audit log
-        print(f"\n{'='*70}")
-        print("ACCOUNT DELETION REQUEST - AUDIT LOG")
-        print(f"{'='*70}")
-        print(f"Timestamp: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        print(f"User ID: {user.id}")
-        print(f"Username: {user.username}")
-        print(f"Email: {user.email}")
-        print(f"Role: {user.role}")
-        print(f"Deletion requested at: {user.deletion_requested_at}")
-        print(f"Account deactivated: {not user.is_active}")
-        print(f"{'='*70}\n")
+        log_audit(
+            actor=user,
+            action='account_deletion_requested',
+            resource_type='User',
+            resource_id=str(user.id),
+            description='User requested account deletion',
+            ip_address=get_client_ip(request),
+        )
         
         return Response(
             {"message": "Account scheduled for deletion in 30 days."},
@@ -1783,18 +1630,11 @@ class DownloadDeletionCertificateView(APIView):
         from .utils import generate_deletion_certificate
         
         user = request.user
+        auto_marked = False
         
         # Auto-mark for deletion if not already done
         if not user.deletion_requested_at:
-            # Audit log for auto-marking (but don't save yet to avoid breaking current request)
-            print(f"\n{'='*70}")
-            print("AUTO-MARKED FOR DELETION VIA CERTIFICATE REQUEST")
-            print(f"{'='*70}")
-            print(f"Timestamp: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            print(f"User ID: {user.id}")
-            print(f"Username: {user.username}")
-            print(f"Email: {user.email}")
-            print(f"{'='*70}\n")
+            auto_marked = True
         
         # Prepare user object for certificate generation (in-memory only)
         if not user.deletion_requested_at:
@@ -1807,10 +1647,19 @@ class DownloadDeletionCertificateView(APIView):
         if user.is_active:
              # Ensure we're setting the timestamp if it wasn't already set in DB
              if not user.id or not User.objects.get(id=user.id).deletion_requested_at:
-                 user.deletion_requested_at = timezone.now()
-             
+                  user.deletion_requested_at = timezone.now()
+              
              user.is_active = False
              user.save(update_fields=['deletion_requested_at', 'is_active'])
+        if auto_marked:
+            log_audit(
+                actor=user,
+                action='account_deletion_auto_marked',
+                resource_type='User',
+                resource_id=str(user.id),
+                description='Account auto-marked for deletion via certificate download',
+                ip_address=get_client_ip(request),
+            )
         
         # Return as file download
         filename = f"deletion_certificate_{user.id}.pdf"
@@ -1820,17 +1669,14 @@ class DownloadDeletionCertificateView(APIView):
             filename=filename,
             content_type='application/pdf'
         )
-        
-        # Audit log
-        print(f"\n{'='*70}")
-        print("DELETION CERTIFICATE DOWNLOAD - AUDIT LOG")
-        print(f"{'='*70}")
-        print(f"Timestamp: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        print(f"User ID: {user.id}")
-        print(f"Username: {user.username}")
-        print(f"Email: {user.email}")
-        print(f"Deletion requested at: {user.deletion_requested_at}")
-        print(f"{'='*70}\n")
+        log_audit(
+            actor=user,
+            action='deletion_certificate_downloaded',
+            resource_type='User',
+            resource_id=str(user.id),
+            description='Deletion certificate downloaded',
+            ip_address=get_client_ip(request),
+        )
         
         return response
 
@@ -1853,16 +1699,15 @@ class AcceptLatestPolicyView(APIView):
         user.accepted_policy_version = latest_version
         user.policy_accepted_at = timezone.now()
         user.save(update_fields=['accepted_policy_version', 'policy_accepted_at'])
-        
-        # Log this action
-        print(f"\n{'='*70}")
-        print("POLICY ACCEPTANCE - AUDIT LOG")
-        print(f"{'='*70}")
-        print(f"Timestamp: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        print(f"User ID: {user.id}")
-        print(f"Username: {user.username}")
-        print(f"Accepted Version: {latest_version}")
-        print(f"{'='*70}\n")
+        log_audit(
+            actor=user,
+            action='policy_accepted',
+            resource_type='Policy',
+            resource_id=str(latest_version),
+            description='User accepted latest policy',
+            ip_address=get_client_ip(request),
+            extra={'version': latest_version},
+        )
         
         return Response({
             'message': 'Policy accepted successfully',
