@@ -1,145 +1,161 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Bell, Check, Trash2, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { Bell, Check, Trash2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 // Type definition for a notification
 export type Notification = {
-    id: string
-    title: string
-    message: string
-    timestamp: string
-    read: boolean
-    type: 'info' | 'success' | 'warning' | 'error'
-}
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  type: "info" | "success" | "warning" | "error";
+};
 
 export function NotificationCenter() {
-    const [notifications, setNotifications] = useState<Notification[]>([])
-    const [isOpen, setIsOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
 
-    const unreadCount = notifications.filter(n => !n.read).length
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-    const markAsRead = (id: string) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
-    }
+  const markAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    );
+  };
 
-    const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-    }
+  const markAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
 
-    const deleteNotification = (id: string) => {
-        setNotifications(prev => prev.filter(n => n.id !== id))
-    }
+  const deleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
-    const clearAll = () => {
-        setNotifications([])
-    }
+  const clearAll = () => {
+    setNotifications([]);
+  };
 
-    return (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                        <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
-                    )}
-                    <span className="sr-only">Notifications</span>
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
-                <div className="flex items-center justify-between p-4 border-b border-border">
-                    <h4 className="font-semibold leading-none">Notifications</h4>
-                    {unreadCount > 0 && (
-                        <Badge variant="secondary" className="text-xs">{unreadCount} new</Badge>
-                    )}
-                </div>
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative text-muted-foreground hover:text-foreground"
+        >
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
+          )}
+          <span className="sr-only">Notifications</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h4 className="font-semibold leading-none">Notifications</h4>
+          {unreadCount > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {unreadCount} new
+            </Badge>
+          )}
+        </div>
 
-                <ScrollArea className="h-[300px]">
-                    {notifications.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
-                            <Bell className="h-8 w-8 mb-2 opacity-20" />
-                            <p className="text-sm">No notifications</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-1 p-2">
-                            {notifications.map((notification) => (
-                                <div
-                                    key={notification.id}
-                                    className={`group p-3 rounded-xl transition-all duration-200 border border-transparent ${!notification.read ? 'bg-primary/5 border-primary/10' : 'hover:bg-muted/50 hover:border-border/40'}`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <div className="flex-1 space-y-1">
-                                            <p className={`text-sm font-bold leading-none ${!notification.read ? 'text-primary' : 'text-foreground/80'}`}>
-                                                {notification.title}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                                                {notification.message}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground/50 pt-1 font-mono uppercase tracking-wider">
-                                                {notification.timestamp}
-                                            </p>
-                                        </div>
-                                        {/* Actions - Always visible on hover */}
-                                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {!notification.read && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 text-primary hover:bg-primary/10 rounded-full"
-                                                    onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
-                                                    title="Mark as read"
-                                                >
-                                                    <span className="h-2 w-2 rounded-full bg-primary" />
-                                                </Button>
-                                            )}
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
-                                                onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </ScrollArea>
-
-                {notifications.length > 0 && (
-                    <div className="flex items-center justify-between p-2 border-t border-border bg-muted/20">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-8"
-                            onClick={markAllAsRead}
-                            disabled={unreadCount === 0}
-                        >
-                            <Check className="h-3 w-3 mr-1" />
-                            Mark all read
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-8 text-destructive hover:text-destructive"
-                            onClick={clearAll}
-                        >
-                            Clear all
-                        </Button>
+        <ScrollArea className="h-[300px]">
+          {notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
+              <Bell className="h-8 w-8 mb-2 opacity-20" />
+              <p className="text-sm">No notifications</p>
+            </div>
+          ) : (
+            <div className="space-y-1 p-2">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`group p-3 rounded-xl transition-all duration-200 border border-transparent ${!notification.read ? "bg-primary/5 border-primary/10" : "hover:bg-muted/50 hover:border-border/40"}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 space-y-1">
+                      <p
+                        className={`text-sm font-bold leading-none ${!notification.read ? "text-primary" : "text-foreground/80"}`}
+                      >
+                        {notification.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {notification.message}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/50 pt-1 font-mono uppercase tracking-wider">
+                        {notification.timestamp}
+                      </p>
                     </div>
-                )}
-            </PopoverContent>
-        </Popover>
-    )
+                    {/* Actions - Always visible on hover */}
+                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {!notification.read && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-primary hover:bg-primary/10 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                          }}
+                          title="Mark as read"
+                        >
+                          <span className="h-2 w-2 rounded-full bg-primary" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notification.id);
+                        }}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+
+        {notifications.length > 0 && (
+          <div className="flex items-center justify-between p-2 border-t border-border bg-muted/20">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-8"
+              onClick={markAllAsRead}
+              disabled={unreadCount === 0}
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Mark all read
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-8 text-destructive hover:text-destructive"
+              onClick={clearAll}
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
 }

@@ -80,7 +80,6 @@ export const appointmentService = {
                 available: doc.available
             }));
         } catch (error) {
-            console.error('Error fetching doctors:', error);
             throw error;
         }
     },
@@ -115,7 +114,6 @@ export const appointmentService = {
                 };
             });
         } catch (error) {
-            console.error('Error fetching availability:', error);
             return [];
         }
     },
@@ -161,7 +159,6 @@ export const appointmentService = {
                 created_at: appt.created_at
             }));
         } catch (error) {
-            console.error('Error fetching appointments:', error);
             throw error;
         }
     },
@@ -171,7 +168,6 @@ export const appointmentService = {
             const response = await apiClient.patch(`/appointments/appointments/${appointmentId}/`, { status });
             return response.data;
         } catch (error) {
-            console.error('Error updating appointment status:', error);
             throw error;
         }
     },
@@ -210,7 +206,6 @@ export const appointmentService = {
                 type: slot.type
             }));
         } catch (error) {
-            console.error('Error fetching doctor schedule:', error);
             return [];
         }
     },
@@ -239,7 +234,6 @@ export const medicalRecordService = {
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
         } catch (error) {
-            console.error('Error fetching medical records:', error);
             return [];
         }
     },
@@ -268,7 +262,6 @@ export const medicalRecordService = {
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
         } catch (error) {
-            console.error('Error fetching prescriptions:', error);
             return [];
         }
     },

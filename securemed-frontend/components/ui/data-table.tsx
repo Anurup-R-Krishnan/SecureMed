@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import React from 'react'
+import React from "react";
 import {
   Table,
   TableHeader,
@@ -8,7 +8,7 @@ import {
   TableHead,
   TableRow,
   TableCell,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 
 export interface Column<T> {
   header: string | React.ReactNode;
@@ -30,7 +30,7 @@ export function DataTable<T>({
   data,
   columns,
   keyExtractor,
-  emptyMessage = 'No data available',
+  emptyMessage = "No data available",
   onRowClick,
   className,
 }: DataTableProps<T>) {
@@ -56,8 +56,8 @@ export function DataTable<T>({
         </TableHeader>
         <TableBody>
           {data.map((item) => (
-            <TableRow 
-              key={keyExtractor(item)} 
+            <TableRow
+              key={keyExtractor(item)}
               onClick={onRowClick ? () => onRowClick(item) : undefined}
               className={onRowClick ? "cursor-pointer" : ""}
             >
@@ -66,8 +66,8 @@ export function DataTable<T>({
                   {col.cell
                     ? col.cell(item)
                     : col.accessorKey
-                    ? String(item[col.accessorKey])
-                    : null}
+                      ? String(item[col.accessorKey])
+                      : null}
                 </TableCell>
               ))}
             </TableRow>

@@ -1,103 +1,113 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { FileJson, Download, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import api from '@/lib/api';
-import { API_BASE_URL } from '@/lib/urls';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  FileJson,
+  Download,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+import api from "@/lib/api";
+import { API_BASE_URL } from "@/lib/urls";
 
 interface ExportState {
-    status: 'idle' | 'loading' | 'success' | 'error';
-    message?: string;
-    resourceCount?: number;
+  status: "idle" | "loading" | "success" | "error";
+  message?: string;
+  resourceCount?: number;
 }
 
 interface FHIRExportButtonProps {
-    patientId?: string;
+  patientId?: string;
 }
 
 export default function FHIRExportButton({ patientId }: FHIRExportButtonProps) {
-    const [exportState, setExportState] = useState<ExportState>({ status: 'idle' });
+  const [exportState, setExportState] = useState<ExportState>({
+    status: "idle",
+  });
 
-    const handleExport = async () => {
-        setExportState({ status: 'loading' });
+  const handleExport = async () => {
+    setExportState({ status: "loading" });
 
-        try {
-            // Call Django backend for FHIR export
-            const response = await api.get('/patient/export/fhir/', {
-                params: { patient_id: patientId }
-            });
+    try {
+      // Call Django backend for FHIR export
+      const response = await api.get("/patient/export/fhir/", {
+        params: { patient_id: patientId },
+      });
 
-            const fhirData = response.data;
+      const fhirData = response.data;
 
-            // Create download
-            const blob = new Blob([JSON.stringify(fhirData, null, 2)], { type: 'application/fhir+json' });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `medical-history-FHIR-${Date.now()}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+      // Create download
+      const blob = new Blob([JSON.stringify(fhirData, null, 2)], {
+        type: "application/fhir+json",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `medical-history-FHIR-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-            setExportState({
-                status: 'success',
-                message: 'Medical history exported successfully from backend',
-                resourceCount: fhirData.total, // Ensure backend returns 'total' or check response structure
-            });
+      setExportState({
+        status: "success",
+        message: "Medical history exported successfully from backend",
+        resourceCount: fhirData.total, // Ensure backend returns 'total' or check response structure
+      });
 
-            // Reset to idle after 5 seconds
-            setTimeout(() => {
-                setExportState({ status: 'idle' });
-            }, 5000);
-        } catch (error) {
-            setExportState({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Export failed',
-            });
+      // Reset to idle after 5 seconds
+      setTimeout(() => {
+        setExportState({ status: "idle" });
+      }, 5000);
+    } catch (error) {
+      setExportState({
+        status: "error",
+        message: error instanceof Error ? error.message : "Export failed",
+      });
 
-            // Reset to idle after 5 seconds
-            setTimeout(() => {
-                setExportState({ status: 'idle' });
-            }, 5000);
-        }
-    };
+      // Reset to idle after 5 seconds
+      setTimeout(() => {
+        setExportState({ status: "idle" });
+      }, 5000);
+    }
+  };
 
-    return (
-        <div className="space-y-3">
-            <Button
-                onClick={handleExport}
-                disabled={exportState.status === 'loading'}
-                variant="outline"
-                className="flex items-center gap-2"
-            >
-                {exportState.status === 'loading' ? (
-                    <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Exporting...
-                    </>
-                ) : (
-                    <>
-                        <Download className="h-4 w-4" />
-                        Export FHIR
-                    </>
-                )}
-            </Button>
+  return (
+    <div className="space-y-3">
+      <Button
+        onClick={handleExport}
+        disabled={exportState.status === "loading"}
+        variant="outline"
+        className="flex items-center gap-2"
+      >
+        {exportState.status === "loading" ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Exporting...
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4" />
+            Export FHIR
+          </>
+        )}
+      </Button>
 
-            {exportState.status === 'success' && (
-                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Export successful</span>
-                </div>
-            )}
-
-            {exportState.status === 'error' && (
-                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>Export failed</span>
-                </div>
-            )}
+      {exportState.status === "success" && (
+        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+          <CheckCircle className="h-4 w-4" />
+          <span>Export successful</span>
         </div>
-    );
+      )}
+
+      {exportState.status === "error" && (
+        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+          <AlertCircle className="h-4 w-4" />
+          <span>Export failed</span>
+        </div>
+      )}
+    </div>
+  );
 }

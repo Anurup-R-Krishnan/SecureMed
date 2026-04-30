@@ -1,11 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Shield, Lock, AlertTriangle, Trash2, Calendar, Clock, FileText, Download } from 'lucide-react';
-import api from '@/lib/api';
-import { toast } from 'sonner';
-import { Skeleton } from '@/components/ui/skeleton';
-import MfaSetup from '@/components/auth/mfa-setup';
-import { useAuth } from '@/context/auth-context';
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Shield,
+  Lock,
+  AlertTriangle,
+  Trash2,
+  Calendar,
+  Clock,
+  FileText,
+  Download,
+} from "lucide-react";
+import api from "@/lib/api";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import MfaSetup from "@/components/auth/mfa-setup";
+import { useAuth } from "@/context/auth-context";
 import {
   Dialog,
   DialogContent,
@@ -13,18 +22,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 interface Consent {
   id: number;
@@ -43,12 +52,12 @@ interface Consent {
   }>;
 }
 
-const CONSENTS_ENDPOINT = '/consents/';
+const CONSENTS_ENDPOINT = "/consents/";
 
 const DURATION_OPTIONS = [
-  { label: '24 Hours', value: '24h', hours: 24 },
-  { label: '7 Days', value: '7d', hours: 24 * 7 },
-  { label: '30 Days', value: '30d', hours: 24 * 30 },
+  { label: "24 Hours", value: "24h", hours: 24 },
+  { label: "7 Days", value: "7d", hours: 24 * 7 },
+  { label: "30 Days", value: "30d", hours: 24 * 30 },
 ];
 
 export default function PrivacySettings() {
@@ -61,13 +70,15 @@ export default function PrivacySettings() {
   // Duration dialog state
   const [showDurationDialog, setShowDurationDialog] = useState(false);
   const [selectedConsent, setSelectedConsent] = useState<Consent | null>(null);
-  const [accessType, setAccessType] = useState<'permanent' | 'temporary'>('permanent');
-  const [selectedDuration, setSelectedDuration] = useState<string>('24h');
+  const [accessType, setAccessType] = useState<"permanent" | "temporary">(
+    "permanent",
+  );
+  const [selectedDuration, setSelectedDuration] = useState<string>("24h");
 
   // Access log state
-  const [accessLogs, setAccessLogs] = useState<{ date: string; provider: string; department: string; action: string }[]>([]);
-
-
+  const [accessLogs, setAccessLogs] = useState<
+    { date: string; provider: string; department: string; action: string }[]
+  >([]);
 
   const fetchConsents = useCallback(async () => {
     try {
@@ -77,25 +88,22 @@ export default function PrivacySettings() {
       // Ensure we have an array
       if (Array.isArray(response.data)) {
         setDepartments(response.data);
-      } else if (response.data && typeof response.data === 'object') {
+      } else if (response.data && typeof response.data === "object") {
         // Backend might return empty object for no data
         setDepartments([]);
       } else {
-        console.error('API returned unexpected data format:', response.data);
         setDepartments([]);
       }
     } catch (error: any) {
-      console.error('Error fetching consents:', error);
-
       // Ensure departments stays as an array even on error
       setDepartments([]);
 
       if (error.response?.status === 401) {
-        toast.error('Authentication failed. Please log in again.');
+        toast.error("Authentication failed. Please log in again.");
       } else if (error.response?.status === 404) {
         // No consents found - this is OK
       } else {
-        toast.error('Failed to load consent settings');
+        toast.error("Failed to load consent settings");
       }
     } finally {
       setIsLoading(false);
@@ -110,13 +118,11 @@ export default function PrivacySettings() {
   useEffect(() => {
     const fetchAccessLogs = async () => {
       try {
-        const response = await api.get('/medical-records/my-access-log/');
+        const response = await api.get("/medical-records/my-access-log/");
         if (Array.isArray(response.data)) {
           setAccessLogs(response.data);
         }
-      } catch (error) {
-        console.error('Failed to fetch access logs:', error);
-      }
+      } catch (error) {}
     };
 
     if (tokens?.access) {
@@ -126,7 +132,8 @@ export default function PrivacySettings() {
 
   const calculateExpiryDate = (duration: string): string => {
     const option = DURATION_OPTIONS.find((opt) => opt.value === duration);
-    if (!option) return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    if (!option)
+      return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     const futureDate = new Date(Date.now() + option.hours * 60 * 60 * 1000);
     return futureDate.toISOString();
@@ -139,7 +146,7 @@ export default function PrivacySettings() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMs < 0) return 'Expired';
+    if (diffMs < 0) return "Expired";
     if (diffHours < 24) return `${diffHours}h left`;
     if (diffDays < 30) return `${diffDays}d left`;
 
@@ -156,8 +163,8 @@ export default function PrivacySettings() {
     } else {
       // If turning ON, show duration dialog
       setSelectedConsent(consent);
-      setAccessType('permanent');
-      setSelectedDuration('24h');
+      setAccessType("permanent");
+      setSelectedDuration("24h");
       setShowDurationDialog(true);
     }
   };
@@ -169,8 +176,10 @@ export default function PrivacySettings() {
     // Optimistic UI update
     setDepartments(
       departments.map((dept) =>
-        dept.id === id ? { ...dept, is_granted: false, expires_at: null } : dept
-      )
+        dept.id === id
+          ? { ...dept, is_granted: false, expires_at: null }
+          : dept,
+      ),
     );
 
     try {
@@ -178,13 +187,9 @@ export default function PrivacySettings() {
 
       toast.success(`Access for ${consent.department} revoked`);
     } catch (error) {
-      console.error('Error revoking consent:', error);
-
       // Revert on error
       setDepartments(
-        departments.map((dept) =>
-          dept.id === id ? consent : dept
-        )
+        departments.map((dept) => (dept.id === id ? consent : dept)),
       );
 
       toast.error(`Failed to revoke access for ${consent.department}`);
@@ -194,43 +199,38 @@ export default function PrivacySettings() {
   const grantAccess = async () => {
     if (!selectedConsent) return;
 
-    const expiresAt = accessType === 'temporary'
-      ? calculateExpiryDate(selectedDuration)
-      : null;
+    const expiresAt =
+      accessType === "temporary" ? calculateExpiryDate(selectedDuration) : null;
 
     // Optimistic UI update
     setDepartments(
       departments.map((dept) =>
         dept.id === selectedConsent.id
           ? { ...dept, is_granted: true, expires_at: expiresAt }
-          : dept
-      )
+          : dept,
+      ),
     );
 
     // Close dialog
     setShowDurationDialog(false);
 
     try {
-      await api.patch(
-        `${CONSENTS_ENDPOINT}${selectedConsent.id}/`,
-        {
-          is_granted: true,
-          expires_at: expiresAt
-        }
-      );
+      await api.patch(`${CONSENTS_ENDPOINT}${selectedConsent.id}/`, {
+        is_granted: true,
+        expires_at: expiresAt,
+      });
 
       toast.success(
-        `Access for ${selectedConsent.department} granted${accessType === 'temporary' ? ' temporarily' : ''
-        }`
+        `Access for ${selectedConsent.department} granted${
+          accessType === "temporary" ? " temporarily" : ""
+        }`,
       );
     } catch (error) {
-      console.error('Error granting consent:', error);
-
       // Revert on error
       setDepartments(
         departments.map((dept) =>
-          dept.id === selectedConsent.id ? selectedConsent : dept
-        )
+          dept.id === selectedConsent.id ? selectedConsent : dept,
+        ),
       );
 
       toast.error(`Failed to grant access for ${selectedConsent.department}`);
@@ -239,7 +239,9 @@ export default function PrivacySettings() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold text-foreground mb-2">Privacy & Consent</h1>
+      <h1 className="text-3xl font-bold text-foreground mb-2">
+        Privacy & Consent
+      </h1>
       <p className="text-muted-foreground mb-8">
         Control which departments and providers can access your health data
       </p>
@@ -282,27 +284,36 @@ export default function PrivacySettings() {
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-foreground">{dept.department}</h3>
+                    <h3 className="font-semibold text-foreground">
+                      {dept.department}
+                    </h3>
                     {dept.is_granted && dept.expires_at && (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
+                      <Badge
+                        variant="outline"
+                        className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs"
+                      >
                         <Clock className="h-3 w-3 mr-1" />
                         Expires: {formatExpiryDate(dept.expires_at)}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{dept.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {dept.description}
+                  </p>
                 </div>
 
                 {/* Toggle Switch */}
                 <button
                   onClick={() => toggleDepartmentAccess(dept.id)}
-                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${dept.is_granted ? 'bg-accent' : 'bg-muted'
-                    }`}
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                    dept.is_granted ? "bg-accent" : "bg-muted"
+                  }`}
                   aria-label={`Toggle access for ${dept.department}`}
                 >
                   <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${dept.is_granted ? 'translate-x-7' : 'translate-x-1'
-                      }`}
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                      dept.is_granted ? "translate-x-7" : "translate-x-1"
+                    }`}
                   />
                 </button>
               </div>
@@ -329,12 +340,18 @@ export default function PrivacySettings() {
               Grant Access Duration
             </DialogTitle>
             <DialogDescription>
-              Choose how long {selectedConsent?.department} can access your medical records.
+              Choose how long {selectedConsent?.department} can access your
+              medical records.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <RadioGroup value={accessType} onValueChange={(val) => setAccessType(val as 'permanent' | 'temporary')}>
+            <RadioGroup
+              value={accessType}
+              onValueChange={(val) =>
+                setAccessType(val as "permanent" | "temporary")
+              }
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="permanent" id="permanent" />
                 <Label htmlFor="permanent" className="flex-1 cursor-pointer">
@@ -356,10 +373,13 @@ export default function PrivacySettings() {
               </div>
             </RadioGroup>
 
-            {accessType === 'temporary' && (
+            {accessType === "temporary" && (
               <div className="space-y-2 pl-6">
                 <Label htmlFor="duration">Duration</Label>
-                <Select value={selectedDuration} onValueChange={setSelectedDuration}>
+                <Select
+                  value={selectedDuration}
+                  onValueChange={setSelectedDuration}
+                >
                   <SelectTrigger id="duration">
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
@@ -376,12 +396,13 @@ export default function PrivacySettings() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDurationDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDurationDialog(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={grantAccess}>
-              Grant Access
-            </Button>
+            <Button onClick={grantAccess}>Grant Access</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -396,23 +417,45 @@ export default function PrivacySettings() {
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="grid grid-cols-4 gap-4 border-b border-border bg-muted p-4">
             <div className="font-semibold text-foreground text-sm">Date</div>
-            <div className="font-semibold text-foreground text-sm">Provider</div>
-            <div className="font-semibold text-foreground text-sm">Department</div>
+            <div className="font-semibold text-foreground text-sm">
+              Provider
+            </div>
+            <div className="font-semibold text-foreground text-sm">
+              Department
+            </div>
             <div className="font-semibold text-foreground text-sm">Action</div>
           </div>
 
           <div className="divide-y divide-border">
             {accessLogs.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground text-center">No access logs recorded yet.</div>
+              <div className="p-4 text-sm text-muted-foreground text-center">
+                No access logs recorded yet.
+              </div>
             ) : (
-              accessLogs.map((log: { date: string; provider: string; department: string; action: string }, idx: number) => (
-                <div key={idx} className="grid grid-cols-4 gap-4 p-4">
-                  <div className="text-sm text-muted-foreground">{log.date}</div>
-                  <div className="text-sm font-medium text-foreground">{log.provider}</div>
-                  <div className="text-sm text-muted-foreground">{log.department}</div>
-                  <div className="text-sm text-accent">{log.action}</div>
-                </div>
-              ))
+              accessLogs.map(
+                (
+                  log: {
+                    date: string;
+                    provider: string;
+                    department: string;
+                    action: string;
+                  },
+                  idx: number,
+                ) => (
+                  <div key={idx} className="grid grid-cols-4 gap-4 p-4">
+                    <div className="text-sm text-muted-foreground">
+                      {log.date}
+                    </div>
+                    <div className="text-sm font-medium text-foreground">
+                      {log.provider}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {log.department}
+                    </div>
+                    <div className="text-sm text-accent">{log.action}</div>
+                  </div>
+                ),
+              )
             )}
           </div>
         </div>
@@ -427,7 +470,9 @@ export default function PrivacySettings() {
         <div className="rounded-lg border border-border bg-card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-foreground">Terms of Service & Privacy Policy</h3>
+              <h3 className="font-medium text-foreground">
+                Terms of Service & Privacy Policy
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">
                 You have accepted the latest version (v1) of our policies.
               </p>
@@ -437,24 +482,28 @@ export default function PrivacySettings() {
               className="gap-2"
               onClick={async () => {
                 try {
-                  const response = await api.get('/auth/download-policy-receipt/', {
-                    responseType: 'blob'
-                  });
+                  const response = await api.get(
+                    "/auth/download-policy-receipt/",
+                    {
+                      responseType: "blob",
+                    },
+                  );
 
-                  const blob = new Blob([response.data], { type: 'application/pdf' });
+                  const blob = new Blob([response.data], {
+                    type: "application/pdf",
+                  });
                   const url = window.URL.createObjectURL(blob);
-                  const link = document.createElement('a');
+                  const link = document.createElement("a");
                   link.href = url;
-                  link.setAttribute('download', 'policy_receipt_v1.pdf');
+                  link.setAttribute("download", "policy_receipt_v1.pdf");
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
                   window.URL.revokeObjectURL(url);
 
-                  toast.success('Policy receipt downloaded successfully.');
+                  toast.success("Policy receipt downloaded successfully.");
                 } catch (error) {
-                  console.error('Failed to download receipt:', error);
-                  toast.error('Failed to download policy receipt.');
+                  toast.error("Failed to download policy receipt.");
                 }
               }}
             >
@@ -488,10 +537,13 @@ export default function PrivacySettings() {
       {showDeleteModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4 z-50">
           <div className="w-full max-w-md rounded-2xl bg-card border border-border p-8 shadow-xl">
-            <h2 className="text-xl font-bold text-foreground mb-2">Delete Account</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">
+              Delete Account
+            </h2>
             <p className="text-muted-foreground mb-6">
-              Are you sure you want to request account deletion? This action cannot be undone. Your
-              data will be securely deleted within 30 days.
+              Are you sure you want to request account deletion? This action
+              cannot be undone. Your data will be securely deleted within 30
+              days.
             </p>
 
             <div className="space-y-3">
@@ -507,36 +559,46 @@ export default function PrivacySettings() {
 
                   try {
                     // Single API call: Fetch certificate (auto-marks account for deletion)
-                    const certificateResponse = await api.get('/auth/deletion-certificate/', {
-                      responseType: 'blob'
-                    });
+                    const certificateResponse = await api.get(
+                      "/auth/deletion-certificate/",
+                      {
+                        responseType: "blob",
+                      },
+                    );
 
                     // Trigger browser download
-                    const certificateBlob = new Blob([certificateResponse.data], { type: 'application/pdf' });
+                    const certificateBlob = new Blob(
+                      [certificateResponse.data],
+                      { type: "application/pdf" },
+                    );
                     const blobUrl = window.URL.createObjectURL(certificateBlob);
-                    const link = document.createElement('a');
+                    const link = document.createElement("a");
                     link.href = blobUrl;
-                    link.setAttribute('download', 'deletion_certificate.pdf');
+                    link.setAttribute("download", "deletion_certificate.pdf");
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     window.URL.revokeObjectURL(blobUrl);
 
                     // Show success message
-                    toast.success('Account scheduled for deletion. Your certificate has been downloaded.');
+                    toast.success(
+                      "Account scheduled for deletion. Your certificate has been downloaded.",
+                    );
 
                     // Wait 2 seconds for download to complete
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
 
                     // Logout user
                     logout();
 
                     // Redirect to login with message
-                    router.push('/login?message=Account scheduled for deletion');
+                    router.push(
+                      "/login?message=Account scheduled for deletion",
+                    );
                   } catch (error: any) {
-                    console.error('Error requesting account deletion:', error);
                     toast.error(
-                      error.response?.data?.error || 'Failed to request account deletion'
+                      error.response?.data?.error ||
+                        "Failed to request account deletion",
                     );
                   }
                 }}

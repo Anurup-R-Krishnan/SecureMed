@@ -25,12 +25,10 @@ from apps.clinical.diagnostics.crypto import encrypt_bytes
 User = get_user_model()
 
 def create_test_data():
-    print("Creating test users and data...")
     
     # 1. Create Patient
     try:
         patient_user = User.objects.get(email='test_patient@test.com')
-        print(f"✓ Patient user exists: {patient_user.email}")
     except User.DoesNotExist:
         patient_user = User.objects.create_user(
             username='test_patient',
@@ -40,11 +38,9 @@ def create_test_data():
             first_name='John',
             last_name='Doe'
         )
-        print(f"✓ Created patient user: {patient_user.email}")
     
     try:
         patient = Patient.objects.get(user=patient_user)
-        print(f"✓ Patient profile exists: {patient.patient_id}")
     except Patient.DoesNotExist:
         patient = Patient.objects.create(
             user=patient_user,
@@ -56,12 +52,10 @@ def create_test_data():
             emergency_contact='+1234567890',
             address='123 Test St'
         )
-        print(f"✓ Created patient profile: {patient.patient_id}")
     
     # 2. Create Doctor
     try:
         doctor_user = User.objects.get(email='test_doctor@test.com')
-        print(f"✓ Doctor user exists: {doctor_user.email}")
     except User.DoesNotExist:
         doctor_user = User.objects.create_user(
             username='test_doctor',
@@ -71,11 +65,9 @@ def create_test_data():
             first_name='Jane',
             last_name='Smith'
         )
-        print(f"✓ Created doctor user: {doctor_user.email}")
     
     try:
         doctor = Doctor.objects.get(user=doctor_user)
-        print(f"✓ Doctor profile exists: {doctor.doctor_id}")
     except Doctor.DoesNotExist:
         doctor = Doctor.objects.create(
             user=doctor_user,
@@ -87,12 +79,10 @@ def create_test_data():
             consultation_fee=Decimal('1000.00'),
             phone='+1234567890'
         )
-        print(f"✓ Created doctor profile: {doctor.doctor_id}")
     
     # 3. Create Lab Tech
     try:
         lab_tech = User.objects.get(email='test_labtech@test.com')
-        print(f"✓ Lab tech exists: {lab_tech.email}")
     except User.DoesNotExist:
         lab_tech = User.objects.create_user(
             username='test_labtech',
@@ -102,12 +92,10 @@ def create_test_data():
             first_name='Mike',
             last_name='Tech'
         )
-        print(f"✓ Created lab tech: {lab_tech.email}")
     
     # 4. Create Pharmacist
     try:
         pharmacist = User.objects.get(email='test_pharmacist@test.com')
-        print(f"✓ Pharmacist exists: {pharmacist.email}")
     except User.DoesNotExist:
         pharmacist = User.objects.create_user(
             username='test_pharmacist',
@@ -117,7 +105,6 @@ def create_test_data():
             first_name='Sarah',
             last_name='Pharm'
         )
-        print(f"✓ Created pharmacist: {pharmacist.email}")
     
     # 5. Create Lab Tests
     lab_tests = [
@@ -137,15 +124,12 @@ def create_test_data():
             }
         )
         if created:
-            print(f"✓ Created lab test: {code}")
         else:
-            print(f"✓ Lab test exists: {code}")
 
     # 6. Create Lab Order + Result with Attachment (for end-to-end lab workflow)
     try:
         existing_result = LabResult.objects.filter(order__patient=patient_user).first()
         if existing_result:
-            print("✓ Lab result with attachment already exists for patient")
         else:
             primary_test = LabTest.objects.filter(code='CBC').first() or LabTest.objects.first()
             if primary_test:
@@ -186,11 +170,8 @@ def create_test_data():
                 result.released_to_patient = True
                 result.released_at = timezone.now()
                 result.save()
-                print("✓ Seeded lab order/result with attachment and release flag")
             else:
-                print("! Skipped lab result seed: no lab tests available")
     except Exception as e:
-        print(f"! Failed to seed lab result attachment: {e}")
     
     # 7. Create Drugs
     drugs = [
@@ -212,21 +193,10 @@ def create_test_data():
             }
         )
         if created:
-            print(f"✓ Created drug: {code}")
             # Create stock
             DrugStock.objects.create(drug=drug, quantity=1000)
         else:
-            print(f"✓ Drug exists: {code}")
     
-    print("\n========================================")
-    print("Test data setup complete!")
-    print("========================================")
-    print(f"\nTest Credentials:")
-    print(f"  Patient: test_patient@test.com / SecureMed@123")
-    print(f"  Doctor: test_doctor@test.com / SecureMed@123")
-    print(f"  Lab Tech: test_labtech@test.com / SecureMed@123")
-    print(f"  Pharmacist: test_pharmacist@test.com / SecureMed@123")
-    print()
 
 if __name__ == '__main__':
     create_test_data()

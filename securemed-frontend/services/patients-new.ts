@@ -60,7 +60,6 @@ export const patientService = {
       if (Array.isArray(response)) return response;
       return response?.results || [];
     } catch (error) {
-      console.error('Error fetching patients:', error);
       return [];
     }
   },
@@ -72,7 +71,6 @@ export const patientService = {
     try {
       return await apiClient.get(`/patients/${id}/`);
     } catch (error) {
-      console.error(`Error fetching patient ${id}:`, error);
       return null;
     }
   },
@@ -85,7 +83,6 @@ export const patientService = {
       const params = patientId ? `?patient_id=${patientId}` : '';
       return await apiClient.get(`/medical-records/timeline/${params}`);
     } catch (error) {
-      console.error('Error fetching patient timeline:', error);
       return { timeline: [], total_events: 0 };
     }
   },
@@ -103,7 +100,6 @@ export const patientService = {
         expiryDate: 'N/A',
       };
     } catch (error) {
-      console.error('Error fetching insurance info:', error);
       return null;
     }
   },
@@ -115,7 +111,6 @@ export const patientService = {
     try {
       return await apiClient.get(`/medical-records/dashboard/stats/?patient_id=${patientId}`);
     } catch (error) {
-      console.error('Error fetching patient overview:', error);
       return null;
     }
   },
@@ -127,7 +122,6 @@ export const patientService = {
     try {
       return await apiClient.get('/medical-records/pharmacy-orders/');
     } catch (error) {
-      console.error('Error fetching medications:', error);
       return [];
     }
   },
@@ -139,7 +133,6 @@ export const patientService = {
     try {
       return await apiClient.post('/patients/', data);
     } catch (error) {
-      console.error('Error creating patient:', error);
       throw error;
     }
   },
@@ -151,7 +144,6 @@ export const patientService = {
     try {
       return await apiClient.patch(`/patients/${id}/`, data);
     } catch (error) {
-      console.error(`Error updating patient ${id}:`, error);
       throw error;
     }
   },

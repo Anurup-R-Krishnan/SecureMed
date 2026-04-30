@@ -20,7 +20,6 @@ export const patientService = {
             if (Array.isArray(response.data)) return response.data;
             return response.data?.results || [];
         } catch (error) {
-            console.error('Error fetching patients:', error);
             return [];
         }
     },
@@ -65,7 +64,6 @@ export const patientService = {
                 const response = await apiClient.get('/patients/timeline/', { params });
                 return normalize(response.data);
             } catch (fallbackError) {
-                console.error('Error fetching patient timeline:', fallbackError);
                 return [];
             }
         }
@@ -82,7 +80,6 @@ export const patientService = {
                 expiryDate: 'N/A'   // Field not on Patient model
             };
         } catch (error) {
-            console.error('Error fetching insurance info:', error);
             return null;
         }
     },
@@ -104,7 +101,6 @@ export const patientService = {
             const response = await apiClient.get('/medical-records/pharmacy-orders/');
             return response.data;
         } catch (error) {
-            console.error('Error fetching medications:', error);
             return [];
         }
     }

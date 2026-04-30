@@ -1,1 +1,1 @@
-export * from '../app/lib/routes';
+export * from "../app/lib/routes";

@@ -85,7 +85,6 @@ export const adminService = {
             const response = await apiClient.get('/admin/dashboard/stats/');
             return response.data;
         } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
             throw error;
         }
     },
@@ -98,7 +97,6 @@ export const adminService = {
             const response = await apiClient.get('/admin/hospitals/');
             return response.data;
         } catch (error) {
-            console.error('Error fetching hospitals:', error);
             throw error;
         }
     },
@@ -133,7 +131,6 @@ export const adminService = {
             const response = await apiClient.get('/admin/staff/');
             return response.data;
         } catch (error) {
-            console.error('Error fetching staff:', error);
             throw error;
         }
     },
@@ -146,7 +143,6 @@ export const adminService = {
             const response = await apiClient.get('/admin/alerts/');
             return response.data;
         } catch (error) {
-            console.error('Error fetching alerts:', error);
             throw error;
         }
     },
@@ -159,7 +155,6 @@ export const adminService = {
             const response = await apiClient.get('/auth/users/');
             return response.data;
         } catch (error) {
-            console.error('Error fetching users:', error);
             throw error;
         }
     },
@@ -180,7 +175,6 @@ export const adminService = {
             }
             return [];
         } catch (error) {
-            console.error('Error fetching patients:', error);
             throw error;
         }
     },
@@ -204,7 +198,6 @@ export const adminService = {
             const response = await apiClient.get(`/admin/audit-logs/${qs ? '?' + qs : ''}`);
             return response.data;
         } catch (error) {
-            console.error('Error fetching audit logs:', error);
             throw error;
         }
     },

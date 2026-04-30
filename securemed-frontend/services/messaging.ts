@@ -45,7 +45,6 @@ export const messagingService = {
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
         } catch (error) {
-            console.error('Error fetching conversations:', error);
             return [];
         }
     },
@@ -66,7 +65,6 @@ export const messagingService = {
             if (error?.response?.status === 401 || error?.response?.status === 403) {
                 return [];
             }
-            console.error('Error fetching messages:', error);
             return [];
         }
     },

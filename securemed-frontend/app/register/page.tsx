@@ -1,24 +1,30 @@
-'use client';
+"use client";
 
-import { Suspense } from 'react';
+import { Suspense } from "react";
 
-import { useRouter } from 'next/navigation';
-import RegisterPage from '@/components/auth/register-page';
+import { useRouter } from "next/navigation";
+import RegisterPage from "@/components/auth/register-page";
 
 export default function RegisterRoute() {
   const router = useRouter();
 
-  const handleSuccess = (role: 'patient' | 'doctor') => {
+  const handleSuccess = (role: "patient" | "doctor") => {
     // After successful registration, redirect to login
-    router.push('/login');
+    router.push("/login");
   };
 
   const handleBackToLogin = () => {
-    router.push('/login');
+    router.push("/login");
   };
 
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <RegisterPage
         onSuccess={handleSuccess}
         onBackToLogin={handleBackToLogin}

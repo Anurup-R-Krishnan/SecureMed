@@ -9,8 +9,7 @@
  */
 
 /** Relative base used by axios / fetch in the browser (goes through Next.js proxy). */
-export const API_BASE_URL: string =
-  process.env.NEXT_PUBLIC_API_URL ?? '/api';
+export const API_BASE_URL: string = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 /**
  * The raw backend origin – used when a full absolute URL is needed
@@ -18,4 +17,4 @@ export const API_BASE_URL: string =
  * Falls back to localhost for local dev outside Docker.
  */
 export const API_ORIGIN: string =
-  process.env.NEXT_PUBLIC_BACKEND_ORIGIN ?? 'http://localhost:8000';
+  process.env.NEXT_PUBLIC_BACKEND_ORIGIN ?? "http://localhost:8000";

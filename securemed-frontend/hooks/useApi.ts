@@ -1,30 +1,43 @@
 /**
  * React Query Hooks for SecureMed API
- * 
+ *
  * Provides reusable hooks for data fetching with automatic caching,
  * refetching, and error handling.
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, PaginatedResponse, ApiErrorResponse } from '@/lib/unified-api-client';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  UseQueryOptions,
+  UseMutationOptions,
+} from "@tanstack/react-query";
+import {
+  apiClient,
+  PaginatedResponse,
+  ApiErrorResponse,
+} from "@/lib/unified-api-client";
 
 // Query Keys
 export const queryKeys = {
-  all: ['api'] as const,
-  patients: () => [...queryKeys.all, 'patients'] as const,
+  all: ["api"] as const,
+  patients: () => [...queryKeys.all, "patients"] as const,
   patient: (id: number | string) => [...queryKeys.patients(), id] as const,
-  patientTimeline: (id?: number | string) => [...queryKeys.all, 'patients', 'timeline', id] as const,
-  appointments: () => [...queryKeys.all, 'appointments'] as const,
-  appointment: (id: number | string) => [...queryKeys.appointments(), id] as const,
-  doctors: () => [...queryKeys.all, 'doctors'] as const,
-  medicalRecords: () => [...queryKeys.all, 'medical-records'] as const,
-  medicalRecord: (id: number | string) => [...queryKeys.medicalRecords(), id] as const,
-  prescriptions: () => [...queryKeys.all, 'prescriptions'] as const,
-  vitals: () => [...queryKeys.all, 'vitals'] as const,
-  labs: () => [...queryKeys.all, 'labs'] as const,
-  telemedicine: () => [...queryKeys.all, 'telemedicine'] as const,
-  pharmacyOrders: () => [...queryKeys.all, 'pharmacy-orders'] as const,
-  dashboardStats: () => [...queryKeys.all, 'dashboard', 'stats'] as const,
+  patientTimeline: (id?: number | string) =>
+    [...queryKeys.all, "patients", "timeline", id] as const,
+  appointments: () => [...queryKeys.all, "appointments"] as const,
+  appointment: (id: number | string) =>
+    [...queryKeys.appointments(), id] as const,
+  doctors: () => [...queryKeys.all, "doctors"] as const,
+  medicalRecords: () => [...queryKeys.all, "medical-records"] as const,
+  medicalRecord: (id: number | string) =>
+    [...queryKeys.medicalRecords(), id] as const,
+  prescriptions: () => [...queryKeys.all, "prescriptions"] as const,
+  vitals: () => [...queryKeys.all, "vitals"] as const,
+  labs: () => [...queryKeys.all, "labs"] as const,
+  telemedicine: () => [...queryKeys.all, "telemedicine"] as const,
+  pharmacyOrders: () => [...queryKeys.all, "pharmacy-orders"] as const,
+  dashboardStats: () => [...queryKeys.all, "dashboard", "stats"] as const,
 };
 
 // Types
@@ -48,7 +61,10 @@ const defaultQueryOptions = {
 /**
  * Hook for fetching paginated list of patients
  */
-export function usePatients(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function usePatients(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.patients(), params],
     queryFn: async () => {
@@ -71,7 +87,10 @@ export function usePatients(params?: ListParams, options?: UseQueryOptions<Pagin
 /**
  * Hook for fetching a single patient by ID
  */
-export function usePatient(id: number | string | null, options?: UseQueryOptions<any>) {
+export function usePatient(
+  id: number | string | null,
+  options?: UseQueryOptions<any>,
+) {
   return useQuery({
     queryKey: queryKeys.patient(id as string | number),
     queryFn: () => apiClient.get(`/patients/${id}/`),
@@ -84,11 +103,14 @@ export function usePatient(id: number | string | null, options?: UseQueryOptions
 /**
  * Hook for fetching patient timeline
  */
-export function usePatientTimeline(patientId?: number | string, options?: UseQueryOptions<any>) {
+export function usePatientTimeline(
+  patientId?: number | string,
+  options?: UseQueryOptions<any>,
+) {
   return useQuery({
     queryKey: queryKeys.patientTimeline(patientId),
     queryFn: async () => {
-      const params = patientId ? `?patient_id=${patientId}` : '';
+      const params = patientId ? `?patient_id=${patientId}` : "";
       return apiClient.get(`/medical-records/timeline/${params}`);
     },
     ...defaultQueryOptions,
@@ -99,11 +121,13 @@ export function usePatientTimeline(patientId?: number | string, options?: UseQue
 /**
  * Hook for creating/updating a patient (mutation)
  */
-export function useCreatePatient(options?: UseMutationOptions<any, ApiErrorResponse, any>) {
+export function useCreatePatient(
+  options?: UseMutationOptions<any, ApiErrorResponse, any>,
+) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: any) => apiClient.post('/patients/', data),
+    mutationFn: (data: any) => apiClient.post("/patients/", data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.patients() });
       queryClient.setQueryData(queryKeys.patient(data.id), data);
@@ -115,9 +139,12 @@ export function useCreatePatient(options?: UseMutationOptions<any, ApiErrorRespo
 /**
  * Hook for updating a patient (mutation)
  */
-export function useUpdatePatient(id: number | string, options?: UseMutationOptions<any, ApiErrorResponse, any>) {
+export function useUpdatePatient(
+  id: number | string,
+  options?: UseMutationOptions<any, ApiErrorResponse, any>,
+) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (data: any) => apiClient.patch(`/patients/${id}/`, data),
     onSuccess: (data) => {
@@ -131,7 +158,10 @@ export function useUpdatePatient(id: number | string, options?: UseMutationOptio
 /**
  * Hook for fetching appointments
  */
-export function useAppointments(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function useAppointments(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.appointments(), params],
     queryFn: async () => {
@@ -154,7 +184,10 @@ export function useAppointments(params?: ListParams, options?: UseQueryOptions<P
 /**
  * Hook for fetching a single appointment
  */
-export function useAppointment(id: number | string | null, options?: UseQueryOptions<any>) {
+export function useAppointment(
+  id: number | string | null,
+  options?: UseQueryOptions<any>,
+) {
   return useQuery({
     queryKey: queryKeys.appointment(id as string | number),
     queryFn: () => apiClient.get(`/appointments/appointments/${id}/`),
@@ -167,7 +200,10 @@ export function useAppointment(id: number | string | null, options?: UseQueryOpt
 /**
  * Hook for fetching doctors (with optional filters)
  */
-export function useDoctors(params?: { specialty?: string; search?: string; [key: string]: any }, options?: UseQueryOptions<any>) {
+export function useDoctors(
+  params?: { specialty?: string; search?: string; [key: string]: any },
+  options?: UseQueryOptions<any>,
+) {
   return useQuery({
     queryKey: [...queryKeys.doctors(), params],
     queryFn: async () => {
@@ -182,7 +218,7 @@ export function useDoctors(params?: { specialty?: string; search?: string; [key:
       const url = `/appointments/doctors/?${queryParams.toString()}`;
       const data = await apiClient.get<any>(url);
       // Handle both array and paginated responses
-      return Array.isArray(data) ? data : (data.results || []);
+      return Array.isArray(data) ? data : data.results || [];
     },
     ...defaultQueryOptions,
     ...options,
@@ -192,11 +228,14 @@ export function useDoctors(params?: { specialty?: string; search?: string; [key:
 /**
  * Hook for creating an appointment
  */
-export function useCreateAppointment(options?: UseMutationOptions<any, ApiErrorResponse, any>) {
+export function useCreateAppointment(
+  options?: UseMutationOptions<any, ApiErrorResponse, any>,
+) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: any) => apiClient.post('/appointments/appointments/', data),
+    mutationFn: (data: any) =>
+      apiClient.post("/appointments/appointments/", data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments() });
       queryClient.setQueryData(queryKeys.appointment(data.id), data);
@@ -208,11 +247,15 @@ export function useCreateAppointment(options?: UseMutationOptions<any, ApiErrorR
 /**
  * Hook for updating an appointment
  */
-export function useUpdateAppointment(id: number | string, options?: UseMutationOptions<any, ApiErrorResponse, any>) {
+export function useUpdateAppointment(
+  id: number | string,
+  options?: UseMutationOptions<any, ApiErrorResponse, any>,
+) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: any) => apiClient.patch(`/appointments/appointments/${id}/`, data),
+    mutationFn: (data: any) =>
+      apiClient.patch(`/appointments/appointments/${id}/`, data),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.appointment(id), data);
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments() });
@@ -224,12 +267,18 @@ export function useUpdateAppointment(id: number | string, options?: UseMutationO
 /**
  * Hook for cancelling an appointment
  */
-export function useCancelAppointment(id: number | string, options?: UseMutationOptions<any, ApiErrorResponse, any>) {
+export function useCancelAppointment(
+  id: number | string,
+  options?: UseMutationOptions<any, ApiErrorResponse, any>,
+) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (reason?: string) => 
-      apiClient.patch(`/appointments/appointments/${id}/`, { status: 'cancelled', cancellation_reason: reason }),
+    mutationFn: (reason?: string) =>
+      apiClient.patch(`/appointments/appointments/${id}/`, {
+        status: "cancelled",
+        cancellation_reason: reason,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments() });
       queryClient.invalidateQueries({ queryKey: queryKeys.appointment(id) });
@@ -241,7 +290,10 @@ export function useCancelAppointment(id: number | string, options?: UseMutationO
 /**
  * Hook for fetching medical records
  */
-export function useMedicalRecords(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function useMedicalRecords(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.medicalRecords(), params],
     queryFn: async () => {
@@ -264,7 +316,10 @@ export function useMedicalRecords(params?: ListParams, options?: UseQueryOptions
 /**
  * Hook for fetching a single medical record
  */
-export function useMedicalRecord(id: number | string | null, options?: UseQueryOptions<any>) {
+export function useMedicalRecord(
+  id: number | string | null,
+  options?: UseQueryOptions<any>,
+) {
   return useQuery({
     queryKey: queryKeys.medicalRecord(id as string | number),
     queryFn: () => apiClient.get(`/medical-records/records/${id}/`),
@@ -277,7 +332,10 @@ export function useMedicalRecord(id: number | string | null, options?: UseQueryO
 /**
  * Hook for fetching prescriptions
  */
-export function usePrescriptions(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function usePrescriptions(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.prescriptions(), params],
     queryFn: async () => {
@@ -300,7 +358,10 @@ export function usePrescriptions(params?: ListParams, options?: UseQueryOptions<
 /**
  * Hook for fetching vital signs
  */
-export function useVitals(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function useVitals(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.vitals(), params],
     queryFn: async () => {
@@ -323,11 +384,13 @@ export function useVitals(params?: ListParams, options?: UseQueryOptions<Paginat
 /**
  * Hook for creating vital signs
  */
-export function useCreateVitals(options?: UseMutationOptions<any, ApiErrorResponse, any>) {
+export function useCreateVitals(
+  options?: UseMutationOptions<any, ApiErrorResponse, any>,
+) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: any) => apiClient.post('/medical-records/vitals/', data),
+    mutationFn: (data: any) => apiClient.post("/medical-records/vitals/", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.vitals() });
     },
@@ -338,7 +401,10 @@ export function useCreateVitals(options?: UseMutationOptions<any, ApiErrorRespon
 /**
  * Hook for fetching lab results
  */
-export function useLabs(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function useLabs(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.labs(), params],
     queryFn: async () => {
@@ -361,7 +427,10 @@ export function useLabs(params?: ListParams, options?: UseQueryOptions<Paginated
 /**
  * Hook for fetching telemedicine sessions
  */
-export function useTelemedicineSessions(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function useTelemedicineSessions(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.telemedicine(), params],
     queryFn: async () => {
@@ -384,11 +453,13 @@ export function useTelemedicineSessions(params?: ListParams, options?: UseQueryO
 /**
  * Hook for creating a telemedicine session
  */
-export function useCreateTelemedicineSession(options?: UseMutationOptions<any, ApiErrorResponse, any>) {
+export function useCreateTelemedicineSession(
+  options?: UseMutationOptions<any, ApiErrorResponse, any>,
+) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: any) => apiClient.post('/telemedicine/rooms/', data),
+    mutationFn: (data: any) => apiClient.post("/telemedicine/rooms/", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.telemedicine() });
     },
@@ -399,7 +470,10 @@ export function useCreateTelemedicineSession(options?: UseMutationOptions<any, A
 /**
  * Hook for fetching pharmacy orders
  */
-export function usePharmacyOrders(params?: ListParams, options?: UseQueryOptions<PaginatedResponse<any>>) {
+export function usePharmacyOrders(
+  params?: ListParams,
+  options?: UseQueryOptions<PaginatedResponse<any>>,
+) {
   return useQuery({
     queryKey: [...queryKeys.pharmacyOrders(), params],
     queryFn: async () => {
@@ -425,7 +499,7 @@ export function usePharmacyOrders(params?: ListParams, options?: UseQueryOptions
 export function useDashboardStats(options?: UseQueryOptions<any>) {
   return useQuery({
     queryKey: queryKeys.dashboardStats(),
-    queryFn: () => apiClient.get('/medical-records/dashboard/stats/'),
+    queryFn: () => apiClient.get("/medical-records/dashboard/stats/"),
     staleTime: 2 * 60 * 1000, // 2 minutes (shorter for stats)
     ...defaultQueryOptions,
     ...options,

@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/lib/routes';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ROUTES } from "@/lib/routes";
 
 /** /doctor → redirects to /doctor/dashboard */
 export default function DoctorIndexPage() {
-    const router = useRouter();
+  const router = useRouter();
 
-    useEffect(() => {
-        router.replace(ROUTES.DOCTOR_DASHBOARD);
-    }, [router]);
+  useEffect(() => {
+    router.replace(ROUTES.DOCTOR_DASHBOARD);
+  }, [router]);
 
-    return (
-        <div className="flex h-screen items-center justify-center bg-background">
-            <div className="text-muted-foreground">Loading doctor portal...</div>
-        </div>
-    );
+  return (
+    <div className="flex h-screen items-center justify-center bg-background">
+      <div className="text-muted-foreground">Loading doctor portal...</div>
+    </div>
+  );
 }

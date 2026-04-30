@@ -1,49 +1,59 @@
-'use client';
+"use client";
 
-import type { UserRole } from '@/lib/types';
+import type { UserRole } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Named route constants
 // ---------------------------------------------------------------------------
 export const ROUTES = {
-  HOME: '/',
-  LOGIN: '/login',
-  REGISTER: '/register',
-  PORTAL: '/portal',
-  EMERGENCY: '/emergency',
-  LAB_TESTS: '/lab-tests',
+  HOME: "/",
+  LOGIN: "/login",
+  REGISTER: "/register",
+  PORTAL: "/portal",
+  EMERGENCY: "/emergency",
+  LAB_TESTS: "/lab-tests",
 
   // Patient
-  PATIENT: '/patient',
-  PATIENT_DASHBOARD: '/patient/dashboard',
-  PATIENT_APPOINTMENTS: '/patient/appointments',
+  PATIENT: "/patient",
+  PATIENT_DASHBOARD: "/patient/dashboard",
+  PATIENT_APPOINTMENTS: "/patient/appointments",
 
   // Doctor
-  DOCTOR: '/doctor',
-  DOCTOR_DASHBOARD: '/doctor/dashboard',
-  DOCTOR_PATIENTS: '/doctor/patients',
-  DOCTOR_TRIAGE_INBOX: '/doctor/triage-inbox',
+  DOCTOR: "/doctor",
+  DOCTOR_DASHBOARD: "/doctor/dashboard",
+  DOCTOR_PATIENTS: "/doctor/patients",
+  DOCTOR_TRIAGE_INBOX: "/doctor/triage-inbox",
 
   // Admin
-  ADMIN: '/admin',
-  ADMIN_DASHBOARD: '/admin/dashboard',
+  ADMIN: "/admin",
+  ADMIN_DASHBOARD: "/admin/dashboard",
 
   // Lab
-  LAB: '/lab',
-  LAB_WORKLIST: '/lab/worklist',
+  LAB: "/lab",
+  LAB_WORKLIST: "/lab/worklist",
 
   // Pharmacy
-  PHARMACY: '/pharmacy',
-  PHARMACY_DASHBOARD: '/pharmacy/dashboard',
+  PHARMACY: "/pharmacy",
+  PHARMACY_DASHBOARD: "/pharmacy/dashboard",
 } as const;
 
 // ---------------------------------------------------------------------------
 // Valid URL tab segments per portal (must match portal component tab types)
 // ---------------------------------------------------------------------------
 export const VALID_TABS = {
-  admin: ['dashboard', 'analytics', 'hospitals', 'staff', 'patients', 'billing', 'ward-map', 'infection-tracking', 'audit-logs'] as const,
-  lab: ['worklist', 'completed', 'reports', 'settings'] as const,
-  pharmacy: ['dashboard', 'orders', 'inventory'] as const,
+  admin: [
+    "dashboard",
+    "analytics",
+    "hospitals",
+    "staff",
+    "patients",
+    "billing",
+    "ward-map",
+    "infection-tracking",
+    "audit-logs",
+  ] as const,
+  lab: ["worklist", "completed", "reports", "settings"] as const,
+  pharmacy: ["dashboard", "orders", "inventory"] as const,
 };
 
 // ---------------------------------------------------------------------------

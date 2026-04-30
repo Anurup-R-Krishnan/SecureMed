@@ -1,118 +1,145 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { StatCard } from '@/components/ui/stat-card';
-import { Button } from '@/components/ui/button';
-import { Appointment } from '@/services/appointments';
+import React from "react";
+import { StatCard } from "@/components/ui/stat-card";
+import { Button } from "@/components/ui/button";
+import { Appointment } from "@/services/appointments";
 import {
-    Calendar,
-    Clock,
-    UserPlus,
-    CheckCircle,
-    Activity,
-    Video
-} from 'lucide-react';
+  Calendar,
+  Clock,
+  UserPlus,
+  CheckCircle,
+  Activity,
+  Video,
+} from "lucide-react";
 
 interface DoctorDashboardProps {
-    todayAppts: Appointment[];
-    totalPatients: number;
-    totalAppointments: number;
-    loading: boolean;
-    onOpenReferral: (item: any) => void;
-    onAcceptAppointment: (appt: Appointment) => void;
-    formatTime: (time: string) => string;
-    getStatusBadge: (status: string) => React.ReactNode;
-    onStartVideoCall?: (appt: Appointment) => void;
+  todayAppts: Appointment[];
+  totalPatients: number;
+  totalAppointments: number;
+  loading: boolean;
+  onOpenReferral: (item: any) => void;
+  onAcceptAppointment: (appt: Appointment) => void;
+  formatTime: (time: string) => string;
+  getStatusBadge: (status: string) => React.ReactNode;
+  onStartVideoCall?: (appt: Appointment) => void;
 }
 
 export default function DoctorDashboard({
-    todayAppts,
-    totalPatients,
-    totalAppointments,
-    loading,
-    onOpenReferral,
-    onAcceptAppointment,
-    formatTime,
-    getStatusBadge,
-    onStartVideoCall
+  todayAppts,
+  totalPatients,
+  totalAppointments,
+  loading,
+  onOpenReferral,
+  onAcceptAppointment,
+  formatTime,
+  getStatusBadge,
+  onStartVideoCall,
 }: DoctorDashboardProps) {
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Quick Stats */}
+      <div className="grid md:grid-cols-4 gap-6">
+        <StatCard title="Today's Appointments" value={todayAppts.length} />
+        <StatCard
+          title="Total Patients"
+          value={totalPatients}
+          valueClassName="text-primary"
+        />
+        <StatCard
+          title="Total Appointments"
+          value={totalAppointments}
+          valueClassName="text-amber-500"
+        />
+        <StatCard
+          title="Completed Today"
+          value={todayAppts.filter((a) => a.status === "completed").length}
+          valueClassName="text-green-500"
+        />
+      </div>
 
-    return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Quick Stats */}
-            <div className="grid md:grid-cols-4 gap-6">
-                <StatCard title="Today's Appointments" value={todayAppts.length} />
-                <StatCard title="Total Patients" value={totalPatients} valueClassName="text-primary" />
-                <StatCard title="Total Appointments" value={totalAppointments} valueClassName="text-amber-500" />
-                <StatCard title="Completed Today" value={todayAppts.filter(a => a.status === 'completed').length} valueClassName="text-green-500" />
+      {/* Today's Appointments */}
+      <div className="bg-card p-8 rounded-[32px] border border-border shadow-sm">
+        <h3 className="text-xl font-black text-foreground mb-6">
+          Today&apos;s Schedule
+        </h3>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />
+          </div>
+        ) : todayAppts.length > 0 ? (
+          <div className="space-y-4">
+            {todayAppts.map((apt) => (
+              <div
+                key={apt.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border border-border/50 bg-muted/20 rounded-2xl hover:bg-muted/40 transition-colors gap-4"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                    {(apt.patient_name || "P")[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground text-lg">
+                      {apt.patient_name || `Patient #${apt.patient}`}
+                    </p>
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Clock className="h-3 w-3" />{" "}
+                      {formatTime(apt.appointment_time)} •{" "}
+                      {apt.reason || "Consultation"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {getStatusBadge(apt.status)}
+                  {apt.status === "scheduled" && (
+                    <Button
+                      size="sm"
+                      className="font-bold rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
+                      onClick={() => onAcceptAppointment(apt)}
+                    >
+                      Accept
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 ml-2"
+                    onClick={() => onOpenReferral(apt)}
+                  >
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  {onStartVideoCall &&
+                    (apt.status === "confirmed" ||
+                      apt.status === "scheduled") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 p-0 ml-2 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400"
+                        onClick={() => onStartVideoCall(apt)}
+                        title="Start Telehealth Session"
+                      >
+                        <Video className="h-4 w-4" />
+                      </Button>
+                    )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 bg-muted/10 rounded-2xl border border-dashed border-border/50">
+            <div className="h-16 w-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-muted-foreground/50" />
             </div>
-
-            {/* Today's Appointments */}
-            <div className="bg-card p-8 rounded-[32px] border border-border shadow-sm">
-                <h3 className="text-xl font-black text-foreground mb-6">Today&apos;s Schedule</h3>
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />
-                    </div>
-                ) : todayAppts.length > 0 ? (
-                    <div className="space-y-4">
-                        {todayAppts.map((apt) => (
-                            <div
-                                key={apt.id}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border border-border/50 bg-muted/20 rounded-2xl hover:bg-muted/40 transition-colors gap-4"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                                        {(apt.patient_name || 'P')[0].toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-foreground text-lg">{apt.patient_name || `Patient #${apt.patient}`}</p>
-                                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                            <Clock className="h-3 w-3" /> {formatTime(apt.appointment_time)} • {apt.reason || 'Consultation'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    {getStatusBadge(apt.status)}
-                                    {apt.status === 'scheduled' && (
-                                        <Button
-                                            size="sm"
-                                            className="font-bold rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
-                                            onClick={() => onAcceptAppointment(apt)}
-                                        >
-                                            Accept
-                                        </Button>
-                                    )}
-                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-2" onClick={() => onOpenReferral(apt)}>
-                                        <UserPlus className="h-4 w-4 text-muted-foreground" />
-                                    </Button>
-                                    {onStartVideoCall && (apt.status === 'confirmed' || apt.status === 'scheduled') && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 w-8 p-0 ml-2 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400"
-                                            onClick={() => onStartVideoCall(apt)}
-                                            title="Start Telehealth Session"
-                                        >
-                                            <Video className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-16 bg-muted/10 rounded-2xl border border-dashed border-border/50">
-                        <div className="h-16 w-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Calendar className="h-8 w-8 text-muted-foreground/50" />
-                        </div>
-                        <h4 className="text-lg font-bold text-foreground mb-1">No appointments today</h4>
-                        <p className="text-muted-foreground font-medium text-sm max-w-xs mx-auto">
-                            Your schedule is clear. Enjoy your free time or check upcoming appointments.
-                        </p>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
+            <h4 className="text-lg font-bold text-foreground mb-1">
+              No appointments today
+            </h4>
+            <p className="text-muted-foreground font-medium text-sm max-w-xs mx-auto">
+              Your schedule is clear. Enjoy your free time or check upcoming
+              appointments.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

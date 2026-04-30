@@ -19,8 +19,6 @@ User = get_user_model()
 
 def create_test_users():
     """Create test users for RBAC verification."""
-    print("Creating test users for RBAC verification...")
-    print()
     
     users_to_create = [
         {
@@ -48,7 +46,6 @@ def create_test_users():
         
         # Check if user already exists
         if User.objects.filter(username=username).exists():
-            print(f"⚠️  User '{username}' already exists, skipping...")
             continue
         
         # Create user
@@ -58,12 +55,7 @@ def create_test_users():
             password=user_data['password'],
             role=user_data['role']
         )
-        print(f"✅ Created user: {username} (role: {user_data['role']})")
     
-    print()
-    print("✅ Test users created successfully!")
-    print()
-    print("You can now run: python verify_rbac.py")
 
 
 if __name__ == '__main__':

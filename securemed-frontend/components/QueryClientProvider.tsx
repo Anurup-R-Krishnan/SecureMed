@@ -1,13 +1,16 @@
 /**
  * React Query Provider Component
- * 
+ *
  * Wraps the application with QueryClientProvider for caching and state management
  */
 
-'use client';
+"use client";
 
-import React from 'react';
-import { QueryClient, QueryClientProvider as TanstackQueryClientProvider } from '@tanstack/react-query';
+import React from "react";
+import {
+  QueryClient,
+  QueryClientProvider as TanstackQueryClientProvider,
+} from "@tanstack/react-query";
 
 // Create a singleton QueryClient instance
 const queryClient = new QueryClient({
