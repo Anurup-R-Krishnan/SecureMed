@@ -4,17 +4,23 @@ Create test users and data for workflow testing
 import os
 import sys
 import django
+from pathlib import Path
 
-sys.path.append('/home/anuruprkris/Project/SecureMed/securemed-backend')
+BASE_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(BASE_DIR))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from django.contrib.auth import get_user_model
 from apps.accounts.patients.models import Patient
 from apps.scheduling.availability.models import Doctor
-from apps.clinical.diagnostics.models import LabTest
+from apps.clinical.diagnostics.models import LabTest, LabOrder, LabResult
 from apps.clinical.pharmacy.models import Drug, DrugStock
+from django.core.files.base import ContentFile
+from django.utils import timezone
 from decimal import Decimal
+import uuid
+from apps.clinical.diagnostics.crypto import encrypt_bytes
 
 User = get_user_model()
 
@@ -134,8 +140,59 @@ def create_test_data():
             print(f"✓ Created lab test: {code}")
         else:
             print(f"✓ Lab test exists: {code}")
+
+    # 6. Create Lab Order + Result with Attachment (for end-to-end lab workflow)
+    try:
+        existing_result = LabResult.objects.filter(order__patient=patient_user).first()
+        if existing_result:
+            print("✓ Lab result with attachment already exists for patient")
+        else:
+            primary_test = LabTest.objects.filter(code='CBC').first() or LabTest.objects.first()
+            if primary_test:
+                order = LabOrder.objects.create(
+                    patient=patient_user,
+                    doctor=doctor_user,
+                    priority='routine',
+                    status='completed',
+                    clinical_notes='Seeded lab order for workflow verification'
+                )
+                order.items.add(primary_test)
+
+                result = LabResult.objects.create(
+                    order=order,
+                    test=primary_test,
+                    result_value='5.1',
+                    reference_range='4.0-6.0',
+                    units='x10^9/L',
+                    flag='Normal',
+                    notes='Seeded lab result with attachment',
+                    technician=lab_tech,
+                    technician_name=f"{lab_tech.first_name} {lab_tech.last_name}".strip()
+                )
+
+                report_text = (
+                    "SecureMed Lab Report\n"
+                    f"Patient: {patient.patient_id}\n"
+                    f"Test: {primary_test.name}\n"
+                    "Result: 5.1 x10^9/L\n"
+                    "Reference: 4.0-6.0 x10^9/L\n"
+                    "Flag: Normal\n"
+                )
+                encrypted = encrypt_bytes(report_text.encode())
+                encrypted_file = ContentFile(encrypted, name=f"lab_{uuid.uuid4().hex}.enc")
+                result.file_attachment = encrypted_file
+                result.file_attachment_name = "seed_lab_report.txt"
+                result.file_attachment_content_type = "text/plain"
+                result.released_to_patient = True
+                result.released_at = timezone.now()
+                result.save()
+                print("✓ Seeded lab order/result with attachment and release flag")
+            else:
+                print("! Skipped lab result seed: no lab tests available")
+    except Exception as e:
+        print(f"! Failed to seed lab result attachment: {e}")
     
-    # 6. Create Drugs
+    # 7. Create Drugs
     drugs = [
         ('MED-001', 'Amoxicillin', 'Tablet', '500mg', '10.00'),
         ('MED-002', 'Paracetamol', 'Tablet', '650mg', '5.00'),

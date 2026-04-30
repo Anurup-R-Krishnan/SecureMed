@@ -1,11 +1,29 @@
 import re
 import requests
+import hashlib
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 
 User = get_user_model()
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(f"{token}{settings.SECRET_KEY}".encode("utf-8")).hexdigest()
+
+
+def encode_reset_token(token: str) -> str:
+    return f"sha256${_hash_reset_token(token)}"
+
+
+def match_reset_token(raw_token: str, stored_token: str) -> bool:
+    if not stored_token:
+        return False
+    if stored_token.startswith("sha256$"):
+        return constant_time_compare(stored_token, encode_reset_token(raw_token))
+    return constant_time_compare(stored_token, raw_token)
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

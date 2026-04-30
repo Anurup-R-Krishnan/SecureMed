@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Hospital } from '@/services/admin';
 import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -35,6 +36,7 @@ export default function HospitalManager({ hospitals, onCreateHospital, onUpdateH
     const [open, setOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editing, setEditing] = useState<Hospital | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [form, setForm] = useState({
         name: '',
         location: '',
@@ -86,11 +88,31 @@ export default function HospitalManager({ hospitals, onCreateHospital, onUpdateH
         }
     };
 
+    const filteredHospitals = hospitals.filter((hospital) => {
+        if (!searchQuery.trim()) return true;
+        const term = searchQuery.trim().toLowerCase();
+        return (
+            hospital.name?.toLowerCase().includes(term) ||
+            hospital.location?.toLowerCase().includes(term)
+        );
+    });
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-foreground">Hospital Management</h3>
-                <Button onClick={handleOpenCreate}>Add Hospital</Button>
+                <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search hospitals..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 bg-background"
+                        />
+                    </div>
+                    <Button onClick={handleOpenCreate}>Add Hospital</Button>
+                </div>
             </div>
 
             <div className="bg-card rounded-lg border border-border overflow-x-auto">
@@ -106,8 +128,8 @@ export default function HospitalManager({ hospitals, onCreateHospital, onUpdateH
                         </tr>
                     </thead>
                     <tbody>
-                        {hospitals.length > 0 ? (
-                            hospitals.map((hospital) => (
+                        {filteredHospitals.length > 0 ? (
+                            filteredHospitals.map((hospital) => (
                                 <tr key={hospital.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                                     <td className="py-3 px-4 font-medium text-foreground">{hospital.name}</td>
                                     <td className="py-3 px-4 text-muted-foreground">{hospital.location}</td>
@@ -129,7 +151,7 @@ export default function HospitalManager({ hospitals, onCreateHospital, onUpdateH
                         ) : (
                             <tr>
                                 <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                                    No hospitals found.
+                                    {searchQuery ? 'No hospitals match your search.' : 'No hospitals found.'}
                                 </td>
                             </tr>
                         )}

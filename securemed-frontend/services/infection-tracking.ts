@@ -2,7 +2,7 @@
  * Infection Tracking Service
  * API calls for the infection tracking system.
  */
-import apiClient from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface GraphNode {
     id: string;

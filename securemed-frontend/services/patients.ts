@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface TimelineEvent {
     id: string;
@@ -16,7 +16,7 @@ export interface TimelineEvent {
 export const patientService = {
     getPatients: async (): Promise<any[]> => {
         try {
-            const response = await api.get('/patients/');
+            const response = await apiClient.get('/patients/');
             if (Array.isArray(response.data)) return response.data;
             return response.data?.results || [];
         } catch (error) {
@@ -58,11 +58,11 @@ export const patientService = {
         };
 
         try {
-            const response = await api.get('/medical-records/timeline/', { params });
+            const response = await apiClient.get('/medical-records/timeline/', { params });
             return normalize(response.data);
         } catch (error: any) {
             try {
-                const response = await api.get('/patients/timeline/', { params });
+                const response = await apiClient.get('/patients/timeline/', { params });
                 return normalize(response.data);
             } catch (fallbackError) {
                 console.error('Error fetching patient timeline:', fallbackError);
@@ -73,7 +73,7 @@ export const patientService = {
 
     getInsuranceInfo: async () => {
         try {
-            const response = await api.get('/patients/profile/');
+            const response = await apiClient.get('/patients/profile/');
             const data = response.data;
             return {
                 provider: data.insurance_provider || 'Not provided',
@@ -89,7 +89,7 @@ export const patientService = {
 
     getPatientOverview: async (patientId: string) => {
         try {
-            const response = await api.get(`/medical-records/dashboard/stats/?patient_id=${patientId}`);
+            const response = await apiClient.get(`/medical-records/dashboard/stats/?patient_id=${patientId}`);
             return response.data;
         } catch (error) {
             return null;
@@ -101,7 +101,7 @@ export const patientService = {
             // Fetch from pharmacy orders or a dedicated endpoint if available.
             // Falling back to dashboard stats of the current user (as a doctor viewing broad context) 
             // is not ideal. Instead, we'll try to hit the pharmacy-orders endpoint to get *all* fulfilled orders.
-            const response = await api.get('/medical-records/pharmacy-orders/');
+            const response = await apiClient.get('/medical-records/pharmacy-orders/');
             return response.data;
         } catch (error) {
             console.error('Error fetching medications:', error);

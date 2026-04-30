@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { Beaker, FileText, Pill, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface TimelineEvent {
   id: string;
@@ -31,43 +32,53 @@ interface PatientTimelineProps {
 export default function PatientTimeline({ patientId, className }: PatientTimelineProps) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    async function fetchTimeline() {
-      try {
-        const response = await api.get('/patients/timeline/', {
-          params: { patient_id: patientId }
-        });
-        // Map backend response to frontend format
-        // Backend returns: category (diagnosis|lab|medication|appointment|admin)
-        // Frontend expects: type (lab|prescription|visit|appointment)
-        const categoryToType: Record<string, string> = {
-          diagnosis: 'visit',
-          lab: 'lab',
-          medication: 'prescription',
-          appointment: 'appointment',
-          admin: 'visit',
-        };
-        const mapped = (Array.isArray(response.data) ? response.data : []).map((e: any) => ({
-          id: e.id,
-          date: e.date,
-          type: categoryToType[e.category] || e.type || 'visit',
-          title: e.title,
-          description: e.description,
-          details: e.details,
-        }));
-        setEvents(mapped);
-      } catch (error) {
-        console.error("Failed to fetch timeline", error);
-      } finally {
+  const fetchTimeline = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+    try {
+      const response = await api.get('/patients/timeline/', {
+        params: { patient_id: patientId }
+      });
+      // Map backend response to frontend format
+      // Backend returns: category (diagnosis|lab|medication|appointment|admin)
+      // Frontend expects: type (lab|prescription|visit|appointment)
+      const categoryToType: Record<string, string> = {
+        diagnosis: 'visit',
+        lab: 'lab',
+        medication: 'prescription',
+        appointment: 'appointment',
+        admin: 'visit',
+      };
+      const mapped = (Array.isArray(response.data) ? response.data : []).map((e: any) => ({
+        id: e.id,
+        date: e.date,
+        type: categoryToType[e.category] || e.type || 'visit',
+        title: e.title,
+        description: e.description,
+        details: e.details,
+      }));
+      setEvents(mapped);
+    } catch (error) {
+      console.error("Failed to fetch timeline", error);
+    } finally {
+      if (showLoading) {
         setLoading(false);
+      } else {
+        setRefreshing(false);
       }
     }
-
-    if (patientId) {
-      fetchTimeline();
-    }
   }, [patientId]);
+
+  useEffect(() => {
+    if (patientId) {
+      fetchTimeline(true);
+    }
+  }, [patientId, fetchTimeline]);
 
   if (loading) {
     return <div className="p-6 text-center text-slate-500">Loading timeline...</div>;
@@ -131,10 +142,14 @@ export default function PatientTimeline({ patientId, className }: PatientTimelin
         )}
       </div>
 
-      {/* Load More */}
-      <button className="mt-6 w-full rounded-lg border border-border bg-background px-4 py-2 font-medium text-foreground hover:bg-muted transition-colors">
-        Load More Events
-      </button>
+      <Button
+        variant="outline"
+        className="mt-6 w-full"
+        onClick={() => fetchTimeline(false)}
+        disabled={refreshing}
+      >
+        {refreshing ? 'Refreshing...' : 'Refresh Timeline'}
+      </Button>
     </div>
   );
 }

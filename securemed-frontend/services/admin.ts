@@ -2,7 +2,7 @@
  * Admin Service
  * Handles API calls for admin portal functionality
  */
-import apiClient from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 // Types
 export interface Hospital {

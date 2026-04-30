@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface VideoRoom {
     id: number;
@@ -14,7 +14,7 @@ export interface VideoRoom {
 export const videoService = {
     // Create a room (Doctor only)
     createRoom: async (patientId: number): Promise<VideoRoom> => {
-        const response = await api.post('/telemedicine/rooms/', { patient: patientId });
+        const response = await apiClient.post('/telemedicine/rooms/', { patient: patientId });
         return response.data;
     },
 
@@ -22,7 +22,7 @@ export const videoService = {
     getActiveRoom: async (patientId: number): Promise<VideoRoom | null> => {
         // This endpoint requires a bit of filtering on the backend or we filter here
         // For now, let's list rooms and find one
-        const response = await api.get('/telemedicine/rooms/');
+        const response = await apiClient.get('/telemedicine/rooms/');
         // Find active room with this patient
         const rooms = response.data.results || response.data;
         return rooms.find((r: any) => r.patient === patientId && r.status !== 'ended') || null;
@@ -30,31 +30,31 @@ export const videoService = {
 
     // Join room (Patient/Doctor)
     joinRoom: async (roomId: string): Promise<any> => {
-        const response = await api.post(`/telemedicine/rooms/${roomId}/join/`);
+        const response = await apiClient.post(`/telemedicine/rooms/${roomId}/join/`);
         return response.data;
     },
 
     // Poll room status (Patient/Doctor)
     checkRoomStatus: async (roomId: string): Promise<{ status: string; waiting_count?: number }> => {
-        const response = await api.get(`/telemedicine/rooms/${roomId}/status_check/`);
+        const response = await apiClient.get(`/telemedicine/rooms/${roomId}/status_check/`);
         return response.data;
     },
 
     // Start call (Doctor)
     startCall: async (roomId: string): Promise<any> => {
-        const response = await api.post(`/telemedicine/rooms/${roomId}/start/`);
+        const response = await apiClient.post(`/telemedicine/rooms/${roomId}/start/`);
         return response.data;
     },
 
     // Admit patient from waiting room (Doctor)
     admitPatient: async (roomId: string): Promise<any> => {
-        const response = await api.post(`/telemedicine/rooms/${roomId}/admit/`);
+        const response = await apiClient.post(`/telemedicine/rooms/${roomId}/admit/`);
         return response.data;
     },
 
     // End call
     endCall: async (roomId: string): Promise<any> => {
-        const response = await api.post(`/telemedicine/rooms/${roomId}/end/`);
+        const response = await apiClient.post(`/telemedicine/rooms/${roomId}/end/`);
         return response.data;
     }
 };

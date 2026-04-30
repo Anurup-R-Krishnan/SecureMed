@@ -359,6 +359,9 @@ class LabWorklistViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['post'])
     def enter_result(self, request, pk=None):
         """Enter result for a specific order/test (blinded)"""
+        from .serializers import LabResultInputSerializer
+        from apps.platform.analytics.audit import log_audit, get_client_ip
+        
         if not request.user.is_staff and request.user.role != 'lab_technician':
             return Response({"error": "Unauthorized. Only lab technicians can enter results."}, status=status.HTTP_403_FORBIDDEN)
 
@@ -367,16 +370,19 @@ class LabWorklistViewSet(viewsets.ViewSet):
         except LabOrder.DoesNotExist:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        test_code = request.data.get('test_code')
-        result_value = request.data.get('result_value')
-        units = request.data.get('units', '')
-        reference_range = request.data.get('reference_range', '')
-        flag = request.data.get('flag', '')  # High, Low, Critical
-        notes = request.data.get('notes', '')
+        # Validate input using serializer
+        serializer = LabResultInputSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        validated_data = serializer.validated_data
+        test_code = validated_data.get('test_code')
+        result_value = validated_data.get('result_value')
+        units = validated_data.get('units', '')
+        reference_range = validated_data.get('reference_range', '')
+        flag = validated_data.get('flag', '')
+        notes = validated_data.get('notes', '')
         file_obj = request.FILES.get('file_attachment')
-
-        if not test_code or not result_value:
-            return Response({"error": "test_code and result_value are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validate result value (basic range check)
         try:

@@ -252,16 +252,40 @@ class InfectionTraceViewSet(viewsets.ModelViewSet):
         """Update investigation status of a trace."""
         trace = self.get_object()
         new_status = request.data.get('status')
+        
+        # Validate status
         if new_status not in dict(InfectionTrace.STATUS_CHOICES):
             return Response(
                 {'error': f'Invalid status. Choose from: {list(dict(InfectionTrace.STATUS_CHOICES).keys())}'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        
+        # Validate investigation_notes if provided
+        investigation_notes = request.data.get('investigation_notes', '')
+        if investigation_notes:
+            if len(str(investigation_notes).strip()) > 5000:
+                return Response(
+                    {'error': 'Investigation notes too long (max 5000 chars)'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        
         trace.status = new_status
         trace.investigated_by = request.user
-        if 'investigation_notes' in request.data:
-            trace.investigation_notes = request.data['investigation_notes']
+        if investigation_notes:
+            trace.investigation_notes = investigation_notes
         trace.save()
+        
+        # Log the update
+        from apps.platform.analytics.audit import log_audit, get_client_ip
+        log_audit(
+            actor=request.user,
+            action='medical_record_updated',
+            resource_type='InfectionTrace',
+            resource_id=trace.trace_id,
+            description=f'Updated infection trace {trace.trace_id} status to {new_status}',
+            ip_address=get_client_ip(request),
+        )
+        
         return Response(InfectionTraceSerializer(trace).data)
 
 

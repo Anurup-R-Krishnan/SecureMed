@@ -21,7 +21,6 @@ export default function ReferralsPage() {
                     params.set('doctorId', doctorId.toString());
                     params.set('doctorName', doctorName);
 
-                    console.log(`Booking with Dr. ${doctorName} (${doctorId})`);
                     router.push(`/patient/appointments?${params.toString()}`);
                 }}
             />

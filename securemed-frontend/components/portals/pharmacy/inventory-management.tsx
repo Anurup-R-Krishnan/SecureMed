@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DataTable, Column } from '@/components/ui/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -157,6 +158,94 @@ export default function PharmacyInventory() {
     );
   });
 
+  const drugColumns: Column<Drug>[] = [
+    {
+      header: "Drug Details",
+      cell: (drug) => (
+        <div className="flex flex-col gap-1">
+          <div className="font-bold text-foreground transition-colors group-hover:text-primary">{drug.name}</div>
+          <div className="text-xs text-muted-foreground">{drug.generic_name}</div>
+          <div className="flex gap-2 mt-1">
+            <Badge variant="outline" className="text-[10px] h-5 px-1.5 rounded-md">{drug.drug_code}</Badge>
+            {drug.needs_reorder && <Badge variant="destructive" className="text-[10px] h-5 px-1.5 rounded-md">Low Stock</Badge>}
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "Manufacturer",
+      accessorKey: "manufacturer",
+      className: "font-medium"
+    },
+    {
+      header: "Form & Strength",
+      cell: (drug) => (
+        <div className="flex flex-col gap-1">
+          <div className="font-medium capitalize">{drug.dosage_form}</div>
+          <div className="text-xs text-muted-foreground">{drug.strength}</div>
+        </div>
+      )
+    },
+    {
+      header: "Price",
+      cell: (drug) => <span className="font-mono text-right w-full block">₹{drug.unit_price}</span>,
+      className: "text-right"
+    },
+    {
+      header: "Stock",
+      cell: (drug) => (
+        <div className="flex flex-col items-end gap-1">
+          <div className="font-bold text-lg">{drug.stock_quantity}</div>
+          <div className="text-[10px] text-muted-foreground">Reorder at {drug.reorder_level}</div>
+        </div>
+      ),
+      className: "text-right"
+    }
+  ];
+
+  const batchColumns: Column<Batch>[] = [
+    {
+      header: "Batch Info",
+      cell: (batch) => (
+        <div className="flex flex-col gap-1">
+          <div className="font-bold">{batch.drug_name}</div>
+          <div className="text-xs font-mono text-muted-foreground">{batch.batch_number}</div>
+        </div>
+      )
+    },
+    {
+      header: "Status",
+      cell: (batch) => (
+        batch.is_expired ? (
+          <Badge variant="destructive" className="rounded-full">Expired</Badge>
+        ) : batch.days_to_expiry <= 90 ? (
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 rounded-full">Expiring Soon</Badge>
+        ) : (
+          <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 rounded-full">Valid</Badge>
+        )
+      )
+    },
+    {
+      header: "Supplier",
+      accessorKey: "supplier",
+      className: "font-medium"
+    },
+    {
+      header: "Expiry",
+      cell: (batch) => (
+        <div className="flex flex-col gap-1">
+          <div>{batch.expiry_date}</div>
+          <div className="text-xs text-muted-foreground">{batch.days_to_expiry} days left</div>
+        </div>
+      )
+    },
+    {
+      header: "Quantity",
+      accessorKey: "quantity",
+      className: "text-right font-bold text-lg"
+    }
+  ];
+
   const lowStockDrugs = drugs.filter(d => d.needs_reorder);
   const expiringBatches = batches.filter(b => !b.is_expired && b.days_to_expiry <= 90);
   const expiredBatches = batches.filter(b => b.is_expired);
@@ -203,41 +292,11 @@ export default function PharmacyInventory() {
             </div>
 
             <div className="rounded-[24px] border border-border/60 overflow-hidden shadow-sm bg-card">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border/60">
-                  <tr>
-                    <th className="px-6 py-4">Drug Details</th>
-                    <th className="px-6 py-4">Manufacturer</th>
-                    <th className="px-6 py-4">Form & Strength</th>
-                    <th className="px-6 py-4 text-right">Price</th>
-                    <th className="px-6 py-4 text-right">Stock</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {filteredDrugs.map(drug => (
-                    <tr key={drug.id} className="hover:bg-muted/30 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-foreground group-hover:text-primary transition-colors">{drug.name}</div>
-                        <div className="text-xs text-muted-foreground">{drug.generic_name}</div>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-[10px] h-5 px-1.5 rounded-md">{drug.drug_code}</Badge>
-                          {drug.needs_reorder && <Badge variant="destructive" className="text-[10px] h-5 px-1.5 rounded-md">Low Stock</Badge>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium">{drug.manufacturer}</td>
-                      <td className="px-6 py-4">
-                        <div className="font-medium capitalize">{drug.dosage_form}</div>
-                        <div className="text-xs text-muted-foreground">{drug.strength}</div>
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono">₹{drug.unit_price}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="font-bold text-lg">{drug.stock_quantity}</div>
-                        <div className="text-[10px] text-muted-foreground">Reorder at {drug.reorder_level}</div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                data={filteredDrugs}
+                columns={drugColumns}
+                keyExtractor={(d) => d.id}
+              />
             </div>
           </TabsContent>
 
@@ -247,42 +306,11 @@ export default function PharmacyInventory() {
             </div>
 
             <div className="rounded-[24px] border border-border/60 overflow-hidden shadow-sm bg-card">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border/60">
-                  <tr>
-                    <th className="px-6 py-4">Batch Info</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Supplier</th>
-                    <th className="px-6 py-4">Expiry</th>
-                    <th className="px-6 py-4 text-right">Quantity</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {batches.map(batch => (
-                    <tr key={batch.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-bold">{batch.drug_name}</div>
-                        <div className="text-xs font-mono text-muted-foreground">{batch.batch_number}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {batch.is_expired ? (
-                          <Badge variant="destructive" className="rounded-full">Expired</Badge>
-                        ) : batch.days_to_expiry <= 90 ? (
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 rounded-full">Expiring Soon</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 rounded-full">Valid</Badge>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 font-medium">{batch.supplier}</td>
-                      <td className="px-6 py-4">
-                        <div>{batch.expiry_date}</div>
-                        <div className="text-xs text-muted-foreground">{batch.days_to_expiry} days left</div>
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-lg">{batch.quantity}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                data={batches}
+                columns={batchColumns}
+                keyExtractor={(b) => b.id}
+              />
             </div>
           </TabsContent>
 

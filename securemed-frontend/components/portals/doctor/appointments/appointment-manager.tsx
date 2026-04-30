@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Appointment } from '@/services/appointments';
-import { Calendar } from 'lucide-react';
+import { Calendar, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface AppointmentManagerProps {
     appointments: Appointment[];
@@ -24,17 +25,41 @@ export default function AppointmentManager({
     formatTime,
     getStatusBadge
 }: AppointmentManagerProps) {
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredAppointments = useMemo(() => {
+        if (!searchQuery.trim()) return appointments;
+        const term = searchQuery.trim().toLowerCase();
+        return appointments.filter((apt) => (
+            String(apt.patient_name || '').toLowerCase().includes(term) ||
+            String(apt.reason || '').toLowerCase().includes(term) ||
+            String(apt.status || '').toLowerCase().includes(term) ||
+            String(apt.appointment_date || '').toLowerCase().includes(term) ||
+            String(apt.appointment_id || '').toLowerCase().includes(term)
+        ));
+    }, [appointments, searchQuery]);
 
     return (
         <div className="bg-card p-8 rounded-[32px] border border-border shadow-sm">
-            <h3 className="text-xl font-black text-foreground mb-6">All Appointments</h3>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <h3 className="text-xl font-black text-foreground">All Appointments</h3>
+                <div className="relative w-full md:max-w-xs">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search appointments..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 bg-background"
+                    />
+                </div>
+            </div>
             {loading ? (
                 <div className="flex items-center justify-center py-12">
                     <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />
                 </div>
-            ) : appointments.length > 0 ? (
+            ) : filteredAppointments.length > 0 ? (
                 <div className="space-y-4">
-                    {appointments.map((apt) => (
+                    {filteredAppointments.map((apt) => (
                         <div
                             key={apt.id}
                             className="flex flex-col md:flex-row md:items-center md:justify-between p-6 border border-border/50 bg-background rounded-2xl shadow-sm"
@@ -101,7 +126,9 @@ export default function AppointmentManager({
             ) : (
                 <div className="text-center py-12">
                     <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <p className="text-muted-foreground">No appointments found</p>
+                    <p className="text-muted-foreground">
+                        {searchQuery ? 'No appointments match your search.' : 'No appointments found'}
+                    </p>
                 </div>
             )}
         </div>

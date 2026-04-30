@@ -1,5 +1,5 @@
 
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface User {
     id: number;
@@ -41,7 +41,7 @@ export interface Conversation {
 export const messagingService = {
     getConversations: async (): Promise<Conversation[]> => {
         try {
-            const response = await api.get('/telemedicine/conversations/');
+            const response = await apiClient.get('/telemedicine/conversations/');
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
         } catch (error) {
@@ -51,7 +51,7 @@ export const messagingService = {
     },
 
     createConversation: async (participantId: number): Promise<Conversation> => {
-        const response = await api.post('/telemedicine/conversations/', {
+        const response = await apiClient.post('/telemedicine/conversations/', {
             participant_id: participantId
         });
         return response.data;
@@ -59,7 +59,7 @@ export const messagingService = {
 
     getMessages: async (conversationId: number): Promise<Message[]> => {
         try {
-            const response = await api.get(`/telemedicine/messages/?conversation=${conversationId}`);
+            const response = await apiClient.get(`/telemedicine/messages/?conversation=${conversationId}`);
             return Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
         } catch (error: any) {
@@ -79,7 +79,7 @@ export const messagingService = {
             formData.append('attachment', attachment);
         }
 
-        const response = await api.post('/telemedicine/messages/', formData, {
+        const response = await apiClient.post('/telemedicine/messages/', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

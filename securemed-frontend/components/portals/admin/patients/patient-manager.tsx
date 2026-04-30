@@ -6,6 +6,8 @@ import { DataTable } from '@/components/ui/data-table';
 import { Patient, getColumns } from './columns';
 import { adminService } from '@/services/admin';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -29,6 +31,7 @@ export default function PatientManager({ patients, onViewPatient, onRefresh, ini
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
     const [resetPassword, setResetPassword] = useState<string | null>(null);
     const [autoOpened, setAutoOpened] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     React.useEffect(() => {
         if (autoOpened || !initialPatientId || patients.length === 0) {
@@ -81,13 +84,26 @@ export default function PatientManager({ patients, onViewPatient, onRefresh, ini
         },
     });
 
+    const filteredPatients = patients.filter((patient) => {
+        if (!searchQuery.trim()) return true;
+        const term = searchQuery.trim().toLowerCase();
+        const fullName = [patient.user_first_name, patient.user_last_name].filter(Boolean).join(' ').trim().toLowerCase();
+        return (
+            fullName.includes(term) ||
+            String(patient.patient_id || '').toLowerCase().includes(term) ||
+            String(patient.id).toLowerCase().includes(term) ||
+            String(patient.user_email || '').toLowerCase().includes(term) ||
+            String(patient.phone || '').toLowerCase().includes(term)
+        );
+    });
+
     const handleExport = () => {
-        if (!patients.length) {
+        if (!filteredPatients.length) {
             toast({ title: 'No data', description: 'No patients available to export.', variant: 'destructive' });
             return;
         }
         const header = ['Patient ID', 'Name', 'Email', 'Phone', 'DOB', 'Active'];
-        const rows = patients.map((patient) => ([
+        const rows = filteredPatients.map((patient) => ([
             patient.patient_id || patient.id,
             [patient.user_first_name, patient.user_last_name].filter(Boolean).join(' ').trim() || `Patient #${patient.id}`,
             patient.user_email || '',
@@ -113,13 +129,22 @@ export default function PatientManager({ patients, onViewPatient, onRefresh, ini
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-foreground">Patient Registry</h3>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search patients..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 bg-background"
+                        />
+                    </div>
                     <Button variant="outline" onClick={handleExport}>Export Data</Button>
                 </div>
             </div>
 
             <div className="bg-card rounded-lg border border-border">
-                <DataTable columns={columns} data={patients} />
+                <DataTable columns={columns} data={filteredPatients} />
             </div>
 
             <Dialog open={detailOpen} onOpenChange={setDetailOpen}>

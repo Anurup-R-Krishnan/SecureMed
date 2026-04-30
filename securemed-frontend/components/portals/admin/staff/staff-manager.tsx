@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StaffMember, adminService } from '@/services/admin';
-import { Lock, UserX } from 'lucide-react';
+import { Lock, Search, UserX } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -49,6 +49,7 @@ export default function StaffManager({ staff, onCreateUser, onRefresh }: StaffMa
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
     const [resetPassword, setResetPassword] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleChange = (key: string, value: string) => {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -143,11 +144,33 @@ export default function StaffManager({ staff, onCreateUser, onRefresh }: StaffMa
         }
     };
 
+    const filteredStaff = staff.filter((member) => {
+        if (!searchQuery.trim()) return true;
+        const term = searchQuery.trim().toLowerCase();
+        return (
+            member.name?.toLowerCase().includes(term) ||
+            member.role?.toLowerCase().includes(term) ||
+            member.hospital?.toLowerCase().includes(term) ||
+            member.status?.toLowerCase().includes(term)
+        );
+    });
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-foreground">Staff Directory</h3>
-                <Button onClick={() => setOpen(true)}>Add Staff Member</Button>
+                <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search staff..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 bg-background"
+                        />
+                    </div>
+                    <Button onClick={() => setOpen(true)}>Add Staff Member</Button>
+                </div>
             </div>
 
             <div className="bg-card rounded-lg border border-border overflow-x-auto">
@@ -162,8 +185,8 @@ export default function StaffManager({ staff, onCreateUser, onRefresh }: StaffMa
                         </tr>
                     </thead>
                     <tbody>
-                        {staff.length > 0 ? (
-                            staff.map((member) => (
+                        {filteredStaff.length > 0 ? (
+                            filteredStaff.map((member) => (
                                 <tr key={member.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                                     <td className="py-3 px-4 font-medium text-foreground">{member.name}</td>
                                     <td className="py-3 px-4 text-muted-foreground">{member.role}</td>
@@ -208,7 +231,7 @@ export default function StaffManager({ staff, onCreateUser, onRefresh }: StaffMa
                         ) : (
                             <tr>
                                 <td colSpan={5} className="py-8 text-center text-muted-foreground">
-                                    No staff members found.
+                                    {searchQuery ? 'No staff match your search.' : 'No staff members found.'}
                                 </td>
                             </tr>
                         )}

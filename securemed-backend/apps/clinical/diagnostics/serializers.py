@@ -6,6 +6,64 @@ class LabTestSerializer(serializers.ModelSerializer):
         model = LabTest
         fields = ['id', 'name', 'code', 'category', 'description', 'turnaround_time']
 
+class LabResultInputSerializer(serializers.Serializer):
+    """Validation for lab result entry"""
+    test_code = serializers.CharField(max_length=50, required=True)
+    result_value = serializers.CharField(max_length=200, required=True)
+    units = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    reference_range = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    flag = serializers.ChoiceField(
+        choices=['normal', 'high', 'low', 'critical', 'positive', 'negative', 'inconclusive'],
+        required=False,
+        allow_blank=True
+    )
+    notes = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+    
+    def validate_test_code(self, value):
+        """Validate test code is valid"""
+        value = str(value).strip()
+        if len(value) < 2 or len(value) > 50:
+            raise serializers.ValidationError("Invalid test code length")
+        # Only alphanumeric and hyphens
+        if not all(c.isalnum() or c == '-' for c in value):
+            raise serializers.ValidationError("Test code contains invalid characters")
+        return value
+    
+    def validate_result_value(self, value):
+        """Validate result value format"""
+        value = str(value).strip()
+        if len(value) < 1:
+            raise serializers.ValidationError("Result value cannot be empty")
+        if len(value) > 200:
+            raise serializers.ValidationError("Result value too long")
+        return value
+    
+    def validate_units(self, value):
+        """Validate units"""
+        if value:
+            value = str(value).strip()
+            if len(value) > 50:
+                raise serializers.ValidationError("Units text too long")
+        return value
+    
+    def validate_reference_range(self, value):
+        """Validate reference range format"""
+        if value:
+            value = str(value).strip()
+            if len(value) > 100:
+                raise serializers.ValidationError("Reference range too long")
+        return value
+    
+    def validate_notes(self, value):
+        """Validate notes field"""
+        if value:
+            value = str(value).strip()
+            if len(value) < 1:
+                raise serializers.ValidationError("Notes cannot be empty if provided")
+            if len(value) > 2000:
+                raise serializers.ValidationError("Notes too long (max 2000 chars)")
+        return value
+
 class LabResultSerializer(serializers.ModelSerializer):
     is_abnormal = serializers.SerializerMethodField()
     test_name = serializers.CharField(source='test.name', read_only=True)

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { StatCard } from '@/components/ui/stat-card';
 import { Button } from '@/components/ui/button';
 import { Appointment } from '@/services/appointments';
 import {
@@ -40,24 +41,10 @@ export default function DoctorDashboard({
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Quick Stats */}
             <div className="grid md:grid-cols-4 gap-6">
-                <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow">
-                    <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Today&apos;s Appointments</p>
-                    <p className="text-4xl font-black text-foreground mt-2">{todayAppts.length}</p>
-                </div>
-                <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow">
-                    <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Total Patients</p>
-                    <p className="text-4xl font-black text-primary mt-2">{totalPatients}</p>
-                </div>
-                <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow">
-                    <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Total Appointments</p>
-                    <p className="text-4xl font-black text-amber-500 mt-2">{totalAppointments}</p>
-                </div>
-                <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow">
-                    <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Completed Today</p>
-                    <p className="text-4xl font-black text-green-500 mt-2">
-                        {todayAppts.filter(a => a.status === 'completed').length}
-                    </p>
-                </div>
+                <StatCard title="Today's Appointments" value={todayAppts.length} />
+                <StatCard title="Total Patients" value={totalPatients} valueClassName="text-primary" />
+                <StatCard title="Total Appointments" value={totalAppointments} valueClassName="text-amber-500" />
+                <StatCard title="Completed Today" value={todayAppts.filter(a => a.status === 'completed').length} valueClassName="text-green-500" />
             </div>
 
             {/* Today's Appointments */}

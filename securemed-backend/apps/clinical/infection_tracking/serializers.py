@@ -116,6 +116,14 @@ class InfectionTraceSerializer(serializers.ModelSerializer):
             'infection_name', 'transmission_path', 'path_length',
             'confidence_score', 'vector_type', 'detected_at',
         ]
+    
+    def validate_investigation_notes(self, value):
+        """Validate investigation notes"""
+        if value:
+            value = str(value).strip()
+            if len(value) > 5000:
+                raise serializers.ValidationError("Investigation notes too long (max 5000 chars)")
+        return value
 
     def get_source_report(self, obj):
         return self._report_summary(obj.source_report)

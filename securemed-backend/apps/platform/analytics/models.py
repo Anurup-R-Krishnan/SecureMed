@@ -37,6 +37,12 @@ class AuditLog(models.Model):
         ('medical_record_created', 'Medical Record Created'),
         ('medical_record_updated', 'Medical Record Updated'),
         ('emergency_access', 'Emergency Access'),
+        # Financial
+        ('payment_initiated', 'Payment Initiated'),
+        ('payment_completed', 'Payment Completed'),
+        ('payment_failed', 'Payment Failed'),
+        ('invoice_created', 'Invoice Created'),
+        ('invoice_updated', 'Invoice Updated'),
     ]
 
     CATEGORY_MAP = {
@@ -52,6 +58,9 @@ class AuditLog(models.Model):
         'medical_record_created': 'clinical',
         'medical_record_updated': 'clinical',
         'emergency_access': 'clinical',
+        'payment_initiated': 'finance', 'payment_completed': 'finance',
+        'payment_failed': 'finance', 'invoice_created': 'finance',
+        'invoice_updated': 'finance',
     }
 
     actor = models.ForeignKey(

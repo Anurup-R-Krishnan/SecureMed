@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import MyPatientsTable from '@/components/portals/doctor/patients/my-patients-table';
 import { appointmentService } from '@/services/appointments';
+import { toast } from 'sonner';
 
 // Types
 interface DoctorPatient {
@@ -81,7 +82,7 @@ export default function PatientsPage() {
                         if (p.id !== undefined && p.id !== null) {
                             router.push(`/doctor/patients/${p.id}`);
                         } else {
-                            alert('Unable to open patient record — patient ID is missing.');
+                            toast.error('Unable to open patient record — patient ID is missing.');
                             console.error('Patient ID is missing:', p);
                         }
                     }}

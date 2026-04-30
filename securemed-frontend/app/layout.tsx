@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata, Viewport } from 'next'
 
 import { AuthProvider } from '@/context/auth-context'
+import { QueryClientProvider } from '@/components/QueryClientProvider'
 import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BackToTop } from '@/components/ui/back-to-top';
@@ -47,15 +48,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <AuthProvider>
-          <TooltipProvider>
-            <SessionTimeout />
-            {children}
-            <Toaster />
-            <BackToTop />
-            <OfflineBanner />
-          </TooltipProvider>
-        </AuthProvider>
+        <QueryClientProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <SessionTimeout />
+              {children}
+              <Toaster />
+              <BackToTop />
+              <OfflineBanner />
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
       </body>
     </html>
   )

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronRight, Clock, AlertTriangle, RefreshCw, Check, X, UserPlus } from 'lucide-react';
+import { ChevronRight, Clock, AlertTriangle, RefreshCw, Check, X, UserPlus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import { Input } from '@/components/ui/input';
 import { getPatientsColumns, Patient } from './columns';
 import { getReferralsColumns } from './referral-columns';
 import { referralService, ReferredPatient, Referral } from '@/services/referrals';
@@ -23,6 +24,7 @@ export default function MyPatientsTable({ patients: propPatients, onSelectPatien
   const [pendingReferrals, setPendingReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'myPatients' | 'pendingReferrals'>('myPatients');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,14 +88,10 @@ export default function MyPatientsTable({ patients: propPatients, onSelectPatien
     }
   };
 
-  console.log('Referred Patients:', referredPatients);
-  console.log('Prop Patients:', propPatients);
-
   // Combine prop patients with referred patients
   const allPatients: Patient[] = [
     ...(propPatients || []),
     ...referredPatients.map(rp => {
-      console.log('Mapping referred patient:', rp);
       return {
         id: rp.id,
         name: rp.name,
@@ -107,7 +105,31 @@ export default function MyPatientsTable({ patients: propPatients, onSelectPatien
       };
     }),
   ];
-  console.log('All Patients:', allPatients);
+
+  const filteredPatients = allPatients.filter((patient) => {
+    if (!searchQuery.trim()) return true;
+    const term = searchQuery.trim().toLowerCase();
+    return (
+      String(patient.name || '').toLowerCase().includes(term) ||
+      String(patient.condition || '').toLowerCase().includes(term) ||
+      String(patient.status || '').toLowerCase().includes(term) ||
+      String(patient.referral_id || '').toLowerCase().includes(term) ||
+      String(patient.referred_by || '').toLowerCase().includes(term) ||
+      String(patient.priority || '').toLowerCase().includes(term)
+    );
+  });
+
+  const filteredPending = pendingReferrals.filter((ref) => {
+    if (!searchQuery.trim()) return true;
+    const term = searchQuery.trim().toLowerCase();
+    return (
+      String(ref.patient_name || '').toLowerCase().includes(term) ||
+      String(ref.patient_display_id || '').toLowerCase().includes(term) ||
+      String(ref.referral_id || '').toLowerCase().includes(term) ||
+      String(ref.priority || '').toLowerCase().includes(term) ||
+      String(ref.reason || '').toLowerCase().includes(term)
+    );
+  });
 
   if (loading) {
     return (
@@ -128,14 +150,25 @@ export default function MyPatientsTable({ patients: propPatients, onSelectPatien
             Manage patients and incoming referrals
           </p>
         </div>
-        {pendingReferrals.length > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <span className="text-sm font-medium text-orange-600">
-              {pendingReferrals.length} pending referral{pendingReferrals.length > 1 ? 's' : ''}
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search patients or referrals..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-background"
+            />
           </div>
-        )}
+          {pendingReferrals.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+              <span className="text-sm font-medium text-orange-600">
+                {pendingReferrals.length} pending referral{pendingReferrals.length > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -160,12 +193,12 @@ export default function MyPatientsTable({ patients: propPatients, onSelectPatien
 
       {activeTab === 'myPatients' ? (
         <Card className="overflow-hidden border-none shadow-none">
-          <DataTable columns={getPatientsColumns({ onSelectPatient })} data={allPatients} />
+          <DataTable columns={getPatientsColumns({ onSelectPatient, onCompleteReferral: handleComplete })} data={filteredPatients} />
         </Card>
       ) : (
         /* Pending Referrals Tab */
         <Card className="overflow-hidden border-none shadow-none">
-          <DataTable columns={getReferralsColumns({ onAccept: handleAccept, onDecline: handleDecline })} data={pendingReferrals} />
+          <DataTable columns={getReferralsColumns({ onAccept: handleAccept, onDecline: handleDecline })} data={filteredPending} />
         </Card>
       )}
     </div>

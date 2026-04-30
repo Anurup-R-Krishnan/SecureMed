@@ -193,7 +193,11 @@ def pay_invoice(request, invoice_id):
     Process payment for an invoice.
     In a real app, this would integrate with Stripe/PayPal.
     For this prototype, it marks the invoice as paid.
+    Input: { "payment_method": "card" | "bank_transfer" | "check" | "insurance" }
     """
+    from .serializers import PaymentProcessingSerializer
+    from apps.platform.analytics.audit import log_audit, get_client_ip
+    
     user = request.user
     patient = get_patient_profile(user)
     
@@ -207,12 +211,18 @@ def pay_invoice(request, invoice_id):
         
     if invoice.status == 'paid':
         return Response({"message": "Invoice is already paid."}, status=200)
-        
+    
+    # Validate input
+    serializer = PaymentProcessingSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
+    
+    validated_data = serializer.validated_data
+    payment_method = validated_data.get('payment_method', 'card')
+    
     # Process "Payment"
     from django.utils import timezone
     import uuid
-    
-    payment_method = request.data.get('payment_method', 'card')
     
     # Create payment record
     payment_id = f"PAY-{uuid.uuid4().hex[:8].upper()}"
@@ -225,6 +235,16 @@ def pay_invoice(request, invoice_id):
         transaction_id=f"TXN-{uuid.uuid4().hex[:12].upper()}"
     )
     
+    # Log payment attempt
+    log_audit(
+        actor=request.user,
+        action='payment_initiated',
+        resource_type='Invoice',
+        resource_id=invoice.invoice_id,
+        description=f'Payment initiated for invoice {invoice.invoice_id}',
+        ip_address=get_client_ip(request),
+    )
+    
     # Mark payment as completed (in real app, would wait for payment gateway)
     payment.status = 'completed'
     payment.save(update_fields=['status'])
@@ -232,6 +252,15 @@ def pay_invoice(request, invoice_id):
     invoice.status = 'paid'
     invoice.paid_amount = invoice.total_amount
     invoice.save(update_fields=['status', 'paid_amount', 'updated_at'])
+    
+    log_audit(
+        actor=request.user,
+        action='payment_completed',
+        resource_type='Invoice',
+        resource_id=invoice.invoice_id,
+        description=f'Payment completed for invoice {invoice.invoice_id}',
+        ip_address=get_client_ip(request),
+    )
     
     return Response({
         "message": "Payment successful",

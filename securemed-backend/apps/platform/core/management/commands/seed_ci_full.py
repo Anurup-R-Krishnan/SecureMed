@@ -10,7 +10,6 @@ class Command(BaseCommand):
 
         call_command("seed_db", flush=True)
         call_command("ensure_infection_demo_data")
-        call_command("seed_drug_interactions")
         call_command("seed_hoddi_mini")
 
         self.stdout.write(self.style.SUCCESS("[CI] Full seed complete."))

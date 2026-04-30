@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 import { getAccessToken } from '@/lib/auth-utils';
 
 export interface Doctor {
@@ -87,7 +87,7 @@ export const appointmentService = {
 
     getDoctorAvailability: async (doctorId: number | string, date: string): Promise<TimeSlot[]> => {
         try {
-            const response = await api.get(`/appointments/doctors/${doctorId}/availability/?date=${date}`);
+            const response = await apiClient.get(`/appointments/doctors/${doctorId}/availability/?date=${date}`);
             const slots = response.data?.slots || response.data || [];
 
             return slots.map((slot: any) => {
@@ -126,7 +126,7 @@ export const appointmentService = {
         appointment_time: string;
         reason: string;
     }) => {
-        const response = await api.post('/appointments/appointments/', data);
+        const response = await apiClient.post('/appointments/appointments/', data);
         return {
             success: true,
             confirmationNumber: response.data.appointment_id,
@@ -139,7 +139,7 @@ export const appointmentService = {
             const token = getAccessToken();
             const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-            const response = await api.get('/appointments/appointments/', config);
+            const response = await apiClient.get('/appointments/appointments/', config);
             const results = Array.isArray(response.data) ? response.data :
                 (response.data.results ? response.data.results : []);
 
@@ -168,7 +168,7 @@ export const appointmentService = {
 
     updateAppointmentStatus: async (appointmentId: number, status: string): Promise<any> => {
         try {
-            const response = await api.patch(`/appointments/appointments/${appointmentId}/`, { status });
+            const response = await apiClient.patch(`/appointments/appointments/${appointmentId}/`, { status });
             return response.data;
         } catch (error) {
             console.error('Error updating appointment status:', error);
@@ -177,22 +177,22 @@ export const appointmentService = {
     },
 
     acceptAppointment: async (appointmentId: number): Promise<Appointment> => {
-        const response = await api.post(`/appointments/appointments/${appointmentId}/accept/`);
+        const response = await apiClient.post(`/appointments/appointments/${appointmentId}/accept/`);
         return response.data;
     },
 
     startConsultation: async (appointmentId: number): Promise<Appointment> => {
-        const response = await api.post(`/appointments/appointments/${appointmentId}/start_consultation/`);
+        const response = await apiClient.post(`/appointments/appointments/${appointmentId}/start_consultation/`);
         return response.data;
     },
 
     completeConsultation: async (appointmentId: number, notes?: string): Promise<Appointment> => {
-        const response = await api.post(`/appointments/appointments/${appointmentId}/complete_consultation/`, { notes });
+        const response = await apiClient.post(`/appointments/appointments/${appointmentId}/complete_consultation/`, { notes });
         return response.data;
     },
 
     cancelAppointment: async (appointmentId: number, reason?: string): Promise<Appointment> => {
-        const response = await api.post(`/appointments/appointments/${appointmentId}/cancel/`, { reason });
+        const response = await apiClient.post(`/appointments/appointments/${appointmentId}/cancel/`, { reason });
         return response.data;
     },
 
@@ -201,7 +201,7 @@ export const appointmentService = {
             const token = getAccessToken();
             const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-            const response = await api.get(`/appointments/doctor/availability/?date=${date}`, config);
+            const response = await apiClient.get(`/appointments/doctor/availability/?date=${date}`, config);
             const slots = response.data?.slots || [];
             return slots.map((slot: any) => ({
                 id: slot.id,
@@ -219,7 +219,7 @@ export const appointmentService = {
         const token = getAccessToken();
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-        const response = await api.post('/appointments/doctor/availability/', {
+        const response = await apiClient.post('/appointments/doctor/availability/', {
             date,
             slots
         }, config);
@@ -233,7 +233,7 @@ export const medicalRecordService = {
             const token = getAccessToken();
             if (!token) return [];
 
-            const response = await api.get('/medical-records/records/', {
+            const response = await apiClient.get('/medical-records/records/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return Array.isArray(response.data) ? response.data :
@@ -248,7 +248,7 @@ export const medicalRecordService = {
         const token = getAccessToken();
         if (!token) throw new Error("No auth token");
 
-        const response = await api.post('/medical-records/records/patient-upload/', formData, {
+        const response = await apiClient.post('/medical-records/records/patient-upload/', formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'multipart/form-data'
@@ -262,7 +262,7 @@ export const medicalRecordService = {
             const token = getAccessToken();
             if (!token) return [];
 
-            const response = await api.get('/medical-records/prescriptions/', {
+            const response = await apiClient.get('/medical-records/prescriptions/', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return Array.isArray(response.data) ? response.data :
@@ -277,7 +277,7 @@ export const medicalRecordService = {
         const token = getAccessToken();
         if (!token) throw new Error("No auth token");
 
-        const response = await api.post('/medical-records/medication-adherence/', {
+        const response = await apiClient.post('/medical-records/medication-adherence/', {
             prescription: prescriptionId
         }, {
             headers: { Authorization: `Bearer ${token}` }

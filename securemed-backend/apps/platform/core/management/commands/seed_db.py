@@ -185,6 +185,11 @@ class Command(BaseCommand):
         self._seed_invoices(patients, appointments)
         self._seed_wellness_tips()
         try:
+            self.stdout.write("[-] Seeding Rahul Verma showcase patient...")
+            self._seed_showcase_patient(patients, doctors, depts, lab_tests)
+        except Exception as exc:
+            self.stdout.write(self.style.WARNING(f"  [!] Rahul showcase seed skipped: {exc}"))
+        try:
             self.stdout.write("[-] Seeding anatomy education content...")
             call_command("seed_anatomy_content")
         except Exception as exc:
@@ -471,7 +476,6 @@ class Command(BaseCommand):
         from apps.scheduling.appointments.models import Appointment
         self.stdout.write("[-] Seeding appointments...")
         result = []
-        counter = 1
         # Seed 40 appointments for more realistic data
         for _ in range(40):
             attempts = 0
@@ -496,23 +500,28 @@ class Command(BaseCommand):
                     "Health Screening"
                 ]
 
-                appt, created = Appointment.objects.get_or_create(
+                existing = Appointment.objects.filter(
                     doctor=doc,
                     appointment_date=appt_date,
                     appointment_time=appt_time,
-                    defaults={
-                        "appointment_id": f"APT-{counter:05d}",
-                        "patient": pat,
-                        "status": status,
-                        "reason": random.choice(reasons),
-                        "created_by": pat.user
-                    }
+                ).first()
+                if existing:
+                    attempts += 1
+                    continue
+
+                appointment_id = f"APT-{uuid.uuid4().hex[:8].upper()}"
+                appt = Appointment.objects.create(
+                    appointment_id=appointment_id,
+                    patient=pat,
+                    doctor=doc,
+                    appointment_date=appt_date,
+                    appointment_time=appt_time,
+                    status=status,
+                    reason=random.choice(reasons),
+                    created_by=pat.user,
                 )
-                if created:
-                    result.append(appt)
-                    counter += 1
-                    break
-                attempts += 1
+                result.append(appt)
+                break
         self.stdout.write(f"    Created {len(result)} appointments")
 
         # Ensure two spotlight patients have multi-doctor histories.
@@ -868,3 +877,198 @@ class Command(BaseCommand):
             )
         
         self.stdout.write(f"   Created {len(enhanced_tips)} wellness tips")
+
+    def _seed_showcase_patient(self, patients, doctors, depts, lab_tests):
+        from apps.accounts.patients.models import Patient
+        from apps.scheduling.appointments.models import Appointment, Referral
+        from apps.clinical.records.models import MedicalRecord, Prescription, PharmacyOrder, VitalSign
+        from apps.clinical.diagnostics.models import LabOrder, LabResult
+        from apps.finance.billing.models import Invoice, InvoiceItem, Payment
+
+        target = next((p for p in patients if p.user.email == "rahul.verma@example.com"), None)
+        if not target:
+            target = Patient.objects.select_related("user").filter(user__email="rahul.verma@example.com").first()
+        if not target:
+            self.stdout.write("    ! Rahul Verma not found, skipping showcase seed.")
+            return
+
+        spotlight_doctors = doctors[:3] if doctors else []
+        if len(spotlight_doctors) < 2:
+            spotlight_doctors = doctors
+        if not spotlight_doctors:
+            self.stdout.write("    ! No doctors available for Rahul showcase seed.")
+            return
+
+        def ensure_appointment(appt_id, doctor, appt_date, appt_time, status, reason):
+            appt, _ = Appointment.objects.get_or_create(
+                appointment_id=appt_id,
+                defaults={
+                    "patient": target,
+                    "doctor": doctor,
+                    "appointment_date": appt_date,
+                    "appointment_time": appt_time,
+                    "status": status,
+                    "reason": reason,
+                    "created_by": target.user,
+                },
+            )
+            return appt
+
+        def ensure_record(appt, diagnosis, notes):
+            rec, _ = MedicalRecord.objects.get_or_create(
+                appointment=appt,
+                defaults={
+                    "record_id": f"REC-RV-{appt.appointment_id[-6:]}",
+                    "patient": target,
+                    "doctor": appt.doctor,
+                    "record_type": "consultation",
+                    "record_date": appt.appointment_date,
+                    "diagnosis": diagnosis,
+                    "notes": notes,
+                    "source": "provider",
+                },
+            )
+            return rec
+
+        def ensure_prescriptions(record):
+            for med in MEDICATIONS[:2]:
+                if Prescription.objects.filter(medical_record=record, medication_name=med[0]).exists():
+                    continue
+                prescription = Prescription.objects.create(
+                    medical_record=record,
+                    medication_name=med[0],
+                    dosage=med[1],
+                    frequency=med[2],
+                    duration=med[3],
+                    instructions=med[4],
+                    status="signed",
+                    is_signed=True,
+                    signed_by=record.doctor.user,
+                    signed_at=timezone.now() - timedelta(days=3),
+                )
+                PharmacyOrder.objects.get_or_create(
+                    prescription=prescription,
+                    defaults={
+                        "status": "verified",
+                        "pickup_code": f"PX-RV-{uuid.uuid4().hex[:6].upper()}",
+                    },
+                )
+
+        def ensure_lab_order(appt, tests):
+            existing = LabOrder.objects.filter(patient=target.user, appointment=appt).first()
+            if existing:
+                return existing
+            order = LabOrder.objects.create(
+                patient=target.user,
+                doctor=appt.doctor.user,
+                appointment=appt,
+                priority="routine",
+                status="completed",
+                clinical_notes="Showcase lab panel for patient dashboard.",
+            )
+            order.items.set(tests)
+            order.created_at = timezone.now() - timedelta(days=5)
+            order.save()
+            for test in tests:
+                if LabResult.objects.filter(order=order, test=test).exists():
+                    continue
+                LabResult.objects.create(
+                    order=order,
+                    test=test,
+                    result_value="Normal",
+                    reference_range="Normal",
+                    units="",
+                    flag="Normal",
+                    technician_name="Neha Sharma",
+                    released_to_patient=True,
+                    released_at=timezone.now() - timedelta(days=4),
+                )
+            return order
+
+        def ensure_invoice(appt):
+            if Invoice.objects.filter(appointment=appt).exists():
+                return
+            fee = appt.doctor.consultation_fee
+            tax = fee * Decimal("0.18")
+            total = fee + tax
+            inv = Invoice.objects.create(
+                invoice_id=f"INV-RV-{uuid.uuid4().hex[:6].upper()}",
+                appointment=appt,
+                patient=target,
+                status="paid",
+                subtotal=fee,
+                tax_amount=tax,
+                discount_amount=Decimal("0"),
+                total_amount=total,
+                paid_amount=total,
+                due_date=date.today() + timedelta(days=10),
+            )
+            InvoiceItem.objects.create(
+                invoice=inv,
+                item_type="consultation",
+                description="Consultation Fee",
+                quantity=1,
+                unit_price=fee,
+                total_price=fee,
+            )
+            Payment.objects.create(
+                payment_id=f"PAY-RV-{uuid.uuid4().hex[:8].upper()}",
+                invoice=inv,
+                amount=total,
+                payment_method="upi",
+                payment_date=timezone.now() - timedelta(days=2),
+                status="completed",
+                transaction_id=f"TXN-RV-{uuid.uuid4().hex[:10].upper()}",
+                notes="Showcase patient billing payment.",
+            )
+
+        # Ensure vitals exist for Rahul (additional reading)
+        if not VitalSign.objects.filter(patient=target).exists():
+            VitalSign.objects.create(
+                patient=target,
+                heart_rate=78,
+                systolic_bp=126,
+                diastolic_bp=82,
+                weight=74,
+                source="clinical",
+            )
+
+        # Appointments & records
+        today = date.today()
+        appt1 = ensure_appointment("APT-RV-0001", spotlight_doctors[0], today - timedelta(days=12), time(10, 0), "completed", "Hypertension follow-up")
+        appt2 = ensure_appointment("APT-RV-0002", spotlight_doctors[min(1, len(spotlight_doctors)-1)], today - timedelta(days=6), time(11, 30), "completed", "Medication review")
+        appt3 = ensure_appointment("APT-RV-0003", spotlight_doctors[0], today + timedelta(days=7), time(15, 0), "scheduled", "Routine checkup")
+
+        rec1 = ensure_record(appt1, "Hypertension - Stage 1", "BP control plan reviewed; adjusted antihypertensive dosing.")
+        rec2 = ensure_record(appt2, "Hyperlipidemia", "Discussed lipid panel; advised diet changes and statin adherence.")
+        ensure_prescriptions(rec1)
+        ensure_prescriptions(rec2)
+
+        # Labs
+        tests = lab_tests[:2] if lab_tests else []
+        if tests:
+            ensure_lab_order(appt1, tests)
+
+        # Referral
+        if len(spotlight_doctors) >= 2:
+            referral_id = "REF-RV-0001"
+            if not Referral.objects.filter(referral_id=referral_id).exists():
+                dept = next(iter(depts.values()), None) if isinstance(depts, dict) else (depts[0] if depts else None)
+                Referral.objects.create(
+                    referral_id=referral_id,
+                    patient=target,
+                    referring_doctor=spotlight_doctors[0],
+                    specialist=spotlight_doctors[1],
+                    department=dept,
+                    status="accepted",
+                    priority="routine",
+                    reason="Cardiology follow-up for hypertension management.",
+                    clinical_notes="Patient showing improved BP; recommend specialist review.",
+                    access_granted=True,
+                    access_expires_at=timezone.now() + timedelta(days=30),
+                    completed_at=timezone.now() - timedelta(days=1),
+                )
+
+        # Billing for completed appointments
+        ensure_invoice(appt1)
+        ensure_invoice(appt2)

@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface InteractionFinding {
     finding_type: 'interaction' | 'side_effect';
@@ -74,12 +74,12 @@ export const drugInteractionService = {
     async searchMedications(query: string, patientId?: number): Promise<string[]> {
         const params: Record<string, string | number> = { q: query };
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/search/', { params });
+        const response = await apiClient.get('/medical-records/drug-interactions/search/', { params });
         return response.data?.results || [];
     },
 
     async checkInteractions(medications: string[], patientId?: number): Promise<InteractionCheckResult> {
-        const response = await api.post('/medical-records/drug-interactions/check/', {
+        const response = await apiClient.post('/medical-records/drug-interactions/check/', {
             medications,
             limit_findings: 30,
             ...(patientId ? { patient_id: patientId } : {}),
@@ -91,7 +91,7 @@ export const drugInteractionService = {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
         try {
-            const response = await api.get('/medical-records/drug-interactions/reports/latest/', { params });
+            const response = await apiClient.get('/medical-records/drug-interactions/reports/latest/', { params });
             return response.data || null;
         } catch (error: any) {
             if (error?.response?.status === 404) {
@@ -104,19 +104,19 @@ export const drugInteractionService = {
     async getReportHistory(patientId?: number): Promise<InteractionReport[]> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/reports/', { params });
+        const response = await apiClient.get('/medical-records/drug-interactions/reports/', { params });
         return Array.isArray(response.data) ? response.data : [];
     },
 
     async regenerateReport(patientId?: number): Promise<ReportGenerationJob> {
         const payload: Record<string, number> = {};
         if (patientId) payload.patient_id = patientId;
-        const response = await api.post('/medical-records/drug-interactions/reports/generate/', payload);
+        const response = await apiClient.post('/medical-records/drug-interactions/reports/generate/', payload);
         return response.data;
     },
 
     async getReportJobStatus(taskId: string): Promise<ReportJobStatus> {
-        const response = await api.get('/medical-records/drug-interactions/reports/status/', {
+        const response = await apiClient.get('/medical-records/drug-interactions/reports/status/', {
             params: { task_id: taskId },
         });
         return response.data;
@@ -125,7 +125,7 @@ export const drugInteractionService = {
     async downloadReportPDF(patientId?: number): Promise<Blob> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/reports/latest/pdf/', {
+        const response = await apiClient.get('/medical-records/drug-interactions/reports/latest/pdf/', {
             params,
             responseType: 'blob',
         });

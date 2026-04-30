@@ -254,9 +254,9 @@ MFA_TOTP_VALID_WINDOW = max(
 )
 
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = False
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_SAMESITE = 'Strict'
 
 # HTTPS-only cookies (enabled in production via DJANGO_SECURE_SSL env var)
 # For localhost development: DJANGO_SECURE_SSL should not be set (defaults to False)

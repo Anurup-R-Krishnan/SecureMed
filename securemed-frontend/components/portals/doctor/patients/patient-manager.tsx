@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DataTable, Column } from '@/components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
     Users,
@@ -51,6 +52,65 @@ export default function PatientManager({
         return matchesSearch && matchesStatus;
     });
 
+    const columns: Column<DoctorPatient>[] = [
+        {
+            header: "Patient ID",
+            accessorKey: "displayId",
+            className: "font-mono text-muted-foreground"
+        },
+        {
+            header: "Name",
+            accessorKey: "name",
+            className: "font-bold text-foreground"
+        },
+        {
+            header: "Last Visit",
+            accessorKey: "lastVisit",
+            className: "text-muted-foreground"
+        },
+        {
+            header: "Status",
+            cell: (patient) => (
+                <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-green-500/10 text-green-700">
+                    {patient.status}
+                </span>
+            )
+        },
+        {
+            header: "Actions",
+            cell: (patient) => (
+                <div className="flex gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="font-bold text-primary hover:text-primary/80"
+                        onClick={(e) => { e.stopPropagation(); onViewPatient && onViewPatient(patient); }}
+                    >
+                        View
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        onClick={(e) => { e.stopPropagation(); onEmergencyAccess(patient); }}
+                        title="Emergency Access"
+                    >
+                        <ShieldAlert className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:bg-muted"
+                        onClick={(e) => { e.stopPropagation(); onRefer(patient); }}
+                        title="Refer Patient"
+                    >
+                        <UserPlus className="h-4 w-4" />
+                    </Button>
+                </div>
+            )
+        }
+    ];
+
     return (
         <div className="bg-card p-8 rounded-[32px] border border-border overflow-hidden shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -94,63 +154,12 @@ export default function PatientManager({
                     <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />
                 </div>
             ) : filteredPatients.length > 0 ? (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-border bg-muted/30">
-                                <th className="text-left py-4 px-6 font-bold text-foreground uppercase tracking-wider text-xs">Patient ID</th>
-                                <th className="text-left py-4 px-6 font-bold text-foreground uppercase tracking-wider text-xs">Name</th>
-                                <th className="text-left py-4 px-6 font-bold text-foreground uppercase tracking-wider text-xs">Last Visit</th>
-                                <th className="text-left py-4 px-6 font-bold text-foreground uppercase tracking-wider text-xs">Status</th>
-                                <th className="text-left py-4 px-6 font-bold text-foreground uppercase tracking-wider text-xs">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredPatients.map((patient) => (
-                                <tr key={patient.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                                    <td className="py-4 px-6 text-muted-foreground font-mono">{patient.displayId}</td>
-                                    <td className="py-4 px-6 font-bold text-foreground">{patient.name}</td>
-                                    <td className="py-4 px-6 text-muted-foreground">{patient.lastVisit}</td>
-                                    <td className="py-4 px-6">
-                                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-green-500/10 text-green-700">
-                                            {patient.status}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-6">
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="font-bold text-primary hover:text-primary/80"
-                                                onClick={() => onViewPatient && onViewPatient(patient)}
-                                            >
-                                                View
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                onClick={() => onEmergencyAccess(patient)}
-                                                title="Emergency Access"
-                                            >
-                                                <ShieldAlert className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-muted-foreground hover:bg-muted"
-                                                onClick={() => onRefer(patient)}
-                                                title="Refer Patient"
-                                            >
-                                                <UserPlus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <DataTable
+                    data={filteredPatients}
+                    columns={columns}
+                    keyExtractor={(p) => p.id}
+                    onRowClick={onViewPatient}
+                />
             ) : (
                 <div className="text-center py-12">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />

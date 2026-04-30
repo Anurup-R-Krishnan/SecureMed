@@ -33,9 +33,10 @@ const priorityColors: Record<string, string> = {
 
 interface PatientColumnsProps {
     onSelectPatient: (patient: Patient) => void;
+    onCompleteReferral?: (referralId: string) => void;
 }
 
-export const getPatientsColumns = ({ onSelectPatient }: PatientColumnsProps): ColumnDef<Patient>[] => [
+export const getPatientsColumns = ({ onSelectPatient, onCompleteReferral }: PatientColumnsProps): ColumnDef<Patient>[] => [
     {
         accessorKey: "name",
         header: "Patient",
@@ -97,14 +98,25 @@ export const getPatientsColumns = ({ onSelectPatient }: PatientColumnsProps): Co
         cell: ({ row }) => {
             const patient = row.original
             return (
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onSelectPatient(patient)}
-                >
-                    View
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onSelectPatient(patient)}
+                    >
+                        View
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                    {patient.referral_id && onCompleteReferral && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onCompleteReferral(patient.referral_id as string)}
+                        >
+                            Complete
+                        </Button>
+                    )}
+                </div>
             )
         },
     },

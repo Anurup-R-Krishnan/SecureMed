@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 import { getAccessToken } from '@/lib/auth-utils';
 
 export interface PharmacyOrder {
@@ -26,7 +26,7 @@ export const pharmacyService = {
   getOrders: async (): Promise<PharmacyOrder[]> => {
     const token = getAccessToken();
     if (!token) return [];
-    const response = await api.get('/medical-records/pharmacy-orders/', {
+    const response = await apiClient.get('/medical-records/pharmacy-orders/', {
       headers: { Authorization: `Bearer ${token}` }
     });
     return Array.isArray(response.data) ? response.data :
@@ -36,7 +36,7 @@ export const pharmacyService = {
   verifyOrder: async (orderId: number, notes: string) => {
     const token = getAccessToken();
     if (!token) throw new Error('No auth token');
-    const response = await api.post(`/medical-records/pharmacy-orders/${orderId}/verify/`, {
+    const response = await apiClient.post(`/medical-records/pharmacy-orders/${orderId}/verify/`, {
       notes
     }, {
       headers: { Authorization: `Bearer ${token}` }
@@ -47,7 +47,7 @@ export const pharmacyService = {
   fulfillOrder: async (orderId: number, pickupCode?: string) => {
     const token = getAccessToken();
     if (!token) throw new Error('No auth token');
-    const response = await api.post(`/medical-records/pharmacy-orders/${orderId}/fulfill/`, {
+    const response = await apiClient.post(`/medical-records/pharmacy-orders/${orderId}/fulfill/`, {
       pickup_code: pickupCode || ''
     }, {
       headers: { Authorization: `Bearer ${token}` }
