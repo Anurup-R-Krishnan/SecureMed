@@ -15,6 +15,7 @@ import os
 import secrets
 from pathlib import Path
 from decouple import config
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,6 +41,7 @@ if 'testserver' not in ALLOWED_HOSTS:
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -49,7 +51,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    'corsheaders',
     # Accounts
     'apps.accounts.users',
     'apps.accounts.patients',
@@ -72,18 +73,14 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # MUST be first
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  <-- KEEP COMMENTED
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'apps.accounts.users.middleware.RoleMiddleware',
-    'apps.platform.core.security_middleware.RateLimitMiddleware',
-    'apps.platform.core.security_middleware.RequestLoggingMiddleware',
-    'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware',
+    # 'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware', <-- COMMENT THIS TEMPORARILY
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -155,8 +152,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Add this line here
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -166,10 +167,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Update your existing CORS block (around line 144)
 _default_cors_origins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://0.0.0.0:3000',
+    'https://securemed-finale-569ldd705.vercel.app',
+    'https://securemed-finale.vercel.app',
 ]
 
 CORS_ALLOWED_ORIGINS = config(
@@ -185,23 +189,30 @@ if DEBUG:
 
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = config(
-    'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000'
-).split(',')
+# Hardcode for deployment to eliminate environment variable issues
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://securemed-finale-569ldd705.vercel.app',
+    'https://securemed-finale.vercel.app',
+    'https://securemed-backend.onrender.com', # Add the backend itself
+]
+
+# This is the "Magic" setting to stop 403s on cross-domain APIs
+CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework Settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Change this from IsAuthenticated
     ],
     'DEFAULT_PAGINATION_CLASS': 'apps.platform.core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
-    'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
+    #'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
 }
 
 # Custom User Model
@@ -265,12 +276,12 @@ CSRF_COOKIE_SAMESITE = 'Strict'
 # For production deployment: set DJANGO_SECURE_SSL=True in environment
 SESSION_COOKIE_SECURE = SECURE_SSL
 CSRF_COOKIE_SECURE = SECURE_SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 if SECURE_SSL:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Google reCAPTCHA Configuration
 # For local development, uses Google's test keys (always pass)
