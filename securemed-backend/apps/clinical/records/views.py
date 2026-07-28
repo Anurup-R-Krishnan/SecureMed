@@ -6,6 +6,8 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 from .models import MedicalRecord, MedicalRecordAccess
 from .serializers import MedicalRecordSerializer
 from apps.accounts.users.permissions import IsPatient
@@ -261,8 +263,14 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         patient_id = request.query_params.get('patient_id')
         if not patient_id:
              return Response({"error": "patient_id is required"}, status=400)
-             
-        # In a real app, verify access to this patient_id
+
+        # Access control: patients can only see their own timeline
+        user = request.user
+        if hasattr(user, 'patient_profile'):
+            if str(user.patient_profile.id) != str(patient_id):
+                return Response({"error": "Forbidden: access denied"}, status=403)
+        elif not hasattr(user, 'doctor_profile') and not user.is_staff and not user.is_superuser:
+            return Response({"error": "Forbidden: access denied"}, status=403)
         
         events = []
         
@@ -1284,6 +1292,7 @@ import uuid as _uuid
 from rest_framework.views import APIView
 
 
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True), name='post')
 class EmergencyCaseCreateView(APIView):
     """Public endpoint – anyone can submit an emergency intake."""
     permission_classes = [permissions.AllowAny]
@@ -1328,6 +1337,7 @@ class EmergencyCaseCreateView(APIView):
         )
 
 
+@method_decorator(ratelimit(key='ip', rate='10/m', method='GET', block=True), name='get')
 class EmergencyCaseStatusView(APIView):
     """Public lookup by case_ref – no authentication required."""
     permission_classes = [permissions.AllowAny]
