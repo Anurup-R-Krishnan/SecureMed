@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface InteractionFinding {
     finding_type: 'interaction' | 'side_effect';
@@ -21,6 +21,11 @@ export interface InteractionCheckResult {
     visible_findings_count: number;
     findings_truncated: boolean;
     limit_findings: number;
+    summary?: {
+        total_findings: number;
+        total_combinations: number;
+        top_effects: string[];
+    };
     evaluated_combination_depth?: number;
     max_supported_combination_size?: number;
     not_evaluated_depths?: number[];
@@ -69,54 +74,94 @@ export const drugInteractionService = {
     async searchMedications(query: string, patientId?: number): Promise<string[]> {
         const params: Record<string, string | number> = { q: query };
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/search/', { params });
-        return response.data?.results || [];
+        const response = await apiClient.get<any>('/medical-records/drug-interactions/search/', { params });
+        return response.results || [];
     },
 
     async checkInteractions(medications: string[], patientId?: number): Promise<InteractionCheckResult> {
-        const response = await api.post('/medical-records/drug-interactions/check/', {
+        return await apiClient.post('/medical-records/drug-interactions/check/', {
             medications,
-            limit_findings: 80,
+            limit_findings: 30,
             ...(patientId ? { patient_id: patientId } : {}),
         });
-        return response.data;
     },
 
     async getLatestReport(patientId?: number): Promise<InteractionReport | null> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/reports/latest/', { params });
-        return response.data || null;
+        try {
+            return await apiClient.get('/medical-records/drug-interactions/reports/latest/', { params }) || null;
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                return null;
+            }
+            throw error;
+        }
     },
 
     async getReportHistory(patientId?: number): Promise<InteractionReport[]> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/reports/', { params });
-        return Array.isArray(response.data) ? response.data : [];
+        const response = await apiClient.get<any>('/medical-records/drug-interactions/reports/', { params });
+        return Array.isArray(response) ? response : [];
     },
 
     async regenerateReport(patientId?: number): Promise<ReportGenerationJob> {
         const payload: Record<string, number> = {};
         if (patientId) payload.patient_id = patientId;
-        const response = await api.post('/medical-records/drug-interactions/reports/generate/', payload);
-        return response.data;
+        return await apiClient.post('/medical-records/drug-interactions/reports/generate/', payload);
     },
 
     async getReportJobStatus(taskId: string): Promise<ReportJobStatus> {
-        const response = await api.get('/medical-records/drug-interactions/reports/status/', {
+        return await apiClient.get('/medical-records/drug-interactions/reports/status/', {
             params: { task_id: taskId },
         });
-        return response.data;
     },
 
     async downloadReportPDF(patientId?: number): Promise<Blob> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await api.get('/medical-records/drug-interactions/reports/latest/pdf/', {
+        const response = await apiClient.get<Blob>('/medical-records/drug-interactions/reports/latest/pdf/', {
             params,
             responseType: 'blob',
         });
-        return response.data;
+        return response as any;
+    },
+
+    async downloadReportPDFWithGeneration(
+        patientId?: number,
+        options?: { pollIntervalMs?: number; timeoutMs?: number }
+    ): Promise<Blob> {
+        const pollIntervalMs = options?.pollIntervalMs ?? 1500;
+        const timeoutMs = options?.timeoutMs ?? 30000;
+        const start = Date.now();
+
+        const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        try {
+            return await this.downloadReportPDF(patientId);
+        } catch (error: any) {
+            if (error?.response?.status !== 404) {
+                throw error;
+            }
+        }
+
+        const job = await this.regenerateReport(patientId);
+        if (!job?.task_id) {
+            return await this.downloadReportPDF(patientId);
+        }
+
+        while (Date.now() - start < timeoutMs) {
+            const status = await this.getReportJobStatus(job.task_id);
+            if (status.status === 'succeeded') {
+                return await this.downloadReportPDF(patientId);
+            }
+            if (status.status === 'failed') {
+                throw new Error(status.error_message || 'Report generation failed.');
+            }
+            await sleep(pollIntervalMs);
+        }
+
+        throw new Error('Report generation timed out.');
     },
 };

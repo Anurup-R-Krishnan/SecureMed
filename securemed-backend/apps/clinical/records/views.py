@@ -1,20 +1,27 @@
-from django.shortcuts import render
-from django.utils import timezone
-from rest_framework import viewsets, permissions, status, serializers
-from rest_framework.exceptions import ValidationError, PermissionDenied
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
+import logging
+
 from django.db.models import Q
-from .models import MedicalRecord, MedicalRecordAccess
-from .serializers import MedicalRecordSerializer
-from apps.accounts.users.permissions import IsPatient
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
+from rest_framework import permissions, serializers, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.response import Response
+
 from apps.accounts.patients.models import Patient
+from apps.accounts.users.permissions import IsPatient
 from apps.clinical.pharmacy.models import Drug
+
 from .interaction_service import (
     enqueue_report_generation,
     evaluate_medication_safety,
     get_active_medications_for_patient,
 )
+from .models import MedicalRecord, MedicalRecordAccess
+from .serializers import MedicalRecordSerializer
+
+logger = logging.getLogger('security')
 
 class MedicalRecordViewSet(viewsets.ModelViewSet):
     serializer_class = MedicalRecordSerializer
@@ -231,6 +238,7 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
              
         # Clone and create new record
         import uuid
+
         from django.utils import timezone
         
         new_record = MedicalRecord.objects.create(
@@ -258,8 +266,14 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
         patient_id = request.query_params.get('patient_id')
         if not patient_id:
              return Response({"error": "patient_id is required"}, status=400)
-             
-        # In a real app, verify access to this patient_id
+
+        # Access control: patients can only see their own timeline
+        user = request.user
+        if hasattr(user, 'patient_profile'):
+            if str(user.patient_profile.id) != str(patient_id):
+                return Response({"error": "Forbidden: access denied"}, status=403)
+        elif not hasattr(user, 'doctor_profile') and not user.is_staff and not user.is_superuser:
+            return Response({"error": "Forbidden: access denied"}, status=403)
         
         events = []
         
@@ -348,10 +362,10 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        from .models import EmergencyAccessLog
-
         # ── Duplicate check: skip if active access already exists ──────
         from datetime import timedelta
+
+        from .models import EmergencyAccessLog
         recent_cutoff = timezone.now() - timedelta(hours=24)
         existing = EmergencyAccessLog.objects.filter(
             patient=patient,
@@ -437,21 +451,27 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         prescription, interaction_result = self.perform_create(serializer)
         response_serializer = self.get_serializer(prescription)
         response_payload = dict(response_serializer.data)
+        findings = interaction_result.get("findings", []) or []
+        findings_limit = 25
         response_payload["interaction_check"] = {
-            "has_findings": len(interaction_result.get("findings", [])) > 0,
-            "total_findings": len(interaction_result.get("findings", [])),
+            "has_findings": len(findings) > 0,
+            "total_findings": len(findings),
             "totals": interaction_result.get("totals", {}),
             "evaluated_combination_depth": interaction_result.get("evaluated_combination_depth", 3),
             "not_evaluated_depths": interaction_result.get("not_evaluated_depths", []),
-            "findings": interaction_result.get("findings", []),
+            "findings_limit": findings_limit,
+            "findings_truncated": len(findings) > findings_limit,
+            "findings": findings[:findings_limit],
         }
         headers = self.get_success_headers(response_serializer.data)
         return Response(response_payload, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        from .models import MedicalRecord
-        from django.utils import timezone
         import uuid
+
+        from django.utils import timezone
+
+        from .models import MedicalRecord
         
         patient_id = serializer.validated_data.pop('patient_id', None)
         if not patient_id:
@@ -524,9 +544,9 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
              
         try:
             prescription.sign(request.user)
-            from .models import MedicationHistoryEvent, PharmacyOrder
-            from django.utils import timezone
             import secrets
+
+            from .models import MedicationHistoryEvent, PharmacyOrder
 
             MedicationHistoryEvent.objects.create(
                 prescription=prescription,
@@ -573,11 +593,18 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         return Response({"status": "cancelled"})
 
 
-class DrugInteractionViewSet(viewsets.ModelViewSet):
-    from .models import DrugInteraction, MedicationInteractionReport, MedicationInteractionReportJob
-    from .serializers import DrugInteractionSerializer, MedicationInteractionReportSerializer
-    queryset = DrugInteraction.objects.all()
-    serializer_class = DrugInteractionSerializer
+class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
+    from .models import (
+        MedicationInteractionKnowledge,
+        MedicationInteractionReport,
+        MedicationInteractionReportJob,
+    )
+    from .serializers import (
+        MedicationInteractionKnowledgeSerializer,
+        MedicationInteractionReportSerializer,
+    )
+    queryset = MedicationInteractionKnowledge.objects.all()
+    serializer_class = MedicationInteractionKnowledgeSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def _resolve_patient(self, request):
@@ -678,11 +705,11 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             raise ValidationError({"medications": "Must be a list of medication names."})
         include_active = request.data.get("include_active", True)
         include_active = str(include_active).lower() not in {"false", "0", "no"}
-        raw_limit = request.data.get("limit_findings", 80)
+        raw_limit = request.data.get("limit_findings", 30)
         try:
-            limit_findings = max(1, min(int(raw_limit), 200))
+            limit_findings = max(1, min(int(raw_limit), 30))
         except (TypeError, ValueError):
-            limit_findings = 80
+            limit_findings = 30
 
         patient = self._resolve_patient(request)
         active_meds = get_active_medications_for_patient(patient.id) if (patient and include_active) else []
@@ -695,6 +722,15 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         interaction_findings = [finding for finding in findings if finding.get("combination_size", 0) >= 2]
         side_effect_findings = [finding for finding in findings if finding.get("combination_size", 0) < 2]
         visible_findings = (interaction_findings + side_effect_findings)[:limit_findings]
+        effect_counts = {}
+        combo_keys = set()
+        for finding in visible_findings:
+            effect = (finding.get("side_effect") or "").strip()
+            if effect:
+                effect_counts[effect] = effect_counts.get(effect, 0) + 1
+            meds_key = sorted([m for m in finding.get("medications", []) if m])
+            combo_keys.add(f"{finding.get('combination_size')}|{'|'.join(meds_key)}")
+        top_effects = [k for k, _ in sorted(effect_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]]
 
         result["findings"] = visible_findings
         result["interaction_findings_total"] = len(interaction_findings)
@@ -702,6 +738,11 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         result["visible_findings_count"] = len(visible_findings)
         result["findings_truncated"] = len(visible_findings) < len(findings)
         result["limit_findings"] = limit_findings
+        result["summary"] = {
+            "total_findings": len(visible_findings),
+            "total_combinations": len(combo_keys),
+            "top_effects": top_effects,
+        }
         result["requested_medications"] = meds
         result["active_medications_added"] = active_meds
         result["include_active"] = include_active
@@ -715,7 +756,7 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         report = self.MedicationInteractionReport.objects.filter(patient=patient).prefetch_related('items').first()
         if not report:
             return Response({"detail": "No report found."}, status=status.HTTP_404_NOT_FOUND)
-        serializer = self.MedicationInteractionReportSerializer(report)
+        serializer = self.MedicationInteractionReportSerializer(report, context={"items_limit": 30})
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='reports')
@@ -724,7 +765,7 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         if not patient:
             raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
         reports = self.MedicationInteractionReport.objects.filter(patient=patient).prefetch_related('items')[:20]
-        serializer = self.MedicationInteractionReportSerializer(reports, many=True)
+        serializer = self.MedicationInteractionReportSerializer(reports, many=True, context={"items_limit": 30})
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='reports/generate')
@@ -732,8 +773,10 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
         patient = self._resolve_patient(request)
         if not patient:
             raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.conf import settings
+        from django.utils import timezone
         recent_cutoff = timezone.now() - timedelta(minutes=10)
         existing_job = (
             self.MedicationInteractionReportJob.objects
@@ -741,6 +784,13 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
             .first()
         )
         if existing_job:
+            if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False) or getattr(settings, "DEBUG", False):
+                from .interaction_service import run_report_job
+                try:
+                    run_report_job(existing_job.id)
+                    existing_job.refresh_from_db()
+                except Exception:
+                    pass
             return Response(
                 {
                     "task_id": existing_job.task_id,
@@ -794,6 +844,7 @@ class DrugInteractionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='reports/latest/pdf')
     def download_latest_report_pdf(self, request):
         from django.http import HttpResponse
+
         from .pdf_reports import generate_interaction_report_pdf
 
         patient = self._resolve_patient(request)
@@ -1027,11 +1078,12 @@ def patient_dashboard_stats(request):
         return Response({"error": "Unauthorized role."}, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        from .models import VitalSign, Prescription, MedicalRecord
-        from .serializers import VitalSignSerializer
-        from apps.clinical.diagnostics.models import LabResult, LabOrder
-        from apps.finance.billing.models import Invoice
         from apps.accounts.patients.models import WellnessTip
+        from apps.clinical.diagnostics.models import LabOrder
+        from apps.finance.billing.models import Invoice
+
+        from .models import MedicalRecord, Prescription, VitalSign
+        from .serializers import VitalSignSerializer
         
         # 1. Vitals History (Last 7 entries for Sparklines)
         vitals_history_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')[:7]
@@ -1089,8 +1141,8 @@ def patient_dashboard_stats(request):
                      health_score -= 5
                      
                 health_score = max(0, min(100, int(health_score)))
-            except Exception as e:
-                print(f"Error calculating health score: {e}")
+            except Exception:
+                logger.exception("Health score calculation failed; using fallback.")
                 health_score = 85
         
         # 3. Active Prescriptions (FULL DETAILS - NO MOCK DATA)
@@ -1120,7 +1172,7 @@ def patient_dashboard_stats(request):
         ).prefetch_related('results__test').order_by('-created_at')[:3]
         
         for order in recent_lab_orders:
-            for result in order.results.all()[:3]:  # Max 3 results per order
+            for result in order.results.filter(released_to_patient=True)[:3]:  # Max 3 results per order
                 recent_lab_results.append({
                     'id': result.id,
                     'test_name': result.test.name if result.test else 'Unknown Test',
@@ -1200,10 +1252,8 @@ def patient_dashboard_stats(request):
             "health_insights": health_insights,
             "patient_name": f"{user.first_name} {user.last_name}"
         })
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"CRITICAL ERROR in patient_dashboard_stats: {str(e)}")
+    except Exception:
+        logger.exception("Patient dashboard stats failed.")
         return Response(
             {"error": "Failed to load dashboard data. Please try again."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1252,11 +1302,14 @@ def patient_access_log(request):
 # ---------------------------------------------------------------------------
 # Emergency Case public API (no auth required for create / status lookup)
 # ---------------------------------------------------------------------------
-from .models import EmergencyCase
 import uuid as _uuid
+
 from rest_framework.views import APIView
 
+from .models import EmergencyCase
 
+
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True), name='post')
 class EmergencyCaseCreateView(APIView):
     """Public endpoint – anyone can submit an emergency intake."""
     permission_classes = [permissions.AllowAny]
@@ -1301,6 +1354,7 @@ class EmergencyCaseCreateView(APIView):
         )
 
 
+@method_decorator(ratelimit(key='ip', rate='10/m', method='GET', block=True), name='get')
 class EmergencyCaseStatusView(APIView):
     """Public lookup by case_ref – no authentication required."""
     permission_classes = [permissions.AllowAny]

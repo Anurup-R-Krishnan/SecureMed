@@ -6,7 +6,6 @@ from apps.clinical.telemedicine.models import (
     ConditionPin,
 )
 
-
 REGION_EXPLAINERS = [
     {
         'region_id': 'head',

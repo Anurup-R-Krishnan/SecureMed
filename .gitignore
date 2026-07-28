@@ -88,6 +88,12 @@ db.sqlite3-journal
 media/
 staticfiles/
 
+# Local HODDI datasets (kept out of git)
+securemed-backend/data/hoddi/
+
+# Local artifacts
+securemed-backend/tmp/
+
 # Python packaging / builds
 build/
 dist/
@@ -97,7 +103,7 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -135,11 +141,11 @@ next-env.d.ts
 .pnp.js
 
 # Specific to this project structure
-frontend/.next/
-frontend/node_modules/
-backend/venv/
-backend/.env
-backend/db.sqlite3
+securemed-frontend/.next/
+securemed-frontend/node_modules/
+securemed-backend/venv/
+securemed-backend/.env
+securemed-backend/db.sqlite3
 
 # Local Credentials
 handy.txt
@@ -148,3 +154,6 @@ handy.txt
 *.csv
 
 HODDI/
+
+# Backup files
+*.bak

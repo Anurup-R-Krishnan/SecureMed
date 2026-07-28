@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
-import Header from '@/components/layout/header';
-import LandingPage from '@/components/landing-page';
-import { getPortalRouteForRole } from '@/lib/routes';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
+import Header from "@/components/layout/header";
+import LandingPage from "@/components/landing-page";
+import { getPortalRouteForRole } from "@/lib/routes";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -19,7 +19,7 @@ export default function Home() {
   }, [isAuthenticated, user, router]);
 
   const handleOpenLogin = () => {
-    router.push('/login');
+    router.push("/login");
   };
 
   // Show landing page (no user authenticated)

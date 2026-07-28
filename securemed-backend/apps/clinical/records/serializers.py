@@ -1,17 +1,19 @@
+from datetime import timedelta
+
 from rest_framework import serializers
+
 from .models import (
     MedicalRecord,
-    Prescription,
-    VitalSign,
-    DrugInteraction,
-    PharmacyOrder,
     MedicationAdherenceLog,
     MedicationHistoryEvent,
+    MedicationInteractionKnowledge,
     MedicationInteractionReport,
     MedicationInteractionReportItem,
+    PharmacyOrder,
+    Prescription,
+    VitalSign,
 )
-from apps.scheduling.appointments.serializers import DoctorSerializer
-from datetime import timedelta
+
 
 class PrescriptionSerializer(serializers.ModelSerializer):
     patient_id = serializers.IntegerField(write_only=True, required=False)
@@ -93,11 +95,14 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
         model = MedicalRecord
         fields = [
             'id', 'record_id', 'record_type', 'record_type_display', 
-            'record_date', 'doctor_name', 'patient', 'patient_name', 'patient_display_id',
-            'diagnosis', 'file', 'file_url',
+            'record_date', 'doctor', 'doctor_name', 'patient', 'patient_name', 'patient_display_id',
+            'diagnosis', 'symptoms', 'treatment', 'file', 'file_url',
             'prescriptions', 'created_at', 'source', 'is_attested', 'notes',
             'private_notes'
         ]
+        extra_kwargs = {
+            'doctor': {'write_only': True, 'required': False}
+        }
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -189,10 +194,20 @@ class VitalSignSerializer(serializers.ModelSerializer):
         return data
 
 
-class DrugInteractionSerializer(serializers.ModelSerializer):
+class MedicationInteractionKnowledgeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = DrugInteraction
-        fields = '__all__'
+        model = MedicationInteractionKnowledge
+        fields = [
+            'id',
+            'medications',
+            'combination_size',
+            'severity',
+            'side_effect',
+            'description',
+            'source',
+            'source_version',
+            'created_at',
+        ]
 
 
 class MedicationInteractionReportItemSerializer(serializers.ModelSerializer):
@@ -212,7 +227,10 @@ class MedicationInteractionReportItemSerializer(serializers.ModelSerializer):
 
 
 class MedicationInteractionReportSerializer(serializers.ModelSerializer):
-    items = MedicationInteractionReportItemSerializer(many=True, read_only=True)
+    items = serializers.SerializerMethodField()
+    items_total = serializers.SerializerMethodField()
+    items_truncated = serializers.SerializerMethodField()
+    items_limit = serializers.SerializerMethodField()
 
     class Meta:
         model = MedicationInteractionReport
@@ -237,7 +255,47 @@ class MedicationInteractionReportSerializer(serializers.ModelSerializer):
             'source_version',
             'created_at',
             'items',
+            'items_total',
+            'items_truncated',
+            'items_limit',
         ]
+
+    def _get_items_cache(self, obj):
+        cache_attr = "_report_items_cache"
+        if not hasattr(obj, cache_attr):
+            raw_items = list(obj.items.all())
+            deduped = []
+            seen = set()
+            for item in raw_items:
+                key = (
+                    item.finding_type,
+                    tuple(sorted(item.medications or [])),
+                    (item.side_effect or "").strip().lower(),
+                    item.severity,
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(item)
+            setattr(obj, cache_attr, deduped)
+        return getattr(obj, cache_attr)
+
+    def _get_items_limit(self):
+        return int(self.context.get("items_limit", 30))
+
+    def get_items(self, obj):
+        items = self._get_items_cache(obj)
+        limit = self._get_items_limit()
+        return MedicationInteractionReportItemSerializer(items[:limit], many=True).data
+
+    def get_items_total(self, obj):
+        return len(self._get_items_cache(obj))
+
+    def get_items_truncated(self, obj):
+        return len(self._get_items_cache(obj)) > self._get_items_limit()
+
+    def get_items_limit(self, obj):
+        return self._get_items_limit()
 
 
 class PharmacyOrderSerializer(serializers.ModelSerializer):

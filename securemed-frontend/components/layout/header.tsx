@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Menu, X, Activity, User, LogOut, ChevronRight } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { NotificationCenter } from '@/components/ui/notification-center';
-import { getPortalRouteForRole } from '@/lib/routes';
+import { Button } from "@/components/ui/button";
+import { Menu, X, Activity, User, LogOut, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/auth-context";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { NotificationCenter } from "@/components/ui/notification-center";
+import { getPortalRouteForRole } from "@/lib/routes";
 
 interface HeaderProps {
-  onLoginClick: (role?: 'patient' | 'doctor' | 'admin') => void;
+  onLoginClick: (role?: "patient" | "doctor" | "admin") => void;
 }
 
 export default function Header({ onLoginClick }: HeaderProps) {
@@ -24,24 +24,24 @@ export default function Header({ onLoginClick }: HeaderProps) {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false);
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      element.scrollIntoView({ behavior: "smooth" });
     } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const navItems = [
-    { label: 'Find a Doctor', action: () => scrollToSection('specialists') },
-    { label: 'Why Us', action: () => scrollToSection('features') },
-    { label: 'Testimonials', action: () => scrollToSection('testimonials') },
+    { label: "Find a Doctor", action: () => scrollToSection("specialists") },
+    { label: "Why Us", action: () => scrollToSection("features") },
+    { label: "Testimonials", action: () => scrollToSection("testimonials") },
   ];
 
   const handleGoToDashboard = () => {
@@ -52,16 +52,17 @@ export default function Header({ onLoginClick }: HeaderProps) {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/');
+    router.replace("/");
     setMobileMenuOpen(false);
   };
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-        ? 'bg-background/95 backdrop-blur-md border-b border-border shadow-sm py-2'
-        : 'bg-transparent py-4'
-        }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-background/95 backdrop-blur-md border-b border-border shadow-sm py-2"
+          : "bg-transparent py-4"
+      }`}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
@@ -100,7 +101,12 @@ export default function Header({ onLoginClick }: HeaderProps) {
                   <User className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">{user?.username}</span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="text-muted-foreground hover:text-destructive"
+                >
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
@@ -129,7 +135,11 @@ export default function Header({ onLoginClick }: HeaderProps) {
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 text-foreground hover:bg-muted rounded-md"
           >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
         </div>
       </div>
@@ -154,10 +164,20 @@ export default function Header({ onLoginClick }: HeaderProps) {
                     <User className="h-4 w-4 text-primary" />
                     <span className="font-medium">{user?.username}</span>
                   </div>
-                  <Button className="w-full" onClick={() => { handleGoToDashboard(); setMobileMenuOpen(false); }}>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      handleGoToDashboard();
+                      setMobileMenuOpen(false);
+                    }}
+                  >
                     Go to Dashboard
                   </Button>
-                  <Button variant="outline" className="w-full" onClick={handleLogout}>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleLogout}
+                  >
                     Logout
                   </Button>
                 </>
@@ -169,7 +189,10 @@ export default function Header({ onLoginClick }: HeaderProps) {
                     </Button>
                   </Link>
                   <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full justify-start mt-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start mt-2"
+                    >
                       Doctor / Staff Login
                     </Button>
                   </Link>

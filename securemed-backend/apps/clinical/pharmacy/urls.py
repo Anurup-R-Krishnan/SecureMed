@@ -1,6 +1,12 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import DrugViewSet, DrugStockViewSet, DrugBatchViewSet, StockTransactionViewSet
+
+from .views import (
+    DrugBatchViewSet,
+    DrugStockViewSet,
+    DrugViewSet,
+    StockTransactionViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'drugs', DrugViewSet, basename='drug')

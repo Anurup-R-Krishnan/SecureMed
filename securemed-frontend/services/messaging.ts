@@ -1,5 +1,5 @@
 
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface User {
     id: number;
@@ -41,32 +41,30 @@ export interface Conversation {
 export const messagingService = {
     getConversations: async (): Promise<Conversation[]> => {
         try {
-            const response = await api.get('/telemedicine/conversations/');
-            return Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            const response = await apiClient.get('/telemedicine/conversations/');
+            return Array.isArray(response) ? response :
+                (response as any)?.results || [];
         } catch (error) {
-            console.error('Error fetching conversations:', error);
             return [];
         }
     },
 
     createConversation: async (participantId: number): Promise<Conversation> => {
-        const response = await api.post('/telemedicine/conversations/', {
+        const response = await apiClient.post('/telemedicine/conversations/', {
             participant_id: participantId
         });
-        return response.data;
+        return response;
     },
 
     getMessages: async (conversationId: number): Promise<Message[]> => {
         try {
-            const response = await api.get(`/telemedicine/messages/?conversation=${conversationId}`);
-            return Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            const response = await apiClient.get(`/telemedicine/messages/?conversation=${conversationId}`);
+            return Array.isArray(response) ? response :
+                (response as any)?.results || [];
         } catch (error: any) {
             if (error?.response?.status === 401 || error?.response?.status === 403) {
                 return [];
             }
-            console.error('Error fetching messages:', error);
             return [];
         }
     },
@@ -79,11 +77,11 @@ export const messagingService = {
             formData.append('attachment', attachment);
         }
 
-        const response = await api.post('/telemedicine/messages/', formData, {
+        const response = await apiClient.post('/telemedicine/messages/', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
         });
-        return response.data;
+        return response;
     }
 };

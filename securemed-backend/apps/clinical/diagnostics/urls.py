@@ -1,6 +1,13 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import LabTestViewSet, LabOrderViewSet, LabResultViewSet, LabWorklistViewSet, LabNotificationViewSet
+
+from .views import (
+    LabNotificationViewSet,
+    LabOrderViewSet,
+    LabResultViewSet,
+    LabTestViewSet,
+    LabWorklistViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'tests', LabTestViewSet, basename='lab-tests')

@@ -1,39 +1,41 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Mail, Lock, User, Code, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
-import ReCAPTCHA from 'react-google-recaptcha';
-import { API_BASE_URL } from '@/lib/urls';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { registerSchema, RegisterFormData } from '@/lib/schemas';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Mail, Lock, User, Code, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/context/auth-context";
+import ReCAPTCHA from "react-google-recaptcha";
+import { API_BASE_URL } from "@/lib/urls";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { registerSchema, RegisterFormData } from "@/lib/schemas";
 
 interface RegisterPageProps {
-  onSuccess: (role: 'patient' | 'doctor') => void;
+  onSuccess: (role: "patient" | "doctor") => void;
   onBackToLogin: () => void;
 }
 
-
-export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageProps) {
+export default function RegisterPage({
+  onSuccess,
+  onBackToLogin,
+}: RegisterPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifyingToken, setIsVerifyingToken] = useState(true);
   const [tokenValid, setTokenValid] = useState(false);
-  const [tokenError, setTokenError] = useState('');
-  const [invitationEmail, setInvitationEmail] = useState('');
-  const [invitationToken, setInvitationToken] = useState('');
+  const [tokenError, setTokenError] = useState("");
+  const [invitationEmail, setInvitationEmail] = useState("");
+  const [invitationToken, setInvitationToken] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   // Google reCAPTCHA Site Key
-  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
-    '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+  const RECAPTCHA_SITE_KEY =
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
+    "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
 
-  const { toast } = useToast();
   const { login } = useAuth();
 
   // React Hook Form
@@ -42,53 +44,56 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
-    watch
+    watch,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      role: 'patient',
-      email: '', // Will be set from invitation
-    }
+      role: "patient",
+      email: "", // Will be set from invitation
+    },
   });
 
-  const selectedRole = watch('role');
+  const selectedRole = watch("role");
 
+  const verifyInvitationToken = useCallback(
+    async (token: string) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/invite/verify/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        });
 
+        const data = await response.json();
 
-  const verifyInvitationToken = useCallback(async (token: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/invite/verify/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.valid) {
-        setTokenValid(true);
-        setInvitationEmail(data.email);
-        setValue('email', data.email); // Set email in form
-      } else {
-        setTokenError(data.message || 'Invalid invitation token');
+        if (response.ok && data.valid) {
+          setTokenValid(true);
+          setInvitationEmail(data.email);
+          setValue("email", data.email); // Set email in form
+        } else {
+          setTokenError(data.message || "Invalid invitation token");
+          setTokenValid(false);
+        }
+      } catch (error) {
+        setTokenError("Failed to verify invitation token. Please try again.");
         setTokenValid(false);
+      } finally {
+        setIsVerifyingToken(false);
       }
-    } catch (error) {
-      setTokenError('Failed to verify invitation token. Please try again.');
-      setTokenValid(false);
-    } finally {
-      setIsVerifyingToken(false);
-    }
-  }, [setValue]);
+    },
+    [setValue],
+  );
 
   // Verify invitation token on component mount
   useEffect(() => {
-    const token = searchParams.get('token');
+    const token = searchParams.get("token");
 
     if (!token) {
-      setTokenError('No invitation token provided. Registration requires a valid invitation.');
+      setTokenError(
+        "No invitation token provided. Registration requires a valid invitation.",
+      );
       setIsVerifyingToken(false);
       return;
     }
@@ -103,11 +108,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
   const onSubmit = async (data: RegisterFormData) => {
     if (!captchaToken) {
-      toast({
-        title: 'CAPTCHA Required',
-        description: 'Please verify that you are not a robot.',
-        variant: 'destructive',
-      });
+      toast.error("CAPTCHA Required", { description: "Please verify that you are not a robot." });
       return;
     }
 
@@ -115,11 +116,11 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register/`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-          body: JSON.stringify({
+        body: JSON.stringify({
           ...data,
           token: invitationToken,
           captcha_token: captchaToken,
@@ -129,15 +130,12 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
       const responseData = await response.json();
 
       if (!response.ok) {
-        const errorMessage = typeof responseData.error === 'string'
-          ? responseData.error
-          : Object.values(responseData).flat().join(', ');
+        const errorMessage =
+          typeof responseData.error === "string"
+            ? responseData.error
+            : Object.values(responseData).flat().join(", ");
 
-        toast({
-          title: 'Registration Failed',
-          description: errorMessage,
-          variant: 'destructive',
-        });
+        toast.error("Registration Failed", { description: errorMessage });
 
         // Reset reCAPTCHA on error
         recaptchaRef.current?.reset();
@@ -146,38 +144,31 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
       }
 
       // Registration successful
-      toast({
-        title: 'Registration Successful!',
-        description: 'Logging you in...',
-      });
+      toast.success("Registration Successful!", { description: "Logging you in..." });
 
       // Auto-login after registration
       const loginResult = await login(data.email, data.password);
 
-      if (loginResult.status === 'SUCCESS') {
-        toast({
-          title: 'Welcome!',
-          description: 'You have been logged in successfully.',
+      if (loginResult.status === "SUCCESS") {
+        toast.success("Welcome!", {
+          description: "You have been logged in successfully.",
         });
 
         setTimeout(() => {
-          router.push('/login');
+          router.push("/login");
         }, 1000);
       } else if (loginResult.error) {
-        toast({
-          title: 'Please login',
-          description: 'Registration successful. Please login with your credentials.',
+        toast("Please login", {
+          description:
+            "Registration successful. Please login with your credentials.",
         });
         setTimeout(() => {
           onBackToLogin();
         }, 1500);
       }
-
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Network error. Please try again.',
-        variant: 'destructive',
+      toast.error("Error", {
+        description: "Network error. Please try again.",
       });
 
       recaptchaRef.current?.reset();
@@ -220,7 +211,9 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
             <div className="rounded-2xl border border-destructive/50 bg-card p-8">
               <div className="flex items-center gap-3 mb-4">
                 <AlertCircle className="h-8 w-8 text-destructive" />
-                <h2 className="text-2xl font-bold text-foreground">Invalid Invitation</h2>
+                <h2 className="text-2xl font-bold text-foreground">
+                  Invalid Invitation
+                </h2>
               </div>
               <p className="text-muted-foreground mb-6">{tokenError}</p>
               <button
@@ -266,14 +259,18 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
             {/* Invitation Info */}
             <div className="mb-6 p-3 rounded-lg bg-primary/10 border border-primary/20">
               <p className="text-sm text-foreground">
-                <span className="font-medium">Invited email:</span> {invitationEmail}
+                <span className="font-medium">Invited email:</span>{" "}
+                {invitationEmail}
               </p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Username Input */}
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-foreground mb-2">
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium text-foreground mb-2"
+                >
                   Username
                 </label>
                 <div className="relative">
@@ -281,18 +278,25 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                   <input
                     id="username"
                     type="text"
-                    {...register('username')}
+                    {...register("username")}
                     placeholder="johndoe"
-                    className={`w-full rounded-lg border bg-background px-10 py-2.5 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-primary/50 ${errors.username ? 'border-destructive' : 'border-border'}`}
+                    className={`w-full rounded-lg border bg-background px-10 py-2.5 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-primary/50 ${errors.username ? "border-destructive" : "border-border"}`}
                     disabled={isLoading}
                   />
                 </div>
-                {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
+                {errors.username && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.username.message}
+                  </p>
+                )}
               </div>
 
               {/* Email Input (Read-only) */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-foreground mb-2"
+                >
                   Email Address
                 </label>
                 <div className="relative">
@@ -300,7 +304,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                   <input
                     id="email"
                     type="email"
-                    {...register('email')}
+                    {...register("email")}
                     className="w-full rounded-lg border border-border bg-muted px-10 py-2.5 text-foreground cursor-not-allowed"
                     readOnly
                   />
@@ -312,7 +316,10 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
               {/* Password Input */}
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-foreground mb-2"
+                >
                   Password
                 </label>
                 <div className="relative">
@@ -320,13 +327,17 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                   <input
                     id="password"
                     type="password"
-                    {...register('password')}
+                    {...register("password")}
                     placeholder="••••••••••••"
-                    className={`w-full rounded-lg border bg-background px-10 py-2.5 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-primary/50 ${errors.password ? 'border-destructive' : 'border-border'}`}
+                    className={`w-full rounded-lg border bg-background px-10 py-2.5 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-primary/50 ${errors.password ? "border-destructive" : "border-border"}`}
                     disabled={isLoading}
                   />
                 </div>
-                {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+                {errors.password && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.password.message}
+                  </p>
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">
                   Must be at least 12 characters with 1 special character
                 </p>
@@ -334,7 +345,10 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
 
               {/* Confirm Password Input */}
               <div>
-                <label htmlFor="password_confirm" className="block text-sm font-medium text-foreground mb-2">
+                <label
+                  htmlFor="password_confirm"
+                  className="block text-sm font-medium text-foreground mb-2"
+                >
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -342,13 +356,17 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                   <input
                     id="password_confirm"
                     type="password"
-                    {...register('password_confirm')}
+                    {...register("password_confirm")}
                     placeholder="••••••••••••"
-                    className={`w-full rounded-lg border bg-background px-10 py-2.5 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-primary/50 ${errors.password_confirm ? 'border-destructive' : 'border-border'}`}
+                    className={`w-full rounded-lg border bg-background px-10 py-2.5 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-primary/50 ${errors.password_confirm ? "border-destructive" : "border-border"}`}
                     disabled={isLoading}
                   />
                 </div>
-                {errors.password_confirm && <p className="text-xs text-destructive mt-1">{errors.password_confirm.message}</p>}
+                {errors.password_confirm && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.password_confirm.message}
+                  </p>
+                )}
               </div>
 
               {/* Role Selection */}
@@ -361,7 +379,7 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                     <input
                       type="radio"
                       value="patient"
-                      {...register('role')}
+                      {...register("role")}
                       className="peer sr-only"
                       disabled={isLoading}
                     />
@@ -370,27 +388,39 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                     </div>
                   </label>
                 </div>
-                {errors.role && <p className="text-xs text-destructive mt-1">{errors.role.message}</p>}
+                {errors.role && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.role.message}
+                  </p>
+                )}
               </div>
 
               {/* Medical License Number (for Doctors) */}
-              {selectedRole === 'provider' && (
+              {selectedRole === "provider" && (
                 <div className="space-y-2 p-4 rounded-lg bg-muted/50 border border-border">
-                  <label htmlFor="medicalLicenseNumber" className="block text-sm font-medium text-foreground">
-                    Medical License Number <span className="text-muted-foreground">(Optional)</span>
+                  <label
+                    htmlFor="medicalLicenseNumber"
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    Medical License Number{" "}
+                    <span className="text-muted-foreground">(Optional)</span>
                   </label>
                   <div className="relative">
                     <Code className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <input
                       id="medicalLicenseNumber"
                       type="text"
-                      {...register('medicalLicenseNumber')}
+                      {...register("medicalLicenseNumber")}
                       placeholder="e.g., MD-12345-2024"
                       className="w-full rounded-lg border border-border bg-background px-10 py-2.5 text-foreground placeholder-muted-foreground outline-none focus:ring-2 focus:ring-primary/50"
                       disabled={isLoading}
                     />
                   </div>
-                  {errors.medicalLicenseNumber && <p className="text-xs text-destructive mt-1">{errors.medicalLicenseNumber.message}</p>}
+                  {errors.medicalLicenseNumber && (
+                    <p className="text-xs text-destructive mt-1">
+                      {errors.medicalLicenseNumber.message}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     This helps verify your credentials (can be added later)
                   </p>
@@ -407,9 +437,10 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                 />
               </div>
 
-              {process.env.NODE_ENV === 'development' && (
+              {process.env.NODE_ENV === "development" && (
                 <p className="text-xs text-muted-foreground text-center">
-                  Using Google&apos;s test reCAPTCHA key (always passes in dev mode)
+                  Using Google&apos;s test reCAPTCHA key (always passes in dev
+                  mode)
                 </p>
               )}
 
@@ -419,13 +450,15 @@ export default function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageP
                 disabled={isLoading || isSubmitting || !captchaToken}
                 className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading || isSubmitting ? 'Creating Account...' : 'Create Account'}
+                {isLoading || isSubmitting
+                  ? "Creating Account..."
+                  : "Create Account"}
               </button>
             </form>
 
             {/* Login Link */}
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              {'Already have an account? '}
+              {"Already have an account? "}
               <button
                 onClick={onBackToLogin}
                 className="font-semibold text-primary hover:underline"

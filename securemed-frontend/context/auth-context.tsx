@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { TermsOfServiceModal } from '@/components/auth/terms-of-service-modal';
 import { API_BASE_URL, API_ORIGIN } from '@/lib/urls';
 import { parseJSON } from '@/lib/auth-utils';
@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [tokens, setTokens] = useState<Tokens | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingPolicyToken, setPendingPolicyToken] = useState<string | null>(null);
-    const { toast } = useToast();
     const router = useRouter();
 
     const parseResponseJson = async (response: Response) => {
@@ -93,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             return JSON.parse(text);
         } catch (error) {
-            console.error('Failed to parse response JSON:', error);
             return { raw: text };
         }
     };
@@ -185,7 +183,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 user: data.user
             };
         } catch (error) {
-            console.error('Login error:', error);
             return {
                 status: 'SUCCESS',
                 error: 'Network error. Please try again.',
@@ -244,7 +241,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 user: data.user
             };
         } catch (error) {
-            console.error('MFA verification error:', error);
             return {
                 status: 'SUCCESS',
                 error: 'Network error. Please try again.'
@@ -286,7 +282,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             return true;
         } catch (error) {
-            console.error('Token refresh error:', error);
             logout();
             return false;
         }
@@ -295,7 +290,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const refreshUserStatus = async (): Promise<boolean> => {
         try {
             if (!tokens?.access) {
-                console.error('No access token available');
                 return false;
             }
 
@@ -308,7 +302,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (!response.ok) {
-                console.error('Failed to fetch user profile');
                 return false;
             }
 
@@ -316,7 +309,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Update user state and localStorage
             if (!userData) {
-                console.error('Empty user profile response');
                 return false;
             }
 
@@ -325,7 +317,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             return true;
         } catch (error) {
-            console.error('Error refreshing user status:', error);
             return false;
         }
     };
@@ -344,15 +335,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         const parsedTokens = parseJSON<Tokens>(storedTokens);
                         refreshToken = parsedTokens?.refresh;
                     } catch (e) {
-                        console.error('Failed to parse stored tokens:', e);
                     }
                 }
             }
 
             // Only call backend if we have both access and refresh tokens
             if (tokens?.access && refreshToken) {
-                console.log('[LOGOUT] Sending logout request to backend');
-                console.log('[LOGOUT] Refresh token:', refreshToken.substring(0, 30) + '...');
 
                 const response = await fetch(`${API_BASE_URL}/auth/logout/`, {
                     method: 'POST',
@@ -365,16 +353,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 if (!response.ok) {
                     const errorData = await parseResponseJson(response);
-                    console.error('[LOGOUT] Backend logout failed:', response.status, errorData);
                 } else {
-                    console.log('[LOGOUT] Backend logout successful');
                 }
             } else {
-                console.log('[LOGOUT] Skipping backend call - no tokens available');
             }
         } catch (error) {
             // Log error but continue with logout - we always want to clear local state
-            console.error('[LOGOUT] Backend logout error:', error);
         }
 
         // Always clear local state regardless of backend call result
@@ -382,9 +366,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setTokens(null);
         localStorage.removeItem('auth_tokens');
         localStorage.removeItem('auth_user');
+        localStorage.setItem('post_logout_redirect', '/');
 
-        toast({
-            title: 'Logged out',
+        toast.success('Logged out', {
             description: 'You have been successfully logged out.',
         });
     };

@@ -1,6 +1,8 @@
 import logging
+
 from django.http import JsonResponse
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,9 @@ class RoleMiddleware:
                 auth_result = jwt_auth.authenticate(request)
                 if auth_result:
                     request.user = auth_result[0]
+            except InvalidToken:
+                # Invalid or expired tokens are common on logout/expiry; avoid noisy stack traces.
+                logger.debug("RoleMiddleware JWT authentication failed: invalid token")
             except Exception:
                 logger.exception("RoleMiddleware JWT authentication failed")
 
@@ -26,7 +31,7 @@ class RoleMiddleware:
         path = request.path
         role = getattr(request.user, 'role', '').lower()
 
-        if path.startswith('/api/doctor/') and role != 'provider':
+        if path.startswith('/api/doctor/') and role not in ('doctor', 'provider'):
             return JsonResponse({'error': 'Forbidden: Doctor Access Only'}, status=403)
 
         if path.startswith('/api/patient/') and role != 'patient':

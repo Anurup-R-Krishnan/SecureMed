@@ -1,10 +1,12 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
+
 from apps.accounts.patients.models import Patient
+from apps.platform.core.models import TimeStampedModel
 from apps.scheduling.appointments.models import Appointment
 
 
-class Invoice(models.Model):
+class Invoice(TimeStampedModel):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('issued', 'Issued'),
@@ -29,8 +31,6 @@ class Invoice(models.Model):
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = 'invoices'
@@ -45,7 +45,7 @@ class Invoice(models.Model):
         return f"{self.invoice_id} - {self.patient.patient_id}"
 
 
-class InvoiceItem(models.Model):
+class InvoiceItem(TimeStampedModel):
     ITEM_TYPE_CHOICES = [
         ('consultation', 'Consultation'),
         ('procedure', 'Procedure'),
@@ -71,7 +71,7 @@ class InvoiceItem(models.Model):
         return f"{self.description} - {self.total_price}"
 
 
-class Payment(models.Model):
+class Payment(TimeStampedModel):
     PAYMENT_METHOD_CHOICES = [
         ('cash', 'Cash'),
         ('card', 'Card'),

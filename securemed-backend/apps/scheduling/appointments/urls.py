@@ -1,7 +1,17 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import DoctorViewSet, AppointmentViewSet, ReferralViewSet, patient_referrals_view
-from .availability import get_doctor_availability, get_available_doctors, doctor_availability_schedule
+
+from .availability import (
+    doctor_availability_schedule,
+    get_available_doctors,
+    get_doctor_availability,
+)
+from .views import (
+    AppointmentViewSet,
+    DoctorViewSet,
+    ReferralViewSet,
+    patient_referrals_view,
+)
 
 router = DefaultRouter()
 router.register(r'doctors', DoctorViewSet, basename='doctor')

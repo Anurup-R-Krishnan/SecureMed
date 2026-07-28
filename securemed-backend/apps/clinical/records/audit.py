@@ -1,5 +1,5 @@
-from django.utils import timezone
 from .models import MedicalRecordAccess
+
 
 def log_medical_record_access(user, record, action_type='viewed', details=None, request=None):
     """

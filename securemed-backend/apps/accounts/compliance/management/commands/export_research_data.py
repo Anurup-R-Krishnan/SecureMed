@@ -1,8 +1,10 @@
 import csv
 from datetime import datetime
+
 from django.core.management.base import BaseCommand
-from apps.accounts.users.models import User
+
 from apps.accounts.compliance.utils import PrivacyEngine
+from apps.accounts.users.models import User
 
 
 class Command(BaseCommand):
@@ -70,7 +72,7 @@ class Command(BaseCommand):
         
         # Print success message with statistics
         self.stdout.write(
-            self.style.SUCCESS(f'\n✓ Research data export completed successfully!')
+            self.style.SUCCESS('\n✓ Research data export completed successfully!')
         )
         self.stdout.write(f'  Filename: {filename}')
         self.stdout.write(f'  Total patients: {patients.count()}')

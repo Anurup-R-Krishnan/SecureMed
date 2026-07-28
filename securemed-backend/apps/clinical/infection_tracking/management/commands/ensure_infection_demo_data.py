@@ -3,12 +3,12 @@ from datetime import timedelta
 from django.core.management import BaseCommand, call_command
 from django.utils import timezone
 
+from apps.accounts.patients.models import Patient
 from apps.clinical.infection_tracking.graph_service import HospitalGraphService
 from apps.clinical.infection_tracking.models import InfectionTrace, Room
 from apps.clinical.records.models import EmergencyAccessLog
-from apps.accounts.patients.models import Patient
-from apps.scheduling.availability.models import Doctor
 from apps.scheduling.appointments.models import Appointment
+from apps.scheduling.availability.models import Doctor
 
 
 class Command(BaseCommand):

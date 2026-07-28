@@ -1,8 +1,10 @@
-from django.test import TestCase
+from datetime import date, timedelta
+
 from django.contrib.auth import get_user_model
+from django.test import TestCase
+
 from apps.accounts.patients.models import Patient
 from apps.finance.billing.models import Invoice
-from datetime import date, timedelta
 
 User = get_user_model()
 

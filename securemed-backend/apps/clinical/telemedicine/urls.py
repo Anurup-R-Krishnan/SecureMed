@@ -1,14 +1,22 @@
 """
 URL routing for telemedicine API.
 """
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+
 from .views import (
-    VideoRoomViewSet, ConversationViewSet, MessageViewSet,
+    ConversationViewSet,
+    MessageViewSet,
+    VideoRoomViewSet,
     ai_triage_chat,
-    submit_triage_request, doctor_triage_inbox, approve_triage_request,
+    anatomy_region_explainer,
+    approve_triage_request,
+    condition_visualization,
+    doctor_triage_inbox,
+    list_condition_catalog,
+    match_conditions_by_pain,
+    submit_triage_request,
     triage_status_check,
-    anatomy_region_explainer, list_condition_catalog, condition_visualization, match_conditions_by_pain,
 )
 
 router = DefaultRouter()

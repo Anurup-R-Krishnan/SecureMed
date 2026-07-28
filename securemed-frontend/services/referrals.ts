@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface Referral {
     id: number;
@@ -70,64 +70,64 @@ export const referralService = {
      * Get all referrals (made by or received by current doctor)
      */
     getReferrals: async (): Promise<Referral[]> => {
-        const response = await api.get('/appointments/referrals/');
-        return Array.isArray(response.data) ? response.data : response.data.results || [];
+        const response = await apiClient.get('/appointments/referrals/');
+        return Array.isArray(response) ? response : (response as any)?.results || [];
     },
 
     /**
      * Get referrals for the current patient
      */
     getPatientReferrals: async (): Promise<PatientReferral[]> => {
-        const response = await api.get('/appointments/my-referrals/');
-        return Array.isArray(response.data) ? response.data : [];
+        const response = await apiClient.get('/appointments/my-referrals/');
+        return Array.isArray(response) ? response : [];
     },
 
     /**
      * Create a new referral
      */
     createReferral: async (data: CreateReferralData): Promise<Referral> => {
-        const response = await api.post('/appointments/referrals/', data);
-        return response.data;
+        const response = await apiClient.post('/appointments/referrals/', data);
+        return response;
     },
 
     /**
      * Get patients referred to current doctor (My Patients list)
      */
     getMyPatients: async (): Promise<ReferredPatient[]> => {
-        const response = await api.get('/appointments/referrals/my_patients/');
-        return response.data;
+        const response = await apiClient.get('/appointments/referrals/my_patients/');
+        return response;
     },
 
     /**
      * Accept a pending referral
      */
     acceptReferral: async (referralId: number): Promise<Referral> => {
-        const response = await api.post(`/appointments/referrals/${referralId}/accept/`);
-        return response.data;
+        const response = await apiClient.post(`/appointments/referrals/${referralId}/accept/`);
+        return response;
     },
 
     /**
      * Decline a referral
      */
     declineReferral: async (referralId: number): Promise<Referral> => {
-        const response = await api.post(`/appointments/referrals/${referralId}/decline/`);
-        return response.data;
+        const response = await apiClient.post(`/appointments/referrals/${referralId}/decline/`);
+        return response;
     },
 
     /**
      * Complete a referral and revoke access
      */
     completeReferral: async (referralId: number): Promise<Referral> => {
-        const response = await api.post(`/appointments/referrals/${referralId}/complete/`);
-        return response.data;
+        const response = await apiClient.post(`/appointments/referrals/${referralId}/complete/`);
+        return response;
     },
 
     /**
      * Extend access period for a referral
      */
     extendAccess: async (referralId: number, days: number = 30): Promise<Referral> => {
-        const response = await api.post(`/appointments/referrals/${referralId}/extend_access/`, { days });
-        return response.data;
+        const response = await apiClient.post(`/appointments/referrals/${referralId}/extend_access/`, { days });
+        return response;
     },
 };
 

@@ -1,18 +1,16 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
-from rest_framework import status
+import logging
+import uuid
+from datetime import timedelta
+
+from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.utils import timezone
-from datetime import timedelta
-from django.contrib.auth import get_user_model
-import random
-import uuid
-import os
-import logging
-from django.conf import settings
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from apps.platform.analytics.audit import log_audit, get_client_ip
+from apps.platform.analytics.audit import get_client_ip, log_audit
 from apps.platform.analytics.models import Hospital
 from apps.platform.analytics.serializers import HospitalSerializer
 
@@ -21,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 def _compute_room_occupancy_percent(window_days=7):
-    from apps.scheduling.appointments.models import Appointment
     from apps.clinical.infection_tracking.models import Room
+    from apps.scheduling.appointments.models import Appointment
 
     today = timezone.now().date()
     window_start = today - timedelta(days=max(window_days - 1, 0))
@@ -84,9 +82,23 @@ def get_dashboard_stats(request):
     
     occupancy = _compute_room_occupancy_percent()
     
-    # Calculate revenue (placeholder - would need billing integration)
-    avg_revenue_per_patient = 2500  # In INR
-    total_revenue = total_patients * avg_revenue_per_patient
+    # Calculate revenue using billing invoices when available.
+    from decimal import Decimal
+
+    from django.db.models import Sum
+    try:
+        from apps.finance.billing.models import Invoice
+        totals = Invoice.objects.aggregate(
+            total=Sum('total_amount'),
+            paid=Sum('paid_amount'),
+        )
+        paid_total = totals.get('paid') or Decimal(0)
+        billed_total = totals.get('total') or Decimal(0)
+        total_revenue = paid_total if paid_total > 0 else billed_total
+    except Exception:
+        logger.exception("Failed to compute revenue from invoices")
+        total_revenue = Decimal(0)
+
     if total_revenue >= 10000000:
         revenue_str = f"₹{total_revenue / 10000000:.1f}Cr"
     elif total_revenue >= 100000:
@@ -225,7 +237,7 @@ def get_staff(request):
                 'is_active': doc.user.is_active,
                 'email': doc.user.email,
             })
-    except Exception as e:
+    except Exception:
         # Fallback to User model for doctors
         doctor_users = User.objects.filter(role='doctor', is_active=True)[:20]
         for user in doctor_users:
@@ -318,25 +330,29 @@ def get_alerts(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])  # For now, can restrict to admin later
+@permission_classes([IsAuthenticated])
 def get_analytics(request):
     """
     Returns aggregated clinical analytics data for the dashboard.
     Uses REAL database counts.
+    Admin only.
     """
-    from apps.clinical.records.models import MedicalRecord
-    from apps.clinical.records.models import EmergencyAccessLog
-    from apps.accounts.patients.models import Patient
-    from apps.scheduling.appointments.models import Appointment
-    from django.db.models import Count
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+    
     from django.db.models.functions import TruncMonth
+
+    from apps.accounts.patients.models import Patient
+    from apps.clinical.records.models import EmergencyAccessLog, MedicalRecord
+    from apps.scheduling.appointments.models import Appointment
     
     # 1. Flu Cases Trend (Real Data)
     # Filter for flu-like diagnoses
     flu_keywords = ['flu', 'influenza', 'respiratory', 'cold', 'fever']
     import operator
-    from django.db.models import Q
     from functools import reduce
+
+    from django.db.models import Q
     
     query = reduce(operator.or_, (Q(diagnosis__icontains=k) for k in flu_keywords))
     
@@ -447,13 +463,17 @@ def get_analytics(request):
 
 # Epic 8 Story 8.3: AI Decision Support API
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def ai_suggestions(request):
     """
     AI Decision Support for doctors.
     Takes symptoms and returns diagnosis suggestions with confidence scores.
     Uses a database-backed Expert System (Knowledge Base).
+    Doctors and admins only.
     """
+    if request.user.role not in ['admin', 'doctor', 'provider']:
+        return Response({'error': 'Unauthorized: Doctors only'}, status=403)
+    
     symptoms = request.data.get('symptoms', [])
     
     if not symptoms:
@@ -465,8 +485,9 @@ def ai_suggestions(request):
     # 3. Find diseases linked to those symptoms
     # 4. Calculate score based on weights
     
-    from .models import Disease, Symptom, DiseaseSymptom
-    from django.db.models import Sum, Count, Q
+    from django.db.models import Q, Sum
+
+    from .models import Disease, Symptom
     
     # 1. Match Symptoms (Case insensitive partial match)
     # We use a set to avoid duplicates if multiple inputs match same symptom
@@ -538,11 +559,12 @@ def ai_suggestions(request):
 
 # Epic 8 Story 8.2: FHIR Export API
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def fhir_export(request):
     """
     Export patient medical history in FHIR R4 format.
     Dynamically generated from real database records.
+    Authentication required. Patients can only export their own records.
     """
     patient_id = request.GET.get('patient_id')
     if not patient_id:
@@ -558,6 +580,14 @@ def fhir_export(request):
              patient = Patient.objects.get(id=patient_id)
     except Exception:
          return Response({"error": "Patient not found"}, status=404)
+    
+    # Authorization check: Patient can only access their own records
+    if request.user.role == 'patient' and patient.user_id != request.user.id:
+        return Response({"error": "You do not have permission to access this patient's records"}, status=403)
+    
+    # Admin and doctors can access any patient record
+    if request.user.role not in ['admin', 'doctor', 'provider']:
+        return Response({"error": "Unauthorized"}, status=403)
     
     now = timezone.now().isoformat()
     entries = []
@@ -640,9 +670,9 @@ def fhir_export(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def health_check(request):
-    """Health check endpoint for monitoring"""
+    """Health check endpoint for monitoring - restricted to authenticated users"""
     return Response({
         'status': 'healthy',
         'service': 'SecureMed Analytics',
@@ -671,8 +701,9 @@ def get_audit_logs(request):
     if request.user.role != 'admin':
         return Response({'error': 'Admin access required'}, status=403)
 
-    from apps.platform.analytics.models import AuditLog
     from datetime import datetime
+
+    from apps.platform.analytics.models import AuditLog
 
     qs = AuditLog.objects.select_related('actor').all()
 

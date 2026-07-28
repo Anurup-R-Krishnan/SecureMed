@@ -5,11 +5,12 @@ who don't have a Patient profile yet.
 Usage:
     python manage.py fix_missing_patient_profiles
 """
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from apps.accounts.patients.models import Patient
 import uuid
 
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+
+from apps.accounts.patients.models import Patient
 
 User = get_user_model()
 

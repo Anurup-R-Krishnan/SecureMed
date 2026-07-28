@@ -1,12 +1,16 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from .models import Invoice, Payment
-from .serializers import InvoiceSerializer, PaymentSerializer
-from apps.accounts.users.permissions import IsPatient
-from django.utils import timezone
 from datetime import datetime
 
+from django.db import models
+from django.db.models import Count, Sum
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from apps.accounts.users.permissions import IsPatient
+
+from .models import Invoice, Payment
+from .serializers import InvoiceSerializer
 
 PROVIDER_CODE_MAP = {
     'ins_001': 'national health insurance',
@@ -14,6 +18,59 @@ PROVIDER_CODE_MAP = {
     'ins_003': 'icici lombard',
     'ins_004': 'max bupa health',
 }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_insurance_providers(request):
+    providers = [
+        {"id": key, "name": value.title(), "code": key.split('_')[-1].upper()}
+        for key, value in PROVIDER_CODE_MAP.items()
+    ]
+    return Response({"providers": providers})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_billing_summary(request):
+    user = request.user
+    if not user.is_staff and user.role != 'admin':
+        return Response({"error": "Unauthorized"}, status=403)
+
+    invoices = Invoice.objects.select_related('patient', 'patient__user').order_by('-issue_date')
+    totals = invoices.aggregate(
+        total_billed=Sum('total_amount'),
+        total_paid=Sum('paid_amount'),
+        total_count=Count('id'),
+        paid_count=Count('id', filter=models.Q(status='paid')),
+        overdue_count=Count('id', filter=models.Q(status='overdue')),
+        open_count=Count('id', filter=models.Q(status__in=['issued', 'partially_paid'])),
+    )
+
+    recent = []
+    for inv in invoices[:10]:
+        patient_name = inv.patient.user.get_full_name() if inv.patient and inv.patient.user else inv.patient.patient_id
+        recent.append({
+            "invoice_id": inv.invoice_id,
+            "patient": patient_name,
+            "status": inv.status,
+            "total": float(inv.total_amount),
+            "paid": float(inv.paid_amount),
+            "balance": float(inv.total_amount - inv.paid_amount),
+            "issue_date": inv.issue_date.isoformat(),
+        })
+
+    return Response({
+        "summary": {
+            "total_billed": float(totals.get('total_billed') or 0),
+            "total_paid": float(totals.get('total_paid') or 0),
+            "total_count": totals.get('total_count') or 0,
+            "paid_count": totals.get('paid_count') or 0,
+            "overdue_count": totals.get('overdue_count') or 0,
+            "open_count": totals.get('open_count') or 0,
+        },
+        "recent_invoices": recent,
+    })
 
 def get_patient_profile(user):
     if hasattr(user, 'patient_profile'):
@@ -121,8 +178,9 @@ def download_invoice(request, invoice_id):
     serializer = InvoiceSerializer(invoice)
     data = serializer.data
 
-    from django.http import HttpResponse
     import json
+
+    from django.http import HttpResponse
     response = HttpResponse(
         json.dumps(data, default=str, indent=2),
         content_type='application/json'
@@ -138,7 +196,12 @@ def pay_invoice(request, invoice_id):
     Process payment for an invoice.
     In a real app, this would integrate with Stripe/PayPal.
     For this prototype, it marks the invoice as paid.
+    Input: { "payment_method": "card" | "bank_transfer" | "check" | "insurance" }
     """
+    from apps.platform.analytics.audit import get_client_ip, log_audit
+
+    from .serializers import PaymentProcessingSerializer
+    
     user = request.user
     patient = get_patient_profile(user)
     
@@ -152,12 +215,19 @@ def pay_invoice(request, invoice_id):
         
     if invoice.status == 'paid':
         return Response({"message": "Invoice is already paid."}, status=200)
-        
-    # Process "Payment"
-    from django.utils import timezone
-    import uuid
     
-    payment_method = request.data.get('payment_method', 'card')
+    # Validate input
+    serializer = PaymentProcessingSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
+    
+    validated_data = serializer.validated_data
+    payment_method = validated_data.get('payment_method', 'card')
+    
+    # Process "Payment"
+    import uuid
+
+    from django.utils import timezone
     
     # Create payment record
     payment_id = f"PAY-{uuid.uuid4().hex[:8].upper()}"
@@ -170,6 +240,16 @@ def pay_invoice(request, invoice_id):
         transaction_id=f"TXN-{uuid.uuid4().hex[:12].upper()}"
     )
     
+    # Log payment attempt
+    log_audit(
+        actor=request.user,
+        action='payment_initiated',
+        resource_type='Invoice',
+        resource_id=invoice.invoice_id,
+        description=f'Payment initiated for invoice {invoice.invoice_id}',
+        ip_address=get_client_ip(request),
+    )
+    
     # Mark payment as completed (in real app, would wait for payment gateway)
     payment.status = 'completed'
     payment.save(update_fields=['status'])
@@ -177,6 +257,15 @@ def pay_invoice(request, invoice_id):
     invoice.status = 'paid'
     invoice.paid_amount = invoice.total_amount
     invoice.save(update_fields=['status', 'paid_amount', 'updated_at'])
+    
+    log_audit(
+        actor=request.user,
+        action='payment_completed',
+        resource_type='Invoice',
+        resource_id=invoice.invoice_id,
+        description=f'Payment completed for invoice {invoice.invoice_id}',
+        ip_address=get_client_ip(request),
+    )
     
     return Response({
         "message": "Payment successful",

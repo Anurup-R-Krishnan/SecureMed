@@ -1,8 +1,9 @@
+import uuid
+from datetime import timedelta
+
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.contrib.auth import get_user_model
-from datetime import timedelta
-import uuid
 
 User = get_user_model()
 

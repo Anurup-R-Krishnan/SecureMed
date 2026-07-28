@@ -1,0 +1,31 @@
+# Ruff configuration for SecureMed Backend
+# See: https://docs.astral.sh/ruff/configuration/
+
+[lint]
+# Django uses mutable class defaults extensively (models, serializers)
+# and these rules don't apply well to Django patterns
+ignore = [
+    "RUF012",   # mutable-class-default (379 errors) - Django model fields are class-level attrs
+    "BLE001",   # blind-except - common in Django exception handling
+    "DTZ011",   # call-date-today - acceptable in test scripts
+    "DTZ005",   # call-datetime-now-without-tzinfo - Django timezone.now() is preferred
+    "DTZ007",   # call-datetime-strptime-without-zone - test scripts
+    "S110",     # try-except-pass - standard Django pattern for silent fallbacks
+    "E722",     # bare-except - sometimes needed for broad exception handlers
+    "EXE001",   # shebang-not-executable - manage.py and test scripts have shebangs for convenience
+    "LOG015",   # root-logger-call - acceptable in Django views
+    "SIM103",   # needless-bool - style preference, both forms are clear
+    "SIM102",   # collapsible-if - style preference
+    "SIM210",   # if-expr-with-true-false - style preference
+    "C401",     # unnecessary-generator-set - minor optimization, not worth fixing
+    "RUF059",   # unused-unpacked-variable - common in Django get_or_create() patterns
+    "F841",     # unused-variable - common in test setup and management commands
+    "F823",     # undefined-local - see per-file-ignores below
+]
+
+[lint.per-file-ignores]
+# Test and script files can be more lenient
+"tests/*" = ["F841", "F823", "I001"]
+"scripts/*" = ["F841", "F823", "I001"]
+# Management commands
+"**/management/*" = ["F841", "F823"]

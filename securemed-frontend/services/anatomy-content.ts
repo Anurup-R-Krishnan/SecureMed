@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface AnatomyRegionExplainer {
   region_id: string;
@@ -56,33 +56,33 @@ export interface ConditionMatchResult {
 }
 
 export async function fetchRegionExplainer(regionId: string, role: 'patient' | 'doctor' = 'patient') {
-  const response = await api.get<AnatomyRegionExplainer>('/telemedicine/anatomy/explainers/', {
+  const response = await apiClient.get<AnatomyRegionExplainer>('/telemedicine/anatomy/explainers/', {
     params: { region: regionId, role },
   });
-  return response.data;
+  return response;
 }
 
 export async function fetchConditionCatalog(scope = 'top20', role: 'patient' | 'doctor' = 'patient') {
-  const response = await api.get<ConditionCatalogItem[]>('/telemedicine/conditions/', {
+  const response = await apiClient.get<ConditionCatalogItem[]>('/telemedicine/conditions/', {
     params: { scope, role },
   });
-  return response.data;
+  return response;
 }
 
 export async function fetchConditionVisualization(conditionId: string, role: 'patient' | 'doctor' = 'patient') {
-  const response = await api.get<ConditionVisualization>(`/telemedicine/conditions/${conditionId}/visualization/`, {
+  const response = await apiClient.get<ConditionVisualization>(`/telemedicine/conditions/${conditionId}/visualization/`, {
     params: { role },
   });
-  return response.data;
+  return response;
 }
 
 export async function fetchConditionMatches(
   regions: string[],
   intensityByRegion: Record<string, number>
 ) {
-  const response = await api.post<{ matches: ConditionMatchResult[] }>('/telemedicine/conditions/match/', {
+  const response = await apiClient.post<{ matches: ConditionMatchResult[] }>('/telemedicine/conditions/match/', {
     regions,
     intensityByRegion,
   });
-  return response.data.matches || [];
+  return response.matches || [];
 }

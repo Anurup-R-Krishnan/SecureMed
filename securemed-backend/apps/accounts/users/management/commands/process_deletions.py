@@ -2,11 +2,12 @@
 Management command to process account deletion requests.
 Automatically scrubs PII for accounts that requested deletion 30+ days ago.
 """
+import logging
+from datetime import timedelta
+
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.contrib.auth import get_user_model
-from datetime import timedelta
-import logging
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -65,9 +66,9 @@ class Command(BaseCommand):
                 deleted_count += 1
 
             except Exception as e:
-                logger.error(f'Error processing deletion for user {user.id}: {str(e)}')
+                logger.error(f'Error processing deletion for user {user.id}: {e!s}')
                 self.stdout.write(
-                    self.style.ERROR(f'Error processing user {user.id}: {str(e)}')
+                    self.style.ERROR(f'Error processing user {user.id}: {e!s}')
                 )
 
         self.stdout.write(

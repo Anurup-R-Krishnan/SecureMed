@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Patient, EmergencyContact
+
+from .models import EmergencyContact, Patient
+
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,5 +28,5 @@ class PatientSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'patient_id', 'date_of_birth', 'gender', 'blood_group', 'emergency_contacts',
-            'allergies', 'chronic_conditions', 'current_medications' # Clinical data must be clinician-managed
+            'chronic_conditions' # Clinician-managed
         ]

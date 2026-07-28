@@ -1,16 +1,17 @@
 """
 Service to automatically create invoices for completed medical services
 """
-from django.utils import timezone
-from decimal import Decimal
-from datetime import timedelta
 import uuid
+from datetime import timedelta
+from decimal import Decimal
+
+from django.utils import timezone
 
 
 def create_lab_test_invoice(lab_order):
     """Create invoice for completed lab test"""
-    from apps.finance.billing.models import Invoice, InvoiceItem
     from apps.accounts.patients.models import Patient
+    from apps.finance.billing.models import Invoice, InvoiceItem
     
     try:
         patient = Patient.objects.get(user=lab_order.patient)
@@ -81,9 +82,9 @@ def create_lab_test_invoice(lab_order):
 
 def create_pharmacy_invoice(pharmacy_order):
     """Create invoice for dispensed prescription"""
-    from apps.finance.billing.models import Invoice, InvoiceItem
     from apps.accounts.patients.models import Patient
     from apps.clinical.pharmacy.models import Drug
+    from apps.finance.billing.models import Invoice, InvoiceItem
     
     prescription = pharmacy_order.prescription
     medical_record = prescription.medical_record
@@ -169,8 +170,8 @@ def create_pharmacy_invoice(pharmacy_order):
 
 def create_consultation_invoice(appointment):
     """Create invoice for consultation"""
-    from apps.finance.billing.models import Invoice, InvoiceItem
     from apps.accounts.patients.models import Patient
+    from apps.finance.billing.models import Invoice, InvoiceItem
     
     try:
         patient = Patient.objects.get(user=appointment.patient)

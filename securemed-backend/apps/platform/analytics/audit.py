@@ -16,7 +16,6 @@ Usage from any view or signal handler:
 """
 
 import logging
-from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
@@ -28,7 +27,7 @@ User = get_user_model()
 
 # ── IP helper ────────────────────────────────────────────────────────────
 
-def get_client_ip(request: HttpRequest) -> Optional[str]:
+def get_client_ip(request: HttpRequest) -> str | None:
     """Extract the real client IP, respecting X-Forwarded-For."""
     xff = request.META.get('HTTP_X_FORWARDED_FOR')
     if xff:
@@ -45,8 +44,8 @@ def log_audit(
     resource_type: str = '',
     resource_id: str = '',
     description: str = '',
-    ip_address: Optional[str] = None,
-    extra: Optional[dict] = None,
+    ip_address: str | None = None,
+    extra: dict | None = None,
 ):
     """
     Write a row to the AuditLog table.

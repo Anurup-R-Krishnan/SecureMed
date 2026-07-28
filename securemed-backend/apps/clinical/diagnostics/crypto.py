@@ -1,7 +1,8 @@
 import hashlib
 import os
-from django.conf import settings
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from django.conf import settings
 
 
 def _get_key():

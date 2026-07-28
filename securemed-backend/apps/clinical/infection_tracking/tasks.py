@@ -9,8 +9,8 @@ Tasks:
 - compute_room_risk_scores: periodic risk score snapshots
 """
 import logging
-from uuid import uuid4
 from datetime import timedelta
+from uuid import uuid4
 
 from celery import shared_task
 from django.utils import timezone
@@ -26,8 +26,8 @@ def _generate_trace_id():
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def sync_appointment_to_graph(self, appointment_id):
     """Sync a completed appointment into the Neo4j graph."""
-    from apps.scheduling.appointments.models import Appointment
     from apps.clinical.infection_tracking.graph_service import HospitalGraphService
+    from apps.scheduling.appointments.models import Appointment
 
     try:
         appointment = (
@@ -56,8 +56,8 @@ def sync_appointment_to_graph(self, appointment_id):
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def sync_equipment_usage_to_graph(self, usage_log_id):
     """Sync an equipment usage event into the Neo4j graph."""
-    from apps.clinical.infection_tracking.models import EquipmentUsageLog
     from apps.clinical.infection_tracking.graph_service import HospitalGraphService
+    from apps.clinical.infection_tracking.models import EquipmentUsageLog
 
     try:
         usage = (
@@ -87,8 +87,8 @@ def detect_infection_cluster(self, report_id):
     diagnosed with the same infection within 48 hours, and runs shortestPath
     in Neo4j to find transmission vectors.
     """
-    from apps.clinical.infection_tracking.models import InfectionReport, InfectionTrace
     from apps.clinical.infection_tracking.graph_service import HospitalGraphService
+    from apps.clinical.infection_tracking.models import InfectionReport, InfectionTrace
 
     try:
         report = (
@@ -207,8 +207,12 @@ def compute_room_risk_scores(self):
     Compute room risk scores from the graph and store snapshots.
     Scheduled periodically (e.g. every 6 hours) via Celery Beat.
     """
-    from apps.clinical.infection_tracking.models import Room, RoomRiskScore, InfectionReport
     from apps.clinical.infection_tracking.graph_service import HospitalGraphService
+    from apps.clinical.infection_tracking.models import (
+        InfectionReport,
+        Room,
+        RoomRiskScore,
+    )
 
     try:
         graph = HospitalGraphService.get_instance()

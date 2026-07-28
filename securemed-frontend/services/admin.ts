@@ -2,7 +2,7 @@
  * Admin Service
  * Handles API calls for admin portal functionality
  */
-import apiClient from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 // Types
 export interface Hospital {
@@ -83,9 +83,8 @@ export const adminService = {
     async getDashboardStats(): Promise<DashboardStats> {
         try {
             const response = await apiClient.get('/admin/dashboard/stats/');
-            return response.data;
+            return response;
         } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
             throw error;
         }
     },
@@ -96,9 +95,8 @@ export const adminService = {
     async getHospitals(): Promise<Hospital[]> {
         try {
             const response = await apiClient.get('/admin/hospitals/');
-            return response.data;
+            return response;
         } catch (error) {
-            console.error('Error fetching hospitals:', error);
             throw error;
         }
     },
@@ -111,7 +109,7 @@ export const adminService = {
         doctors: number;
     }): Promise<Hospital> {
         const response = await apiClient.post('/admin/hospitals/', payload);
-        return response.data;
+        return response;
     },
 
     async updateHospital(id: number, payload: Partial<{
@@ -122,7 +120,7 @@ export const adminService = {
         doctors: number;
     }>): Promise<Hospital> {
         const response = await apiClient.patch(`/admin/hospitals/${id}/`, payload);
-        return response.data;
+        return response;
     },
 
     /**
@@ -131,9 +129,8 @@ export const adminService = {
     async getStaff(): Promise<StaffMember[]> {
         try {
             const response = await apiClient.get('/admin/staff/');
-            return response.data;
+            return response;
         } catch (error) {
-            console.error('Error fetching staff:', error);
             throw error;
         }
     },
@@ -144,9 +141,8 @@ export const adminService = {
     async getAlerts(): Promise<SystemAlert[]> {
         try {
             const response = await apiClient.get('/admin/alerts/');
-            return response.data;
+            return response;
         } catch (error) {
-            console.error('Error fetching alerts:', error);
             throw error;
         }
     },
@@ -157,9 +153,8 @@ export const adminService = {
     async getUsers(): Promise<any[]> {
         try {
             const response = await apiClient.get('/auth/users/');
-            return response.data;
+            return response;
         } catch (error) {
-            console.error('Error fetching users:', error);
             throw error;
         }
     },
@@ -167,18 +162,19 @@ export const adminService = {
     /**
      * Get list of all patients
      */
-    async getPatients(): Promise<any[]> {
+    async getPatients(search?: string): Promise<any[]> {
         try {
-            const response = await apiClient.get('/patients/');
+            const response = await apiClient.get('/patients/', {
+                params: search ? { search } : undefined,
+            });
             // Handle pagination if needed, for now assume list or results
-            if (response.data && Array.isArray(response.data)) {
-                return response.data;
-            } else if (response.data && response.data.results) {
-                return response.data.results;
+            if (Array.isArray(response)) {
+                return response;
+            } else if (response && (response as any).results) {
+                return (response as any).results;
             }
             return [];
         } catch (error) {
-            console.error('Error fetching patients:', error);
             throw error;
         }
     },
@@ -200,9 +196,8 @@ export const adminService = {
             if (filters.page_size) params.set('page_size', String(filters.page_size));
             const qs = params.toString();
             const response = await apiClient.get(`/admin/audit-logs/${qs ? '?' + qs : ''}`);
-            return response.data;
+            return response;
         } catch (error) {
-            console.error('Error fetching audit logs:', error);
             throw error;
         }
     },
@@ -217,27 +212,27 @@ export const adminService = {
         password_confirm: string;
     }) {
         const response = await apiClient.post('/auth/users/create/', payload);
-        return response.data;
+        return response;
     },
 
     async updateUserRole(userId: number, role: string) {
         const response = await apiClient.patch(`/auth/users/${userId}/role/`, { role });
-        return response.data;
+        return response;
     },
 
     async deactivateUser(userId: number) {
         const response = await apiClient.post(`/auth/users/${userId}/deactivate/`);
-        return response.data;
+        return response;
     },
 
     async activateUser(userId: number) {
         const response = await apiClient.post(`/auth/users/${userId}/activate/`);
-        return response.data;
+        return response;
     },
 
     async resetUserPassword(userId: number) {
         const response = await apiClient.post(`/auth/users/${userId}/reset-password/`);
-        return response.data;
+        return response;
     },
 };
 

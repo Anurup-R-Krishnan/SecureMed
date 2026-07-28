@@ -1,10 +1,10 @@
 """
 Telemedicine API views for video room management.
 """
-import time
 import json
 import re
 import socket as _socket
+import time
 
 # httpx (used by google-genai) tries IPv6 first; Docker containers typically
 # have no IPv6 route, causing immediate ENETUNREACH before any IPv4 fallback.
@@ -26,14 +26,14 @@ def _ipv4_prefer_gemini_hosts_getaddrinfo(host, port, family=0, type=0, proto=0,
 
 _socket.getaddrinfo = _ipv4_prefer_gemini_hosts_getaddrinfo
 
+from django.conf import settings
+from django.core.cache import cache
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from django.conf import settings
-from django.core.cache import cache
 
 try:
     from google import genai as google_genai
@@ -158,8 +158,8 @@ def ai_triage_chat(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-from .models import VideoRoom, RoomParticipant
-from .serializers import VideoRoomSerializer, RoomParticipantSerializer
+from .models import RoomParticipant, VideoRoom
+from .serializers import VideoRoomSerializer
 
 
 class VideoRoomViewSet(viewsets.ModelViewSet):
@@ -189,6 +189,28 @@ class VideoRoomViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Create room with current user as doctor."""
         serializer.save(doctor=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Accept either a patient user ID (expected by serializer)
+        or a Patient profile ID via `patient` / `patient_id` and map it.
+        """
+        data = request.data.copy()
+        patient_value = data.get('patient_id') or data.get('patient')
+        if patient_value:
+            try:
+                from apps.accounts.patients.models import Patient as PatientProfile
+                patient_profile = PatientProfile.objects.select_related('user').filter(pk=int(patient_value)).first()
+                if patient_profile:
+                    data['patient'] = patient_profile.user_id
+            except (TypeError, ValueError):
+                pass
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     @action(detail=True, methods=['post'])
     def join(self, request, room_id=None):
@@ -384,14 +406,13 @@ class VideoRoomViewSet(viewsets.ModelViewSet):
 # Import models for Q object
 from django.db import models
 
-
 from .models import Conversation, Message
 from .serializers import (
-    ConversationSerializer,
-    MessageSerializer,
     AnatomyRegionExplainerSerializer,
     ConditionCatalogListSerializer,
     ConditionVisualizationSerializer,
+    ConversationSerializer,
+    MessageSerializer,
 )
 
 
@@ -463,7 +484,8 @@ class MessageViewSet(viewsets.ModelViewSet):
 # ============================================
 
 from django.contrib.auth import get_user_model
-from .models import TriageRequest, AnatomyRegionExplainer, ConditionCatalog
+
+from .models import AnatomyRegionExplainer, ConditionCatalog, TriageRequest
 
 _User = get_user_model()
 
@@ -676,10 +698,30 @@ def match_conditions_by_pain(request):
         normalized_intensity[str(region_id).strip().lower()] = max(1, min(10, level))
 
     if not GEMINI_AVAILABLE:
-        return Response(
-            {'error': 'Condition matching AI is unavailable. Configure GOOGLE_GEMINI_API_KEY.'},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        # Heuristic fallback: rank by region overlap + average pain intensity.
+        region_set = set(selected_regions)
+        matches = []
+        for condition in ConditionCatalog.objects.filter(is_active=True).order_by('name'):
+            condition_regions = [str(r).strip().lower() for r in (condition.regions or []) if str(r).strip()]
+            if not condition_regions:
+                continue
+            overlap = region_set.intersection(condition_regions)
+            if not overlap:
+                continue
+            coverage = len(overlap) / max(len(condition_regions), 1)
+            avg_pain = sum(normalized_intensity.get(r, 5) for r in overlap) / max(len(overlap), 1)
+            intensity_score = avg_pain / 10
+            confidence = min(0.95, (0.6 * coverage) + (0.4 * intensity_score))
+            matches.append({
+                'condition_id': condition.condition_id,
+                'name': condition.name,
+                'confidence': round(confidence * 100),
+                'matched_regions': list(overlap),
+                'typical_symptoms': condition.typical_symptoms or [],
+                'reasoning': f"Matches {len(overlap)} region(s) with average pain {round(avg_pain, 1)}/10.",
+            })
+        matches.sort(key=lambda item: item['confidence'], reverse=True)
+        return Response({'matches': matches[:5], 'mode': 'heuristic'}, status=status.HTTP_200_OK)
 
     catalog_payload = []
     for condition in ConditionCatalog.objects.filter(is_active=True).order_by('name'):

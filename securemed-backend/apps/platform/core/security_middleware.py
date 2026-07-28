@@ -2,11 +2,12 @@
 Security middleware for SecureMed
 Implements rate limiting, security headers, and request validation
 """
+import time
+
+from django.conf import settings
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
-from django.core.cache import cache
-from django.conf import settings
-import time
 
 
 class SecurityHeadersMiddleware(MiddlewareMixin):
@@ -132,7 +133,6 @@ class RequestLoggingMiddleware(MiddlewareMixin):
     
     def process_request(self, request):
         request._start_time = time.time()
-        return None
     
     def process_response(self, request, response):
         if hasattr(request, '_start_time'):

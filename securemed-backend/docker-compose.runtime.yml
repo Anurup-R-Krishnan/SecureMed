@@ -29,6 +29,9 @@ services:
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-securemed_graph}
       NEO4J_PLUGINS: '["graph-data-science"]'
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
     volumes:
       - neo4j_data:/data
     healthcheck:
@@ -40,7 +43,7 @@ services:
   backend:
     build: .
     restart: unless-stopped
-    command: sh -c "mkdir -p /tmp/staticfiles /app/media && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --timeout 120 --workers 2"
+    command: sh -c "mkdir -p /tmp/staticfiles /app/media && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --timeout 120 --workers 8 --worker-class gthread --threads 2"
     env_file:
       - .env
     environment:

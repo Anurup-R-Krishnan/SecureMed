@@ -15,10 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
 from django.http import JsonResponse
+from django.urls import include, path
+
 from apps.accounts.users import views as auth_views
-from apps.platform.core.health_views import HealthCheckView, ReadinessCheckView, LivenessCheckView
+from apps.platform.core.health_views import (
+    HealthCheckView,
+    LivenessCheckView,
+    ReadinessCheckView,
+)
+
 
 def api_root(request):
     return JsonResponse({
@@ -37,6 +43,10 @@ def api_root(request):
 api_patterns = [
     path('auth/', include('apps.accounts.users.urls')),
     path('consents/', include('apps.accounts.compliance.urls')),
+    # Health check endpoints (prefixed for API consumers)
+    path('health/', HealthCheckView.as_view(), name='api-health'),
+    path('health/ready/', ReadinessCheckView.as_view(), name='api-readiness'),
+    path('health/live/', LivenessCheckView.as_view(), name='api-liveness'),
     
     path('doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
     path('patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),

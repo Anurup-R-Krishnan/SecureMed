@@ -1,5 +1,6 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
+
 from apps.accounts.patients.models import Patient
 from apps.scheduling.availability.models import Doctor
 
@@ -180,8 +181,9 @@ class Referral(models.Model):
     
     def grant_access(self, days=30):
         """Grant specialist access to patient records for specified days"""
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
         self.access_granted = True
         self.access_expires_at = timezone.now() + timedelta(days=days)
         self.save()

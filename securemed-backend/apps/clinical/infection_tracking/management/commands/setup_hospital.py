@@ -11,9 +11,8 @@ Usage:
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from apps.clinical.infection_tracking.models import Equipment, Room
 from apps.scheduling.availability.models import Department
-from apps.clinical.infection_tracking.models import Room, Equipment
-
 
 # Hospital layout definition — extend this when adding new wings/buildings
 HOSPITAL_LAYOUT = {
@@ -361,7 +360,9 @@ class Command(BaseCommand):
 
         # Sync to Neo4j if available
         try:
-            from apps.clinical.infection_tracking.graph_service import HospitalGraphService
+            from apps.clinical.infection_tracking.graph_service import (
+                HospitalGraphService,
+            )
             graph = HospitalGraphService.get_instance()
             graph.ensure_indexes()
             for room in Room.objects.select_related('department').filter(is_active=True):

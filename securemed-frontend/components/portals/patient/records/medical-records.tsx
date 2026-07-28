@@ -1,15 +1,27 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Eye, FileText, Pill, Stethoscope, Search, Calendar, User, Download } from 'lucide-react';
-import { medicalRecordService } from '@/services/appointments';
-import { drugInteractionService } from '@/services/drug-interactions';
-import FHIRExportButton from '@/components/portals/patient/records/fhir-export-button';
-import { UploadRecordDialog } from '@/components/portals/patient/records/upload-record-dialog';
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Eye,
+  FileText,
+  Pill,
+  Stethoscope,
+  Search,
+  Calendar,
+  User,
+  Download,
+  Microscope,
+} from "lucide-react";
+import { apiClient } from "@/lib/unified-api-client";
+import { medicalRecordService } from "@/services/appointments";
+import { drugInteractionService } from "@/services/drug-interactions";
+import FHIRExportButton from "@/components/portals/patient/records/fhir-export-button";
+import { UploadRecordDialog } from "@/components/portals/patient/records/upload-record-dialog";
+import { API_ORIGIN } from "@/lib/urls";
 
 interface MedicalRecordsProps {
   patientId?: string;
@@ -18,28 +30,39 @@ interface MedicalRecordsProps {
 export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [labResults, setLabResults] = useState<any[]>([]);
+  const [labLoading, setLabLoading] = useState(false);
+  const [labError, setLabError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
   const [adherenceLoading, setAdherenceLoading] = useState<number | null>(null);
   const [downloadingReport, setDownloadingReport] = useState(false);
-  const [reportError, setReportError] = useState('');
+  const [reportError, setReportError] = useState("");
   const searchParams = useSearchParams();
-  const highlightRecordId = searchParams.get('recordId');
+  const highlightRecordId = searchParams.get("recordId");
 
   const fetchRecords = async () => {
     setLoading(true);
+    setLabLoading(true);
+    setLabError("");
     try {
-      const [recordsData, prescriptionsData] = await Promise.all([
+      const [recordsData, prescriptionsData, labRes] = await Promise.all([
         medicalRecordService.getMedicalRecords(),
-        medicalRecordService.getPrescriptions()
+        medicalRecordService.getPrescriptions(),
+        apiClient.get("/labs/results/"),
       ]);
       setMedicalRecords(recordsData);
       setPrescriptions(prescriptionsData);
+      const labPayload = Array.isArray(labRes.data)
+        ? labRes.data
+        : labRes.data?.results || [];
+      setLabResults(labPayload);
     } catch (error) {
-      console.error("Failed to fetch data", error);
+      setLabError("Unable to load lab results.");
     } finally {
       setLoading(false);
+      setLabLoading(false);
     }
   };
 
@@ -51,19 +74,23 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
     if (!highlightRecordId || loading || medicalRecords.length === 0) return;
     const target = document.getElementById(`record-${highlightRecordId}`);
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [highlightRecordId, loading, medicalRecords]);
 
   /* Pagination / Infinite Scroll State */
   const [displayCount, setDisplayCount] = useState(5);
-  const filteredRecords = medicalRecords.filter(record => {
-    const matchesSearch = searchTerm === '' ||
+  const filteredRecords = medicalRecords.filter((record) => {
+    const matchesSearch =
+      searchTerm === "" ||
       record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.doctor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.record_type_display?.toLowerCase().includes(searchTerm.toLowerCase());
+      record.record_type_display
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
-    const matchesFilter = filterType === 'all' || record.record_type === filterType;
+    const matchesFilter =
+      filterType === "all" || record.record_type === filterType;
 
     return matchesSearch && matchesFilter;
   });
@@ -72,19 +99,22 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const hasMore = displayCount < filteredRecords.length;
 
   const loadMore = () => {
-    setDisplayCount(prev => prev + 5);
+    setDisplayCount((prev) => prev + 5);
   };
 
-  const recordTypes = [...new Set(medicalRecords.map(r => r.record_type))];
-  const activePrescriptions = prescriptions.filter((rx) => ['signed', 'dispensed'].includes(rx.status));
-  const pastPrescriptions = prescriptions.filter((rx) => ['cancelled'].includes(rx.status));
+  const recordTypes = [...new Set(medicalRecords.map((r) => r.record_type))];
+  const activePrescriptions = prescriptions.filter((rx) =>
+    ["signed", "dispensed"].includes(rx.status),
+  );
+  const pastPrescriptions = prescriptions.filter((rx) =>
+    ["cancelled"].includes(rx.status),
+  );
 
   const handleMarkTaken = async (rxId: number) => {
     setAdherenceLoading(rxId);
     try {
       await medicalRecordService.logMedicationTaken(rxId);
     } catch (error) {
-      console.error('Failed to log adherence', error);
     } finally {
       setAdherenceLoading(null);
     }
@@ -93,10 +123,14 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
   const handleDownloadInteractionReport = async () => {
     try {
       setDownloadingReport(true);
-      setReportError('');
-      const blob = await drugInteractionService.downloadReportPDF();
+      setReportError("");
+      const resolvedPatientId = patientId ? parseInt(patientId, 10) : undefined;
+      const blob =
+        await drugInteractionService.downloadReportPDFWithGeneration(
+          resolvedPatientId,
+        );
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = `interaction_report_${new Date().toISOString().slice(0, 10)}.pdf`;
       document.body.appendChild(link);
@@ -104,15 +138,32 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      if (error?.response?.status === 404) {
-        setReportError('No interaction report available yet. Run Medication Safety Checker first.');
-      } else if (error?.response?.status === 401) {
-        setReportError('Session expired. Please log in again.');
+      if (error?.response?.status === 401) {
+        setReportError("Session expired. Please log in again.");
+      } else if (error?.message?.includes("timed out")) {
+        setReportError(
+          "Report generation is taking longer than expected. Try again in a moment.",
+        );
       } else {
-        setReportError('Could not download interaction report right now.');
+        setReportError("Could not download interaction report right now.");
       }
     } finally {
       setDownloadingReport(false);
+    }
+  };
+
+  const handleViewLabAttachment = async (id: number) => {
+    try {
+      const res = await apiClient.get(`/labs/results/${id}/presigned/`);
+      const url = res.data?.url as string | undefined;
+      if (!url) {
+        setLabError("This lab result does not have an attachment.");
+        return;
+      }
+      const viewUrl = url.startsWith("http") ? url : `${API_ORIGIN}${url}`;
+      window.open(viewUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      setLabError("Unable to open lab attachment.");
     }
   };
 
@@ -120,8 +171,12 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Medical Records</h2>
-          <p className="text-sm text-muted-foreground mt-1">View your medical history and prescriptions</p>
+          <h2 className="text-2xl font-bold text-foreground">
+            Medical Records
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            View your medical history and prescriptions
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <UploadRecordDialog onRecordUploaded={fetchRecords} />
@@ -137,7 +192,9 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Records</p>
-              <p className="text-2xl font-bold text-foreground">{medicalRecords.length}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {medicalRecords.length}
+              </p>
             </div>
           </div>
         </Card>
@@ -148,8 +205,12 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
               <Pill className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Active Medications</p>
-              <p className="text-2xl font-bold text-foreground">{activePrescriptions.length}</p>
+              <p className="text-sm text-muted-foreground">
+                Active Medications
+              </p>
+              <p className="text-2xl font-bold text-foreground">
+                {activePrescriptions.length}
+              </p>
             </div>
           </div>
         </Card>
@@ -162,7 +223,9 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             <div>
               <p className="text-sm text-muted-foreground">Last Visit</p>
               <p className="text-lg font-bold text-foreground">
-                {medicalRecords.length > 0 ? medicalRecords[0].record_date : 'N/A'}
+                {medicalRecords.length > 0
+                  ? medicalRecords[0].record_date
+                  : "N/A"}
               </p>
             </div>
           </div>
@@ -173,7 +236,9 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-2">
             <Pill className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-bold text-foreground">Current Prescriptions</h3>
+            <h3 className="text-lg font-bold text-foreground">
+              Current Prescriptions
+            </h3>
           </div>
           <Button
             size="sm"
@@ -182,12 +247,13 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             onClick={handleDownloadInteractionReport}
           >
             <Download className="h-4 w-4 mr-2" />
-            {downloadingReport ? 'Downloading...' : 'Download Safety Report'}
+            {downloadingReport ? "Downloading..." : "Download Safety Report"}
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2">
           <span className="text-xs text-amber-800">
-            Medication Safety Report summarizes interaction risks for your active prescriptions.
+            Medication Safety Report summarizes interaction risks for your
+            active prescriptions.
           </span>
           <Button
             size="sm"
@@ -196,7 +262,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             onClick={handleDownloadInteractionReport}
           >
             <Download className="h-4 w-4 mr-2" />
-            {downloadingReport ? 'Downloading...' : 'Get PDF'}
+            {downloadingReport ? "Downloading..." : "Get PDF"}
           </Button>
         </div>
         {reportError && (
@@ -213,38 +279,68 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Medication</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Dosage</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Frequency</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Duration</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Refill</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Adherence</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
+                    Medication
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
+                    Dosage
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
+                    Frequency
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
+                    Duration
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
+                    Refill
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
+                    Status
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">
+                    Adherence
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {activePrescriptions.map((rx) => (
-                  <tr key={rx.id} className="border-b border-border hover:bg-muted/30">
-                    <td className="py-3 px-4 font-medium text-foreground">{rx.medication_name}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{rx.dosage}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{rx.frequency}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{rx.duration}</td>
+                  <tr
+                    key={rx.id}
+                    className="border-b border-border hover:bg-muted/30"
+                  >
+                    <td className="py-3 px-4 font-medium text-foreground">
+                      {rx.medication_name}
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground">
+                      {rx.dosage}
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground">
+                      {rx.frequency}
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground">
+                      {rx.duration}
+                    </td>
                     <td className="py-3 px-4">
                       {rx.is_refill_needed ? (
                         <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">
                           Refill Needed
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">{rx.end_date || 'N/A'}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {rx.end_date || "N/A"}
+                        </span>
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${rx.status === 'active' || rx.status === 'signed'
-                        ? 'bg-green-100 text-green-700'
-                        : rx.status === 'cancelled'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-700'
-                        }`}>
+                      <span
+                        className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          rx.status === "active" || rx.status === "signed"
+                            ? "bg-green-100 text-green-700"
+                            : rx.status === "cancelled"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
                         {rx.status}
                       </span>
                     </td>
@@ -255,7 +351,9 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                         disabled={adherenceLoading === rx.id}
                         onClick={() => handleMarkTaken(rx.id)}
                       >
-                        {adherenceLoading === rx.id ? 'Logging...' : 'Mark Taken'}
+                        {adherenceLoading === rx.id
+                          ? "Logging..."
+                          : "Mark Taken"}
                       </Button>
                     </td>
                   </tr>
@@ -266,20 +364,103 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
         )}
       </Card>
 
+      <Card className="p-6">
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-2">
+            <Microscope className="h-5 w-5 text-purple-500" />
+            <h3 className="text-lg font-bold text-foreground">Lab Results</h3>
+          </div>
+          {labLoading && (
+            <span className="text-xs text-muted-foreground">Loading…</span>
+          )}
+        </div>
+        {labError && <p className="text-xs text-amber-700 mb-3">{labError}</p>}
+        {labLoading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Loading lab results…
+          </div>
+        ) : labResults.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground">
+            <Microscope className="h-12 w-12 mx-auto mb-3 opacity-20" />
+            <p>No lab results available</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {labResults.slice(0, 8).map((result) => (
+              <div
+                key={result.id}
+                className="p-4 rounded-xl border border-border bg-white/5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {result.test_name}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {result.result_value} {result.units || ""}{" "}
+                      {result.reference_range
+                        ? `· Ref ${result.reference_range}`
+                        : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {result.processed_at
+                        ? new Date(result.processed_at).toLocaleString()
+                        : "Pending"}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full border ${
+                      result.flag === "Critical"
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : result.flag === "High" || result.flag === "Low"
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {result.flag || "Normal"}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleViewLabAttachment(result.id)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View Report
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {pastPrescriptions.length > 0 && (
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-6">
             <Pill className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-lg font-bold text-foreground">Past Medications</h3>
+            <h3 className="text-lg font-bold text-foreground">
+              Past Medications
+            </h3>
           </div>
           <div className="space-y-2">
             {pastPrescriptions.map((rx) => (
-              <div key={rx.id} className="flex items-center justify-between border border-border rounded-lg p-3">
+              <div
+                key={rx.id}
+                className="flex items-center justify-between border border-border rounded-lg p-3"
+              >
                 <div>
-                  <p className="font-medium text-foreground">{rx.medication_name}</p>
-                  <p className="text-xs text-muted-foreground">{rx.dosage} · {rx.frequency} · {rx.duration}</p>
+                  <p className="font-medium text-foreground">
+                    {rx.medication_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {rx.dosage} · {rx.frequency} · {rx.duration}
+                  </p>
                 </div>
-                <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-700">Cancelled</span>
+                <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-700">
+                  Cancelled
+                </span>
               </div>
             ))}
           </div>
@@ -308,8 +489,10 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
             className="px-4 py-2 border border-border rounded-md bg-background text-foreground"
           >
             <option value="all">All Types</option>
-            {recordTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
+            {recordTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
             ))}
           </select>
         </div>
@@ -330,7 +513,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
               <div
                 key={record.id}
                 id={`record-${record.id}`}
-                className={`border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors ${highlightRecordId && String(record.id) === String(highlightRecordId) ? 'ring-2 ring-primary/40 bg-primary/5' : ''}`}
+                className={`border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors ${highlightRecordId && String(record.id) === String(highlightRecordId) ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}
               >
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
@@ -340,14 +523,26 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
-                        <h4 className="font-semibold text-foreground">{record.record_type_display || 'Medical Record'}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">{record.diagnosis}</p>
+                        <h4 className="font-semibold text-foreground">
+                          {record.record_type_display || "Medical Record"}
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {record.diagnosis}
+                        </p>
                       </div>
-                      {record.file && (
+                      {(record.file_url || record.file) && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(record.file, '_blank')}
+                          onClick={() => {
+                            const url = record.file_url || record.file;
+                            if (url) {
+                              const fullUrl = url.startsWith("http")
+                                ? url
+                                : `${API_ORIGIN}${url}`;
+                              window.open(fullUrl, "_blank");
+                            }
+                          }}
                           className="flex-shrink-0"
                         >
                           <Eye className="h-4 w-4 mr-1" />
@@ -363,27 +558,37 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
                       </span>
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {record.doctor_name || 'Unknown'}
+                        {record.doctor_name || "Unknown"}
                       </span>
                     </div>
 
-                    {record.prescriptions && record.prescriptions.length > 0 && (
-                      <div className="mt-3 p-3 bg-muted/50 rounded-md">
-                        <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
-                          <Pill className="h-3 w-3" /> Prescriptions
-                        </p>
-                        <div className="space-y-1">
-                          {record.prescriptions.map((rx: any) => (
-                            <div key={rx.id} className="text-xs text-muted-foreground">
-                              <span className="font-medium text-foreground">{rx.medication_name}</span>
-                              {' '}- {rx.dosage}, {rx.frequency}
-                              {rx.duration && <span> ({rx.duration})</span>}
-                              {rx.is_signed && <span className="ml-2 text-green-600">Signed</span>}
-                            </div>
-                          ))}
+                    {record.prescriptions &&
+                      record.prescriptions.length > 0 && (
+                        <div className="mt-3 p-3 bg-muted/50 rounded-md">
+                          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
+                            <Pill className="h-3 w-3" /> Prescriptions
+                          </p>
+                          <div className="space-y-1">
+                            {record.prescriptions.map((rx: any) => (
+                              <div
+                                key={rx.id}
+                                className="text-xs text-muted-foreground"
+                              >
+                                <span className="font-medium text-foreground">
+                                  {rx.medication_name}
+                                </span>{" "}
+                                - {rx.dosage}, {rx.frequency}
+                                {rx.duration && <span> ({rx.duration})</span>}
+                                {rx.is_signed && (
+                                  <span className="ml-2 text-green-600">
+                                    Signed
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {record.notes && (
                       <div className="mt-3 text-sm text-muted-foreground italic">
@@ -397,7 +602,11 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
 
             {hasMore && (
               <div className="pt-4 text-center">
-                <Button variant="ghost" onClick={loadMore} className="text-muted-foreground hover:text-primary">
+                <Button
+                  variant="ghost"
+                  onClick={loadMore}
+                  className="text-muted-foreground hover:text-primary"
+                >
                   Load More Records...
                 </Button>
               </div>

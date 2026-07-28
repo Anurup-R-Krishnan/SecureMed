@@ -1,5 +1,7 @@
 from rest_framework import serializers
+
 from .models import Invoice, InvoiceItem, Payment
+
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,6 +12,16 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = '__all__'
+
+class PaymentProcessingSerializer(serializers.Serializer):
+    """Input validation for payment processing"""
+    payment_method = serializers.ChoiceField(
+        choices=['card', 'bank_transfer', 'check', 'insurance'],
+        required=True,
+        help_text='Payment method'
+    )
+    reference_number = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    notes = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
 class InvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceItemSerializer(many=True, read_only=True)

@@ -1,8 +1,9 @@
 """PDF report generation for medication interaction reports using ReportLab."""
 
 from io import BytesIO
+
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
@@ -14,6 +15,8 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+from .models import MedicalRecord
 
 PAGE_WIDTH, PAGE_HEIGHT = A4
 
@@ -32,6 +35,7 @@ SEVERITY_BG_COLORS = {
 }
 
 SEVERITY_ORDER = ["critical", "high", "moderate", "low"]
+MAX_FINDINGS_DISPLAY = 30
 
 CLINIC_NAME = "SecureMed Hospital"
 CLINIC_TAGLINE = "Advanced Clinical Decision Support • Powered by HODDI"
@@ -296,6 +300,45 @@ def _recommendations(report, styles):
     return elements
 
 
+def _dedupe_report_items(items):
+    deduped = []
+    seen = set()
+    for item in items:
+        key = (
+            item.finding_type,
+            tuple(sorted(item.medications or [])),
+            (item.side_effect or "").strip().lower(),
+            item.severity,
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def _resolve_attending_doctor(report):
+    generated_by = report.generated_by
+    if generated_by and hasattr(generated_by, "doctor_profile"):
+        doctor_user = generated_by
+        return doctor_user.get_full_name() or doctor_user.email or doctor_user.username
+
+    patient = report.patient
+    if patient:
+        record = (
+            MedicalRecord.objects
+            .select_related("doctor__user")
+            .filter(patient=patient, doctor__isnull=False)
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if record and record.doctor and record.doctor.user:
+            doctor_user = record.doctor.user
+            return doctor_user.get_full_name() or doctor_user.email or doctor_user.username
+
+    return "—"
+
+
 def generate_interaction_report_pdf(report) -> BytesIO:
     """
     Generate a PDF for a MedicationInteractionReport instance.
@@ -324,8 +367,7 @@ def generate_interaction_report_pdf(report) -> BytesIO:
 
     # ── Patient & Report Metadata ─────────────────────────────────────────────
     patient = report.patient
-    generated_by = report.generated_by
-    doctor_name = generated_by.get_full_name() if generated_by else "—"
+    doctor_name = _resolve_attending_doctor(report)
     report_date = report.created_at.strftime("%d %B %Y, %H:%M")
 
     story.append(Paragraph("Patient Information", styles["section_header"]))
@@ -361,14 +403,36 @@ def generate_interaction_report_pdf(report) -> BytesIO:
     story.append(Paragraph("Findings Summary", styles["section_header"]))
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#E2E8F0"), spaceAfter=6))
     story.append(_summary_table(report, styles))
+    summary_text = f"Total findings: {report.total_findings}."
+    if report.total_findings > MAX_FINDINGS_DISPLAY:
+        summary_text += f" Showing the top {MAX_FINDINGS_DISPLAY} in this report."
+    story.append(Paragraph(summary_text, styles["small"]))
 
     story.append(Spacer(1, 0.5 * cm))
 
     # ── Detailed Findings ─────────────────────────────────────────────────────
-    items = list(report.items.all())
+    items = _dedupe_report_items(list(report.items.all()))
     if items:
+        total_findings = len(items)
+        limited_items = []
+        for severity in SEVERITY_ORDER:
+            for item in items:
+                if item.severity == severity:
+                    limited_items.append(item)
+                    if len(limited_items) >= MAX_FINDINGS_DISPLAY:
+                        break
+            if len(limited_items) >= MAX_FINDINGS_DISPLAY:
+                break
+        items = limited_items
         story.append(Paragraph("Detailed Findings", styles["section_header"]))
         story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#E2E8F0"), spaceAfter=6))
+        if total_findings > MAX_FINDINGS_DISPLAY:
+            story.append(
+                Paragraph(
+                    f"Showing the top {MAX_FINDINGS_DISPLAY} of {total_findings} findings.",
+                    styles["small"],
+                )
+            )
         for severity in SEVERITY_ORDER:
             story.extend(_finding_rows(items, severity, styles))
     else:

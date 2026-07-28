@@ -2,7 +2,7 @@
  * Infection Tracking Service
  * API calls for the infection tracking system.
  */
-import apiClient from '@/lib/api';
+import { apiClient } from '@/lib/unified-api-client';
 
 export interface GraphNode {
     id: string;
@@ -40,6 +40,7 @@ export interface InfectionTrace {
         infection_name: string;
         diagnosed_at: string;
         severity: string;
+        severity_display?: string;
     };
     target_report: {
         report_id: string;
@@ -48,6 +49,7 @@ export interface InfectionTrace {
         infection_name: string;
         diagnosed_at: string;
         severity: string;
+        severity_display?: string;
     };
     infection_name: string;
     transmission_path: {
@@ -64,6 +66,8 @@ export interface InfectionTrace {
     vector_type: string;
     status: string;
     detected_at: string;
+    source_patient_name?: string;
+    target_patient_name?: string;
 }
 
 export interface InfectionReport {
@@ -133,6 +137,20 @@ function normalizeGraphVisualization(payload: unknown): GraphVisualization {
         }];
     });
 
+    const filteredLinks = links.filter(
+        (link) => link.relationship !== 'PART_OF' && link.relationship !== 'BELONGS_TO'
+    );
+    const connectedIds = new Set<string>();
+    for (const link of filteredLinks) {
+        connectedIds.add(link.source);
+        connectedIds.add(link.target);
+    }
+    const filteredNodes = nodes.filter((node) => connectedIds.has(node.id));
+
+    if (filteredNodes.length >= 10 && filteredLinks.length >= 10) {
+        return { nodes: filteredNodes, links: filteredLinks };
+    }
+
     return { nodes, links };
 }
 
@@ -141,36 +159,36 @@ export const infectionTrackingService = {
         const response = await apiClient.get(`/infection-tracking/graph/visualization/?limit=${limit}`, {
             signal: options?.signal,
         });
-        return normalizeGraphVisualization(response.data);
+        return normalizeGraphVisualization(response);
     },
 
     async getGraphStats(options?: RequestOptions): Promise<GraphStats> {
         const response = await apiClient.get('/infection-tracking/graph/stats/', {
             signal: options?.signal,
         });
-        return response.data;
+        return response;
     },
 
     async getTraces(options?: RequestOptions): Promise<InfectionTrace[]> {
-        const response = await apiClient.get('/infection-tracking/traces/', {
+        const response = await apiClient.get<any>('/infection-tracking/traces/', {
             signal: options?.signal,
         });
-        return response.data.results || response.data;
+        return response.results || response;
     },
 
     async getActiveTraces(): Promise<InfectionTrace[]> {
         const response = await apiClient.get('/infection-tracking/traces/active_clusters/');
-        return response.data;
+        return response;
     },
 
     async getHighRiskRooms(days = 7): Promise<HighRiskRoom[]> {
         const response = await apiClient.get(`/infection-tracking/traces/high_risk_rooms/?days=${days}`);
-        return response.data;
+        return response;
     },
 
     async getReports(): Promise<InfectionReport[]> {
-        const response = await apiClient.get('/infection-tracking/reports/');
-        return response.data.results || response.data;
+        const response = await apiClient.get<any>('/infection-tracking/reports/');
+        return response.results || response;
     },
 };
 

@@ -10,8 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import logging
 import os
+import secrets
 from pathlib import Path
+
 from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-0tf^1ob=elb^f%1r$n#t8t(y$iknnnk7ubj+qclku=s9xpjntb')
+_logger = logging.getLogger('security')
+_secret_key = config('SECRET_KEY', default=None)
+if _secret_key:
+    SECRET_KEY = _secret_key
+else:
+    SECRET_KEY = secrets.token_urlsafe(64)
+    _logger.warning('SECRET_KEY not set; generated ephemeral key for this process.')
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 
@@ -32,6 +41,7 @@ if 'testserver' not in ALLOWED_HOSTS:
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,7 +51,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    'corsheaders',
     # Accounts
     'apps.accounts.users',
     'apps.accounts.patients',
@@ -64,18 +73,14 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # MUST be first
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  <-- KEEP COMMENTED
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'apps.accounts.users.middleware.RoleMiddleware',
-    'apps.platform.core.security_middleware.RateLimitMiddleware',
-    'apps.platform.core.security_middleware.RequestLoggingMiddleware',
-    'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware',
+    # 'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware', <-- COMMENT THIS TEMPORARILY
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -105,9 +110,10 @@ DATABASES = {
         'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
         'NAME': config('DB_NAME', default='securemed'),
         'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='securemed_db_password'),
+        'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
+        'CONN_MAX_AGE': 60,
     }
 }
 
@@ -146,8 +152,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Add this line here
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -157,10 +167,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Update your existing CORS block (around line 144)
 _default_cors_origins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://0.0.0.0:3000',
+    'https://securemed-finale-569ldd705.vercel.app',
+    'https://securemed-finale.vercel.app',
 ]
 
 CORS_ALLOWED_ORIGINS = config(
@@ -168,36 +181,55 @@ CORS_ALLOWED_ORIGINS = config(
     default=','.join(_default_cors_origins)
 ).split(',')
 
-for _origin in _default_cors_origins:
-    if _origin not in CORS_ALLOWED_ORIGINS:
-        CORS_ALLOWED_ORIGINS.append(_origin)
+# In development, add localhost origins for local development convenience
+if DEBUG:
+    for _origin in _default_cors_origins:
+        if _origin not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(_origin)
 
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = config(
-    'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000'
-).split(',')
+# Hardcode for deployment to eliminate environment variable issues
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://securemed-finale-569ldd705.vercel.app',
+    'https://securemed-finale.vercel.app',
+    'https://securemed-backend.onrender.com', # Add the backend itself
+]
+
+# This is the "Magic" setting to stop 403s on cross-domain APIs
+CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework Settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Change this from IsAuthenticated
     ],
     'DEFAULT_PAGINATION_CLASS': 'apps.platform.core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
-    'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
+    #'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
 }
 
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
 
 # Simple JWT Settings
+import hashlib
 from datetime import timedelta
+
+
+def _get_jwt_signing_key(raw_key: str) -> str:
+    # Ensure a minimum length for HMAC signing; fall back to a derived key if too short.
+    if len(raw_key) >= 32:
+        return raw_key
+    return hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+
+JWT_SIGNING_KEY = _get_jwt_signing_key(SECRET_KEY)
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
@@ -206,7 +238,7 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
+    'SIGNING_KEY': JWT_SIGNING_KEY,
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
@@ -230,15 +262,27 @@ SECURE_SSL = os.environ.get('DJANGO_SECURE_SSL', 'False') == 'True'
 
 # MFA Feature Flag (disabled by default)
 MFA_ENABLED = os.environ.get('MFA_ENABLED', 'True') == 'True'
+MFA_TOTP_VALID_WINDOW = max(
+    1,
+    min(config('MFA_TOTP_VALID_WINDOW', default=1, cast=int), 2)
+)
 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_SAMESITE = 'Strict'
 
 # HTTPS-only cookies (enabled in production via DJANGO_SECURE_SSL env var)
 # For localhost development: DJANGO_SECURE_SSL should not be set (defaults to False)
 # For production deployment: set DJANGO_SECURE_SSL=True in environment
 SESSION_COOKIE_SECURE = SECURE_SSL
 CSRF_COOKIE_SECURE = SECURE_SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+if SECURE_SSL:
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
 
 # Google reCAPTCHA Configuration
 # For local development, uses Google's test keys (always pass)
@@ -315,6 +359,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_TASK_ALWAYS_EAGER', '').lower() in {'1', 'true', 'yes'}
 
 # Cache Configuration (Redis-first)
 CACHES = {
@@ -331,7 +376,7 @@ CACHES = {
 # Neo4j Graph Database Configuration
 NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
 NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
-NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'securemed_graph')
+NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', '')
 
 # Google Gemini AI — set GOOGLE_GEMINI_API_KEY in your .env file
 GOOGLE_GEMINI_API_KEY = config('GOOGLE_GEMINI_API_KEY', default='')

@@ -5,8 +5,8 @@ Usage:
     python manage.py seed_doctors
     python manage.py seed_doctors --clear  # delete existing seeded doctors first
 """
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 from django.db import transaction
 
 User = get_user_model()

@@ -1,20 +1,21 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import (
-    MedicalRecordViewSet,
-    PrescriptionViewSet,
-    VitalSignViewSet,
-    DrugInteractionViewSet,
-    PharmacyOrderViewSet,
-    MedicationAdherenceLogViewSet,
-    MedicationHistoryEventViewSet,
-    patient_dashboard_stats,
-    patient_access_log,
-    EmergencyCaseCreateView,
-    EmergencyCaseStatusView,
-)
+
 from .signing import sign_prescription, verify_prescription_signature
 from .timeline_api import patient_timeline
+from .views import (
+    DrugInteractionViewSet,
+    EmergencyCaseCreateView,
+    EmergencyCaseStatusView,
+    MedicalRecordViewSet,
+    MedicationAdherenceLogViewSet,
+    MedicationHistoryEventViewSet,
+    PharmacyOrderViewSet,
+    PrescriptionViewSet,
+    VitalSignViewSet,
+    patient_access_log,
+    patient_dashboard_stats,
+)
 
 router = DefaultRouter()
 router.register(r'records', MedicalRecordViewSet, basename='medical-record')

@@ -1,26 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import api from '@/lib/api';
-import { Beaker, FileText, Pill, Activity } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, useEffect, useCallback } from "react";
+import { apiClient } from "@/lib/unified-api-client";
+import { Beaker, FileText, Pill, Activity } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface TimelineEvent {
   id: string;
   date: string;
-  type: 'lab' | 'prescription' | 'visit' | 'appointment';
+  type: "lab" | "prescription" | "visit" | "appointment";
   title: string;
   description: string;
   details?: string[];
 }
 
-
-
 const typeIcons = {
-  lab: { icon: Beaker, color: 'text-accent' },
-  prescription: { icon: Pill, color: 'text-accent' },
-  visit: { icon: FileText, color: 'text-accent' },
-  appointment: { icon: Activity, color: 'text-accent' },
+  lab: { icon: Beaker, color: "text-accent" },
+  prescription: { icon: Pill, color: "text-accent" },
+  visit: { icon: FileText, color: "text-accent" },
+  appointment: { icon: Activity, color: "text-accent" },
 };
 
 interface PatientTimelineProps {
@@ -28,54 +27,77 @@ interface PatientTimelineProps {
   className?: string;
 }
 
-export default function PatientTimeline({ patientId, className }: PatientTimelineProps) {
+export default function PatientTimeline({
+  patientId,
+  className,
+}: PatientTimelineProps) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    async function fetchTimeline() {
+  const fetchTimeline = useCallback(
+    async (showLoading = false) => {
+      if (showLoading) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       try {
-        const response = await api.get('/patients/timeline/', {
-          params: { patient_id: patientId }
+        const response = await apiClient.get("/patients/timeline/", {
+          params: { patient_id: patientId },
         });
         // Map backend response to frontend format
         // Backend returns: category (diagnosis|lab|medication|appointment|admin)
         // Frontend expects: type (lab|prescription|visit|appointment)
         const categoryToType: Record<string, string> = {
-          diagnosis: 'visit',
-          lab: 'lab',
-          medication: 'prescription',
-          appointment: 'appointment',
-          admin: 'visit',
+          diagnosis: "visit",
+          lab: "lab",
+          medication: "prescription",
+          appointment: "appointment",
+          admin: "visit",
         };
-        const mapped = (Array.isArray(response.data) ? response.data : []).map((e: any) => ({
-          id: e.id,
-          date: e.date,
-          type: categoryToType[e.category] || e.type || 'visit',
-          title: e.title,
-          description: e.description,
-          details: e.details,
-        }));
+        const mapped = (Array.isArray(response.data) ? response.data : []).map(
+          (e: any) => ({
+            id: e.id,
+            date: e.date,
+            type: categoryToType[e.category] || e.type || "visit",
+            title: e.title,
+            description: e.description,
+            details: e.details,
+          }),
+        );
         setEvents(mapped);
       } catch (error) {
-        console.error("Failed to fetch timeline", error);
       } finally {
-        setLoading(false);
+        if (showLoading) {
+          setLoading(false);
+        } else {
+          setRefreshing(false);
+        }
       }
-    }
+    },
+    [patientId],
+  );
 
+  useEffect(() => {
     if (patientId) {
-      fetchTimeline();
+      fetchTimeline(true);
     }
-  }, [patientId]);
+  }, [patientId, fetchTimeline]);
 
   if (loading) {
-    return <div className="p-6 text-center text-slate-500">Loading timeline...</div>;
+    return (
+      <div className="p-6 text-center text-slate-500">Loading timeline...</div>
+    );
   }
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card p-6", className)}>
-      <h2 className="text-lg font-semibold text-foreground mb-6">Patient Timeline</h2>
+    <div
+      className={cn("rounded-lg border border-border bg-card p-6", className)}
+    >
+      <h2 className="text-lg font-semibold text-foreground mb-6">
+        Patient Timeline
+      </h2>
 
       <div className="relative space-y-6">
         {/* Timeline Line */}
@@ -88,15 +110,19 @@ export default function PatientTimeline({ patientId, className }: PatientTimelin
               <div className="h-12 w-12 bg-muted/20 rounded-full flex items-center justify-center mb-3">
                 <Activity className="h-6 w-6 text-muted-foreground/50" />
               </div>
-              <h4 className="text-sm font-bold text-foreground">No timeline events</h4>
+              <h4 className="text-sm font-bold text-foreground">
+                No timeline events
+              </h4>
               <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
-                No medical history or recent activities recorded for this patient.
+                No medical history or recent activities recorded for this
+                patient.
               </p>
             </div>
           </div>
         ) : (
           events.map((event, idx) => {
-            const { icon: Icon, color } = typeIcons[event.type] || typeIcons.visit;
+            const { icon: Icon, color } =
+              typeIcons[event.type] || typeIcons.visit;
 
             return (
               <div key={event.id} className="relative pl-16">
@@ -109,14 +135,23 @@ export default function PatientTimeline({ patientId, className }: PatientTimelin
                 <div className="rounded-lg border border-border bg-background p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-xs text-muted-foreground">{event.date}</p>
-                      <h3 className="mt-1 font-semibold text-foreground">{event.title}</h3>
-                      <p className="text-sm text-muted-foreground">{event.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {event.date}
+                      </p>
+                      <h3 className="mt-1 font-semibold text-foreground">
+                        {event.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {event.description}
+                      </p>
 
                       {event.details && event.details.length > 0 && (
                         <div className="mt-3 space-y-1">
                           {event.details.map((detail, detailIdx) => (
-                            <p key={detailIdx} className="text-xs text-muted-foreground">
+                            <p
+                              key={detailIdx}
+                              className="text-xs text-muted-foreground"
+                            >
                               • {detail}
                             </p>
                           ))}
@@ -131,10 +166,14 @@ export default function PatientTimeline({ patientId, className }: PatientTimelin
         )}
       </div>
 
-      {/* Load More */}
-      <button className="mt-6 w-full rounded-lg border border-border bg-background px-4 py-2 font-medium text-foreground hover:bg-muted transition-colors">
-        Load More Events
-      </button>
+      <Button
+        variant="outline"
+        className="mt-6 w-full"
+        onClick={() => fetchTimeline(false)}
+        disabled={refreshing}
+      >
+        {refreshing ? "Refreshing..." : "Refresh Timeline"}
+      </Button>
     </div>
   );
 }
