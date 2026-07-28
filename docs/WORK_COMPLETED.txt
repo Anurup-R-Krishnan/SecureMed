@@ -1,0 +1,3 @@
+Container build failed due to no internet access: 'Temporary failure in name resolution' during apt-get and pip install.
+The database, redis, and neo4j containers were already running, suggesting they rely on local images.
+Builds require an environment with outbound network access or a pre-populated local artifact repository.
