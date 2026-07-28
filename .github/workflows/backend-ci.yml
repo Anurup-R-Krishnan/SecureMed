@@ -2,11 +2,11 @@ name: Backend CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-cd-hardening]
     paths:
       - "securemed-backend/**"
   pull_request:
-    branches: [main]
+    branches: [main, ci-cd-hardening]
     paths:
       - "securemed-backend/**"
 
