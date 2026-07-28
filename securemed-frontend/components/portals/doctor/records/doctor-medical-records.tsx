@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface DoctorMedicalRecordsProps {
   patientId?: string;
@@ -37,7 +37,6 @@ export default function DoctorMedicalRecords({
   patientId,
 }: DoctorMedicalRecordsProps) {
   const searchParams = useSearchParams();
-  const { toast } = useToast();
   const urlPatientId = searchParams?.get("patient_id") || "";
   const resolvedPatientId = patientId || urlPatientId || "";
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
@@ -140,10 +139,8 @@ export default function DoctorMedicalRecords({
       !newRecord.diagnosis ||
       !newRecord.patient_id
     ) {
-      toast({
-        title: "Missing fields",
+      toast.error("Missing fields", {
         description: "Patient, type, date, and diagnosis are required.",
-        variant: "destructive",
       });
       return;
     }
@@ -160,8 +157,7 @@ export default function DoctorMedicalRecords({
       await apiClient.post("/medical-records/records/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      toast({
-        title: "Record created",
+      toast.success("Record created", {
         description: "Medical record saved successfully.",
       });
       setCreateOpen(false);
@@ -175,10 +171,8 @@ export default function DoctorMedicalRecords({
       setNewFile(null);
       fetchRecords(debouncedSearch);
     } catch (error: any) {
-      toast({
-        title: "Create failed",
+      toast.error("Create failed", {
         description: error?.response?.data?.error || "Could not create record.",
-        variant: "destructive",
       });
     } finally {
       setCreating(false);

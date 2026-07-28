@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/unified-api-client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import MfaSetup from "@/components/auth/mfa-setup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ import { Switch } from "@/components/ui/switch"; // Assuming we have this or nee
 
 export default function SettingsPage() {
   const { user, refreshUserStatus } = useAuth();
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [fullName, setFullName] = useState("");
@@ -69,10 +68,8 @@ export default function SettingsPage() {
 
   const handleAvatarChange = (file: File) => {
     if (file.size > 2 * 1024 * 1024) {
-      toast({
-        title: "File too large",
+      toast.error("File too large", {
         description: "Please upload an image under 2MB.",
-        variant: "destructive",
       });
       return;
     }
@@ -87,10 +84,8 @@ export default function SettingsPage() {
     if (!user) return;
     const trimmedName = fullName.trim();
     if (!trimmedName) {
-      toast({
-        title: "Missing name",
+      toast.error("Missing name", {
         description: "Please enter your full name.",
-        variant: "destructive",
       });
       return;
     }
@@ -122,16 +117,13 @@ export default function SettingsPage() {
       });
       setInitialAvatar(avatarPreview);
       await refreshUserStatus();
-      toast({
-        title: "Profile updated",
+      toast.success("Profile updated", {
         description: "Your changes have been saved.",
       });
     } catch (error: any) {
-      toast({
-        title: "Update failed",
+      toast.error("Update failed", {
         description:
           error?.response?.data?.error || "Could not save profile changes.",
-        variant: "destructive",
       });
     } finally {
       setSavingProfile(false);
@@ -148,10 +140,8 @@ export default function SettingsPage() {
   const handlePasswordUpdate = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) return;
     if (newPassword !== confirmPassword) {
-      toast({
-        title: "Password mismatch",
+      toast.error("Password mismatch", {
         description: "New passwords do not match.",
-        variant: "destructive",
       });
       return;
     }
@@ -166,16 +156,13 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      toast({
-        title: "Password updated",
+      toast.success("Password updated", {
         description: "Your password has been changed successfully.",
       });
     } catch (error: any) {
-      toast({
-        title: "Password update failed",
+      toast.error("Password update failed", {
         description:
           error?.response?.data?.error || "Could not update password.",
-        variant: "destructive",
       });
     } finally {
       setSavingPassword(false);

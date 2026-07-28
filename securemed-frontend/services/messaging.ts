@@ -42,8 +42,8 @@ export const messagingService = {
     getConversations: async (): Promise<Conversation[]> => {
         try {
             const response = await apiClient.get('/telemedicine/conversations/');
-            return Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            return Array.isArray(response) ? response :
+                (response as any)?.results || [];
         } catch (error) {
             return [];
         }
@@ -53,14 +53,14 @@ export const messagingService = {
         const response = await apiClient.post('/telemedicine/conversations/', {
             participant_id: participantId
         });
-        return response.data;
+        return response;
     },
 
     getMessages: async (conversationId: number): Promise<Message[]> => {
         try {
             const response = await apiClient.get(`/telemedicine/messages/?conversation=${conversationId}`);
-            return Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            return Array.isArray(response) ? response :
+                (response as any)?.results || [];
         } catch (error: any) {
             if (error?.response?.status === 401 || error?.response?.status === 403) {
                 return [];
@@ -82,6 +82,6 @@ export const messagingService = {
                 'Content-Type': 'multipart/form-data',
             },
         });
-        return response.data;
+        return response;
     }
 };

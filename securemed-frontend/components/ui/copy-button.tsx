@@ -4,7 +4,7 @@ import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface CopyButtonProps extends React.ComponentProps<typeof Button> {
   value: string;
@@ -20,7 +20,6 @@ export function CopyButton({
   ...props
 }: CopyButtonProps) {
   const [hasCopied, setHasCopied] = React.useState(false);
-  const { toast } = useToast();
 
   React.useEffect(() => {
     if (hasCopied) {
@@ -35,16 +34,11 @@ export function CopyButton({
     try {
       await navigator.clipboard.writeText(value);
       setHasCopied(true);
-      toast({
-        description: "Copied to clipboard",
+      toast("Copied to clipboard", {
         duration: 2000,
       });
     } catch (err) {
-      toast({
-        title: "Failed to copy",
-        description: "Please try again manually",
-        variant: "destructive",
-      });
+      toast.error("Failed to copy", { description: "Please try again manually" });
     }
   };
 

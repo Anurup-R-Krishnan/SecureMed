@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface EnhancedPatientTimelineProps {
   patientId?: string;
@@ -88,7 +88,6 @@ export default function PatientTimeline({
   className,
 }: EnhancedPatientTimelineProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>("all");
@@ -102,10 +101,8 @@ export default function PatientTimeline({
         const data = await patientService.getPatientTimeline(patientId);
         setEvents(data);
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load patient timeline.",
-          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -113,7 +110,7 @@ export default function PatientTimeline({
     };
 
     fetchTimeline();
-  }, [patientId, toast]);
+  }, [patientId]);
 
   const filteredEvents = events
     .filter((event) => {
@@ -208,20 +205,16 @@ export default function PatientTimeline({
       const res = await apiClient.get(`/labs/results/${labResultId}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
-        toast({
-          title: "No attachment found",
+        toast.error("No attachment found", {
           description: "This lab result does not include a report file.",
-          variant: "destructive",
         });
         return;
       }
       const viewUrl = url.startsWith("http") ? url : `${API_ORIGIN}${url}`;
       window.open(viewUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
-      toast({
-        title: "Unable to open report",
+      toast.error("Unable to open report", {
         description: "Failed to open the lab attachment.",
-        variant: "destructive",
       });
     }
   };

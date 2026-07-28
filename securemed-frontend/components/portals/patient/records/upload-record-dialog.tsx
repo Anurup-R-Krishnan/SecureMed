@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload, FileText, Loader2, X } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 // We'll need to extend the service to support uploads, assumed to be in medicalRecordService
 import { medicalRecordService } from "@/services/appointments";
 
@@ -35,7 +35,6 @@ export function UploadRecordDialog({
 }: UploadRecordDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     record_type: "",
@@ -50,10 +49,8 @@ export function UploadRecordDialog({
     if (e.target.files && e.target.files[0]) {
       const nextFile = e.target.files[0];
       if (nextFile.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
+        toast.error("File too large", {
           description: "Please upload a file smaller than 10MB.",
-          variant: "destructive",
         });
         return;
       }
@@ -64,10 +61,8 @@ export function UploadRecordDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.record_type || !formData.record_date || !file) {
-      toast({
-        title: "Missing Information",
+      toast.error("Missing Information", {
         description: "Please fill in all required fields and select a file.",
-        variant: "destructive",
       });
       return;
     }
@@ -87,8 +82,7 @@ export function UploadRecordDialog({
 
       await medicalRecordService.uploadRecord(uploadData);
 
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: "Medical record uploaded successfully.",
       });
 
@@ -107,12 +101,10 @@ export function UploadRecordDialog({
         onRecordUploaded();
       }
     } catch (error) {
-      toast({
-        title: "Upload Failed",
+      toast.error("Upload Failed", {
         description:
           (error as any)?.response?.data?.error ||
           "There was an error uploading your record. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

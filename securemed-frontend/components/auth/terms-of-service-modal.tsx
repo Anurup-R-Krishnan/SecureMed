@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/lib/urls";
 import { Shield, CheckCircle } from "lucide-react";
@@ -20,7 +20,6 @@ export function TermsOfServiceModal({
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -50,18 +49,14 @@ export function TermsOfServiceModal({
         },
       );
 
-      toast({
-        title: "Terms Accepted",
+      toast("Terms Accepted", {
         description: "You have successfully accepted the updated policies.",
-        variant: "default",
       });
 
       onAccept();
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to accept terms. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

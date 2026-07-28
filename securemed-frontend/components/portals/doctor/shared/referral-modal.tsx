@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserPlus, Send, CheckCircle2, Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { referralService } from "@/services/referrals";
 import { appointmentService, Doctor } from "@/services/appointments";
 
@@ -37,7 +37,6 @@ export default function ReferralModal({
   patientId,
   patientName,
 }: ReferralModalProps) {
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -83,8 +82,7 @@ export default function ReferralModal({
       });
 
       setIsSuccess(true);
-      toast({
-        title: "Referral Sent",
+      toast.success("Referral Sent", {
         description: `Patient ${patientName} has been referred to ${selectedDoctorObj?.name || "specialist"}.`,
       });
 
@@ -109,10 +107,8 @@ export default function ReferralModal({
           if (fieldErrors) errMsg = fieldErrors;
         }
       }
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: errMsg,
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

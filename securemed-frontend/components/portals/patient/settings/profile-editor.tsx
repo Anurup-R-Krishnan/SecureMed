@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Loader2, Save, User } from "lucide-react";
 import { apiClient } from "@/lib/unified-api-client";
 import { getAccessToken } from "@/lib/auth-utils";
@@ -34,7 +34,6 @@ interface PatientProfile {
 }
 
 export default function ProfileEditor() {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<PatientProfile | null>(null);
@@ -49,15 +48,13 @@ export default function ProfileEditor() {
       });
       setProfile(response.data);
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load profile data.",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchProfile();
@@ -76,15 +73,12 @@ export default function ProfileEditor() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: "Profile updated successfully.",
       });
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update profile.",
-        variant: "destructive",
       });
     } finally {
       setSaving(false);

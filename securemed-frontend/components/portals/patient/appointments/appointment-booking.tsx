@@ -24,7 +24,7 @@ import {
   CreditCard,
   Coffee,
 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
 
 type BookingStep = "doctor" | "date" | "time" | "confirm" | "success";
@@ -43,7 +43,6 @@ export default function AppointmentBooking({
   initialDoctorName,
 }: EnhancedAppointmentBookingProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const { user } = useAuth();
 
   const effectivePatientName = user?.username || user?.email || patientName;
@@ -115,10 +114,8 @@ export default function AppointmentBooking({
           setDoctorReady(true);
         }
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Could not load doctors.",
-          variant: "destructive",
         });
         // Allow progression even if doctors failed to load
         if (initialDoctorId) setDoctorReady(true);
@@ -127,7 +124,7 @@ export default function AppointmentBooking({
       }
     };
     fetchDoctors();
-  }, [toast, initialDoctorId]);
+  }, [initialDoctorId]);
 
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
@@ -144,10 +141,8 @@ export default function AppointmentBooking({
           if (!cancelled) setAvailableSlots(slots);
         } catch (error) {
           if (!cancelled) {
-            toast({
-              title: "Error",
+            toast.error("Error", {
               description: "Could not load availability.",
-              variant: "destructive",
             });
           }
         } finally {
@@ -159,7 +154,7 @@ export default function AppointmentBooking({
         cancelled = true;
       };
     }
-  }, [selectedDoctor, selectedDate, toast]);
+  }, [selectedDoctor, selectedDate]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -216,8 +211,7 @@ export default function AppointmentBooking({
       if (result.success) {
         setBookingResult(result);
         setCurrentStep("success");
-        toast({
-          title: "Appointment Booked!",
+        toast.success("Appointment Booked!", {
           description: `Confirmation #${result.confirmationNumber}`,
         });
       } else {
@@ -243,10 +237,8 @@ export default function AppointmentBooking({
         }
       }
 
-      toast({
-        title: "Booking Failed",
+      toast.error("Booking Failed", {
         description: errorMessage,
-        variant: "destructive",
       });
     } finally {
       setIsBooking(false);

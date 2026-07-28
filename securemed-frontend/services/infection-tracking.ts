@@ -159,36 +159,36 @@ export const infectionTrackingService = {
         const response = await apiClient.get(`/infection-tracking/graph/visualization/?limit=${limit}`, {
             signal: options?.signal,
         });
-        return normalizeGraphVisualization(response.data);
+        return normalizeGraphVisualization(response);
     },
 
     async getGraphStats(options?: RequestOptions): Promise<GraphStats> {
         const response = await apiClient.get('/infection-tracking/graph/stats/', {
             signal: options?.signal,
         });
-        return response.data;
+        return response;
     },
 
     async getTraces(options?: RequestOptions): Promise<InfectionTrace[]> {
-        const response = await apiClient.get('/infection-tracking/traces/', {
+        const response = await apiClient.get<any>('/infection-tracking/traces/', {
             signal: options?.signal,
         });
-        return response.data.results || response.data;
+        return response.results || response;
     },
 
     async getActiveTraces(): Promise<InfectionTrace[]> {
         const response = await apiClient.get('/infection-tracking/traces/active_clusters/');
-        return response.data;
+        return response;
     },
 
     async getHighRiskRooms(days = 7): Promise<HighRiskRoom[]> {
         const response = await apiClient.get(`/infection-tracking/traces/high_risk_rooms/?days=${days}`);
-        return response.data;
+        return response;
     },
 
     async getReports(): Promise<InfectionReport[]> {
-        const response = await apiClient.get('/infection-tracking/reports/');
-        return response.data.results || response.data;
+        const response = await apiClient.get<any>('/infection-tracking/reports/');
+        return response.results || response;
     },
 };
 

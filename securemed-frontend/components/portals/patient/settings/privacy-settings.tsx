@@ -118,9 +118,9 @@ export default function PrivacySettings() {
   useEffect(() => {
     const fetchAccessLogs = async () => {
       try {
-        const response = await apiClient.get("/medical-records/my-access-log/");
-        if (Array.isArray(response.data)) {
-          setAccessLogs(response.data);
+        const response = await apiClient.get<any>("/medical-records/my-access-log/");
+        if (Array.isArray(response)) {
+          setAccessLogs(response);
         }
       } catch (error) {}
     };
@@ -482,14 +482,14 @@ export default function PrivacySettings() {
               className="gap-2"
               onClick={async () => {
                 try {
-                  const response = await apiClient.get(
+                  const response = await apiClient.get<Blob>(
                     "/auth/download-policy-receipt/",
                     {
                       responseType: "blob",
                     },
                   );
 
-                  const blob = new Blob([response.data], {
+                  const blob = new Blob([response as any], {
                     type: "application/pdf",
                   });
                   const url = window.URL.createObjectURL(blob);
@@ -559,7 +559,7 @@ export default function PrivacySettings() {
 
                   try {
                     // Single API call: Fetch certificate (auto-marks account for deletion)
-                    const certificateResponse = await apiClient.get(
+                    const certificateResponse = await apiClient.get<Blob>(
                       "/auth/deletion-certificate/",
                       {
                         responseType: "blob",
@@ -568,7 +568,7 @@ export default function PrivacySettings() {
 
                     // Trigger browser download
                     const certificateBlob = new Blob(
-                      [certificateResponse.data],
+                      [certificateResponse as any],
                       { type: "application/pdf" },
                     );
                     const blobUrl = window.URL.createObjectURL(certificateBlob);

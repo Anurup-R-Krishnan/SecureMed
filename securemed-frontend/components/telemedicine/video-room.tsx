@@ -19,7 +19,7 @@ import {
 import { getAccessToken } from "@/lib/auth-utils";
 import { API_BASE_URL } from "@/lib/urls";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { videoService } from "@/services/telemedicine";
 
 interface VideoRoomProps {
@@ -29,7 +29,6 @@ interface VideoRoomProps {
 }
 
 export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
-  const { toast } = useToast();
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -175,15 +174,12 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
     const link = typeof window !== "undefined" ? window.location.href : roomId;
     try {
       await navigator.clipboard.writeText(link);
-      toast({
-        title: "Link copied",
+      toast.success("Link copied", {
         description: "Session link copied to clipboard.",
       });
     } catch {
-      toast({
-        title: "Copy failed",
+      toast.error("Copy failed", {
         description: "Could not copy the link. Please copy it manually.",
-        variant: "destructive",
       });
     }
   };
@@ -194,16 +190,13 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
     try {
       await videoService.admitPatient(roomId);
       setRoomStatus("active");
-      toast({
-        title: "Patient admitted",
+      toast.success("Patient admitted", {
         description: "The call has started.",
       });
     } catch (error: any) {
-      toast({
-        title: "Unable to admit patient",
+      toast.error("Unable to admit patient", {
         description:
           error?.response?.data?.error || "Patient may not have joined yet.",
-        variant: "destructive",
       });
     } finally {
       setAdmitting(false);
@@ -471,8 +464,7 @@ export function VideoRoom({ roomId, userRole, onEndCall }: VideoRoomProps) {
               size="sm"
               className="bg-white/10 hover:bg-white/20 text-white"
               onClick={() =>
-                toast({
-                  title: "Notes saved",
+                toast.success("Notes saved", {
                   description: "Notes saved for this session.",
                 })
               }

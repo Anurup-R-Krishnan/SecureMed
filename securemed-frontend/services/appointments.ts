@@ -1,5 +1,4 @@
 import { apiClient } from '@/lib/unified-api-client';
-import { getAccessToken } from '@/lib/auth-utils';
 
 export interface Doctor {
     id: number;
@@ -61,8 +60,8 @@ export const appointmentService = {
             const response = await apiClient.get<any>(`/appointments/doctors/?${params.toString()}`);
 
             // Handle paginated (results) or plain array response
-            const results = Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            const results = Array.isArray(response) ? response :
+                ((response as any)?.results ? (response as any).results : []);
 
             return results.map((doc: any) => ({
                 id: doc.id,
@@ -87,7 +86,7 @@ export const appointmentService = {
     getDoctorAvailability: async (doctorId: number | string, date: string): Promise<TimeSlot[]> => {
         try {
             const response = await apiClient.get(`/appointments/doctors/${doctorId}/availability/?date=${date}`);
-            const slots = response.data?.slots || response.data || [];
+            const slots = (response as any)?.slots || response || [];
 
             return slots.map((slot: any) => {
                 const time = slot.time || '09:00';
@@ -124,22 +123,19 @@ export const appointmentService = {
         appointment_time: string;
         reason: string;
     }) => {
-        const response = await apiClient.post('/appointments/appointments/', data);
+        const response = await apiClient.post<any>('/appointments/appointments/', data);
         return {
             success: true,
-            confirmationNumber: response.data.appointment_id,
-            ...response.data
+            confirmationNumber: response.appointment_id,
+            ...response
         };
     },
 
     getAppointments: async (): Promise<Appointment[]> => {
         try {
-            const token = getAccessToken();
-            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-
-            const response = await apiClient.get('/appointments/appointments/', config);
-            const results = Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            const response = await apiClient.get<any>('/appointments/appointments/');
+            const results = Array.isArray(response) ? response :
+                ((response as any)?.results ? (response as any).results : []);
 
             return results.map((appt: any) => ({
                 id: appt.id,
@@ -166,7 +162,7 @@ export const appointmentService = {
     updateAppointmentStatus: async (appointmentId: number, status: string): Promise<any> => {
         try {
             const response = await apiClient.patch(`/appointments/appointments/${appointmentId}/`, { status });
-            return response.data;
+            return response;
         } catch (error) {
             throw error;
         }
@@ -174,31 +170,28 @@ export const appointmentService = {
 
     acceptAppointment: async (appointmentId: number): Promise<Appointment> => {
         const response = await apiClient.post(`/appointments/appointments/${appointmentId}/accept/`);
-        return response.data;
+        return response;
     },
 
     startConsultation: async (appointmentId: number): Promise<Appointment> => {
         const response = await apiClient.post(`/appointments/appointments/${appointmentId}/start_consultation/`);
-        return response.data;
+        return response;
     },
 
     completeConsultation: async (appointmentId: number, notes?: string): Promise<Appointment> => {
         const response = await apiClient.post(`/appointments/appointments/${appointmentId}/complete_consultation/`, { notes });
-        return response.data;
+        return response;
     },
 
     cancelAppointment: async (appointmentId: number, reason?: string): Promise<Appointment> => {
         const response = await apiClient.post(`/appointments/appointments/${appointmentId}/cancel/`, { reason });
-        return response.data;
+        return response;
     },
 
     getDoctorSchedule: async (date: string): Promise<DoctorAvailabilitySlot[]> => {
         try {
-            const token = getAccessToken();
-            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-
-            const response = await apiClient.get(`/appointments/doctor/availability/?date=${date}`, config);
-            const slots = response.data?.slots || [];
+            const response = await apiClient.get<any>(`/appointments/doctor/availability/?date=${date}`);
+            const slots = response?.slots || [];
             return slots.map((slot: any) => ({
                 id: slot.id,
                 startTime: slot.startTime,
@@ -211,70 +204,43 @@ export const appointmentService = {
     },
 
     saveDoctorSchedule: async (date: string, slots: DoctorAvailabilitySlot[]) => {
-        const token = getAccessToken();
-        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-
-        const response = await apiClient.post('/appointments/doctor/availability/', {
+        return await apiClient.post('/appointments/doctor/availability/', {
             date,
             slots
-        }, config);
-        return response.data;
+        });
     }
 };
 
 export const medicalRecordService = {
     getMedicalRecords: async (): Promise<any[]> => {
         try {
-            const token = getAccessToken();
-            if (!token) return [];
-
-            const response = await apiClient.get('/medical-records/records/', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            return Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            const response = await apiClient.get<any>('/medical-records/records/');
+            return Array.isArray(response) ? response :
+                ((response as any)?.results ? (response as any).results : []);
         } catch (error) {
             return [];
         }
     },
 
     uploadRecord: async (formData: FormData): Promise<any> => {
-        const token = getAccessToken();
-        if (!token) throw new Error("No auth token");
-
-        const response = await apiClient.post('/medical-records/records/patient-upload/', formData, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'multipart/form-data'
-            }
+        return await apiClient.post('/medical-records/records/patient-upload/', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
         });
-        return response.data;
     },
 
     getPrescriptions: async (): Promise<any[]> => {
         try {
-            const token = getAccessToken();
-            if (!token) return [];
-
-            const response = await apiClient.get('/medical-records/prescriptions/', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            return Array.isArray(response.data) ? response.data :
-                (response.data.results ? response.data.results : []);
+            const response = await apiClient.get<any>('/medical-records/prescriptions/');
+            return Array.isArray(response) ? response :
+                ((response as any)?.results ? (response as any).results : []);
         } catch (error) {
             return [];
         }
     },
 
     logMedicationTaken: async (prescriptionId: number): Promise<any> => {
-        const token = getAccessToken();
-        if (!token) throw new Error("No auth token");
-
-        const response = await apiClient.post('/medical-records/medication-adherence/', {
+        return await apiClient.post('/medical-records/medication-adherence/', {
             prescription: prescriptionId
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
         });
-        return response.data;
     }
 };

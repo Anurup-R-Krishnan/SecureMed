@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface StaffManagerProps {
   staff: StaffMember[];
@@ -34,7 +34,6 @@ export default function StaffManager({
   onCreateUser,
   onRefresh,
 }: StaffManagerProps) {
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     username: "",
@@ -106,15 +105,12 @@ export default function StaffManager({
       await adminService.updateUserRole(userId, editRole);
       await onRefresh();
       setEditOpen(false);
-      toast({
-        title: "Role updated",
+      toast.success("Role updated", {
         description: `${editMember.name} is now ${editRole}.`,
       });
     } catch (e: any) {
-      toast({
-        title: "Update failed",
+      toast.error("Update failed", {
         description: e?.response?.data?.error || "Could not update role.",
-        variant: "destructive",
       });
     } finally {
       setActionLoading(null);
@@ -127,23 +123,19 @@ export default function StaffManager({
       setActionLoading(userId);
       if (member.is_active === false || member.status === "Inactive") {
         await adminService.activateUser(userId);
-        toast({
-          title: "User activated",
+        toast.success("User activated", {
           description: `${member.name} is now active.`,
         });
       } else {
         await adminService.deactivateUser(userId);
-        toast({
-          title: "User deactivated",
+        toast.success("User deactivated", {
           description: `${member.name} has been deactivated.`,
         });
       }
       await onRefresh();
     } catch (e: any) {
-      toast({
-        title: "Action failed",
+      toast.error("Action failed", {
         description: e?.response?.data?.error || "Could not update status.",
-        variant: "destructive",
       });
     } finally {
       setActionLoading(null);
@@ -157,15 +149,12 @@ export default function StaffManager({
       const response = await adminService.resetUserPassword(userId);
       setResetPassword(response?.temporary_password || null);
       setResetDialogOpen(true);
-      toast({
-        title: "Password reset",
+      toast.success("Password reset", {
         description: `Temporary password generated for ${member.name}.`,
       });
     } catch (e: any) {
-      toast({
-        title: "Reset failed",
+      toast.error("Reset failed", {
         description: e?.response?.data?.error || "Could not reset password.",
-        variant: "destructive",
       });
     } finally {
       setActionLoading(null);

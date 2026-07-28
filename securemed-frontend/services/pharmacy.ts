@@ -1,5 +1,4 @@
 import { apiClient } from '@/lib/unified-api-client';
-import { getAccessToken } from '@/lib/auth-utils';
 
 export interface PharmacyOrder {
   id: number;
@@ -24,34 +23,17 @@ export interface PharmacyOrder {
 
 export const pharmacyService = {
   getOrders: async (): Promise<PharmacyOrder[]> => {
-    const token = getAccessToken();
-    if (!token) return [];
-    const response = await apiClient.get('/medical-records/pharmacy-orders/', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return Array.isArray(response.data) ? response.data :
-      (response.data.results ? response.data.results : []);
+    const response = await apiClient.get<any>('/medical-records/pharmacy-orders/');
+    return Array.isArray(response) ? response : (response as any)?.results || [];
   },
 
   verifyOrder: async (orderId: number, notes: string) => {
-    const token = getAccessToken();
-    if (!token) throw new Error('No auth token');
-    const response = await apiClient.post(`/medical-records/pharmacy-orders/${orderId}/verify/`, {
-      notes
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return response.data;
+    return await apiClient.post(`/medical-records/pharmacy-orders/${orderId}/verify/`, { notes });
   },
 
   fulfillOrder: async (orderId: number, pickupCode?: string) => {
-    const token = getAccessToken();
-    if (!token) throw new Error('No auth token');
-    const response = await apiClient.post(`/medical-records/pharmacy-orders/${orderId}/fulfill/`, {
+    return await apiClient.post(`/medical-records/pharmacy-orders/${orderId}/fulfill/`, {
       pickup_code: pickupCode || ''
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
     });
-    return response.data;
   }
 };

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Mail, Lock, User, Code, AlertCircle } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
 import ReCAPTCHA from "react-google-recaptcha";
 import { API_BASE_URL } from "@/lib/urls";
@@ -36,7 +36,6 @@ export default function RegisterPage({
     process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
     "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
 
-  const { toast } = useToast();
   const { login } = useAuth();
 
   // React Hook Form
@@ -109,11 +108,7 @@ export default function RegisterPage({
 
   const onSubmit = async (data: RegisterFormData) => {
     if (!captchaToken) {
-      toast({
-        title: "CAPTCHA Required",
-        description: "Please verify that you are not a robot.",
-        variant: "destructive",
-      });
+      toast.error("CAPTCHA Required", { description: "Please verify that you are not a robot." });
       return;
     }
 
@@ -140,11 +135,7 @@ export default function RegisterPage({
             ? responseData.error
             : Object.values(responseData).flat().join(", ");
 
-        toast({
-          title: "Registration Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        toast.error("Registration Failed", { description: errorMessage });
 
         // Reset reCAPTCHA on error
         recaptchaRef.current?.reset();
@@ -153,17 +144,13 @@ export default function RegisterPage({
       }
 
       // Registration successful
-      toast({
-        title: "Registration Successful!",
-        description: "Logging you in...",
-      });
+      toast.success("Registration Successful!", { description: "Logging you in..." });
 
       // Auto-login after registration
       const loginResult = await login(data.email, data.password);
 
       if (loginResult.status === "SUCCESS") {
-        toast({
-          title: "Welcome!",
+        toast.success("Welcome!", {
           description: "You have been logged in successfully.",
         });
 
@@ -171,8 +158,7 @@ export default function RegisterPage({
           router.push("/login");
         }, 1000);
       } else if (loginResult.error) {
-        toast({
-          title: "Please login",
+        toast("Please login", {
           description:
             "Registration successful. Please login with your credentials.",
         });
@@ -181,10 +167,8 @@ export default function RegisterPage({
         }, 1500);
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Network error. Please try again.",
-        variant: "destructive",
       });
 
       recaptchaRef.current?.reset();

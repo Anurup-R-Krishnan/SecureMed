@@ -19,10 +19,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 export default function WardMapPage() {
-  const { toast } = useToast();
   const [filter, setFilter] = useState<
     "all" | "occupied" | "empty" | "critical" | "warning" | "stable"
   >("all");
@@ -44,10 +43,8 @@ export default function WardMapPage() {
 
   const handleDownloadReport = () => {
     if (rooms.length === 0) {
-      toast({
-        title: "No data available",
+      toast.error("No data available", {
         description: "Ward occupancy data is still loading.",
-        variant: "destructive",
       });
       return;
     }

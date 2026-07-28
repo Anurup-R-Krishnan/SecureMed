@@ -15,10 +15,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { appointmentService, Appointment } from "@/services/appointments";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 export default function MyAppointments() {
-  const { toast } = useToast();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("appointmentId");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -69,44 +68,34 @@ export default function MyAppointments() {
         "Cancelled by patient",
       );
 
-      toast({
-        title: "Appointment Cancelled",
+      toast("Appointment Cancelled", {
         description: `Your appointment with ${apt.doctor_name} has been cancelled.`,
-        action: (
-          <div
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive"
-            onClick={async () => {
-              try {
-                await appointmentService.updateAppointmentStatus(
-                  apt.id,
-                  "scheduled",
-                );
-                setAppointments(previousAppointments); // Revert optimistic
-                toast({
-                  title: "Undo Successful",
-                  description: "Appointment restored.",
-                });
-              } catch (err) {
-                toast({
-                  title: "Undo Failed",
-                  description: "Could not restore appointment.",
-                  variant: "destructive",
-                });
-              }
-            }}
-          >
-            Undo
-          </div>
-        ),
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await appointmentService.updateAppointmentStatus(
+                apt.id,
+                "scheduled",
+              );
+              setAppointments(previousAppointments); // Revert optimistic
+              toast.success("Undo Successful", {
+                description: "Appointment restored.",
+              });
+            } catch (err) {
+              toast.error("Undo Failed", {
+                description: "Could not restore appointment.",
+              });
+            }
+          },
+        },
       });
       fetchAppointments(); // Refresh to ensure sync
     } catch (error: any) {
       setAppointments(previousAppointments); // Revert on error
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           error?.response?.data?.error || "Failed to cancel appointment.",
-        variant: "destructive",
       });
     } finally {
       setCancellingId(null);

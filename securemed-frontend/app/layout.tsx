@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 
 import { AuthProvider } from "@/context/auth-context";
 import { QueryClientProvider } from "@/components/QueryClientProvider";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BackToTop } from "@/components/ui/back-to-top";
 import { OfflineBanner } from "@/components/ui/offline-banner";

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner";
 import { TermsOfServiceModal } from '@/components/auth/terms-of-service-modal';
 import { API_BASE_URL, API_ORIGIN } from '@/lib/urls';
 import { parseJSON } from '@/lib/auth-utils';
@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [tokens, setTokens] = useState<Tokens | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingPolicyToken, setPendingPolicyToken] = useState<string | null>(null);
-    const { toast } = useToast();
     const router = useRouter();
 
     const parseResponseJson = async (response: Response) => {
@@ -369,8 +368,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('auth_user');
         localStorage.setItem('post_logout_redirect', '/');
 
-        toast({
-            title: 'Logged out',
+        toast.success('Logged out', {
             description: 'You have been successfully logged out.',
         });
     };

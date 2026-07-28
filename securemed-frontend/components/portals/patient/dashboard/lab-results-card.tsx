@@ -6,7 +6,7 @@ import { Microscope, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/unified-api-client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { API_ORIGIN } from "@/lib/urls";
 import {
   Dialog,
@@ -38,7 +38,6 @@ export default function LabResultsCard({
 }: LabResultsCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState<LabResult | null>(null);
-  const { toast } = useToast();
   const getFlagIcon = (flag: string) => {
     const normalizedFlag = flag.toLowerCase();
     if (normalizedFlag.includes("high"))
@@ -64,20 +63,16 @@ export default function LabResultsCard({
       const res = await apiClient.get(`/labs/results/${id}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
-        toast({
-          title: "No attachment found",
+        toast.error("No attachment found", {
           description: "This lab result does not include a report file.",
-          variant: "destructive",
         });
         return;
       }
       const viewUrl = url.startsWith("http") ? url : `${API_ORIGIN}${url}`;
       window.open(viewUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
-      toast({
-        title: "Unable to open report",
+      toast.error("Unable to open report", {
         description: "Failed to open the lab attachment.",
-        variant: "destructive",
       });
     }
   };

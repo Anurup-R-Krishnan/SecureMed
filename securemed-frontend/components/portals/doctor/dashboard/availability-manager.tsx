@@ -15,7 +15,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import {
   appointmentService,
   DoctorAvailabilitySlot,
@@ -30,7 +30,6 @@ interface TimeSlotConfig {
 }
 
 export default function AvailabilityManager() {
-  const { toast } = useToast();
   const { isAuthenticated } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date(),
@@ -66,10 +65,8 @@ export default function AvailabilityManager() {
           setSlots([]);
         }
       } catch (error) {
-        toast({
-          title: "Load Failed",
+        toast.error("Load Failed", {
           description: "Unable to load availability for this date.",
-          variant: "destructive",
         });
       } finally {
         setIsLoading(false);
@@ -77,21 +74,18 @@ export default function AvailabilityManager() {
     };
 
     loadSchedule();
-  }, [selectedDate, isAuthenticated, toast]);
+  }, [selectedDate, isAuthenticated]);
 
   const handleSave = async () => {
     if (!selectedDate) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please select a date first",
-        variant: "destructive",
       });
       return;
     }
 
     if (slots.length === 0) {
-      toast({
-        title: "Warning",
+      toast("Warning", {
         description: "You are saving an empty schedule (day off).",
       });
     }
@@ -107,15 +101,12 @@ export default function AvailabilityManager() {
 
       await appointmentService.saveDoctorSchedule(dateStr, doctorSlots);
 
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: `Schedule saved for ${dateStr}`,
       });
     } catch (error) {
-      toast({
-        title: "Save Failed",
+      toast.error("Save Failed", {
         description: "Could not save your availability changes.",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

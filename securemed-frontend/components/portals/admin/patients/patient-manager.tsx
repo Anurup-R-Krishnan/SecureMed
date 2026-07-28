@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { Patient, getColumns } from "./columns";
 import { adminService } from "@/services/admin";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import {
@@ -30,7 +30,6 @@ export default function PatientManager({
   onRefresh,
   initialPatientId,
 }: PatientManagerProps) {
-  const { toast } = useToast();
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -65,15 +64,12 @@ export default function PatientManager({
         const response = await adminService.resetUserPassword(patient.user_id);
         setResetPassword(response?.temporary_password || null);
         setResetDialogOpen(true);
-        toast({
-          title: "Password reset",
+        toast.success("Password reset", {
           description: "Temporary password generated.",
         });
       } catch (e: any) {
-        toast({
-          title: "Reset failed",
+        toast.error("Reset failed", {
           description: e?.response?.data?.error || "Could not reset password.",
-          variant: "destructive",
         });
       } finally {
       }
@@ -83,24 +79,20 @@ export default function PatientManager({
       try {
         if (patient.user_is_active === false) {
           await adminService.activateUser(patient.user_id);
-          toast({
-            title: "User activated",
+          toast.success("User activated", {
             description: "Patient account reactivated.",
           });
         } else {
           await adminService.deactivateUser(patient.user_id);
-          toast({
-            title: "User deactivated",
+          toast.success("User deactivated", {
             description: "Patient account deactivated.",
           });
         }
         await onRefresh();
       } catch (e: any) {
-        toast({
-          title: "Action failed",
+        toast.error("Action failed", {
           description:
             e?.response?.data?.error || "Could not update user status.",
-          variant: "destructive",
         });
       } finally {
       }
@@ -132,10 +124,8 @@ export default function PatientManager({
 
   const handleExport = () => {
     if (!filteredPatients.length) {
-      toast({
-        title: "No data",
+      toast.error("No data", {
         description: "No patients available to export.",
-        variant: "destructive",
       });
       return;
     }

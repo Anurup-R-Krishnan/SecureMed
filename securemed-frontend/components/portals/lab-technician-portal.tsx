@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/unified-api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { API_ORIGIN } from "@/lib/urls";
 import {
   Dialog,
@@ -129,41 +129,36 @@ function CompletedTestsView() {
   const [selectedResult, setSelectedResult] = useState<any | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await apiClient.get("/labs/results/");
-        const payload = Array.isArray(response.data)
-          ? response.data
-          : response.data?.results || [];
+        const response = await apiClient.get<any>("/labs/results/");
+        const payload = Array.isArray(response)
+          ? response
+          : (response as any)?.results || [];
         setData(payload);
       } catch (error) {
-        toast({
-          title: "Load failed",
+        toast.error("Load failed", {
           description: "Could not load lab history.",
-          variant: "destructive",
         });
       } finally {
         setLoading(false);
       }
     };
     fetchHistory();
-  }, [toast]);
+  }, []);
 
   const refreshHistory = async () => {
     try {
-      const response = await apiClient.get("/labs/results/");
-      const payload = Array.isArray(response.data)
-        ? response.data
-        : response.data?.results || [];
+      const response = await apiClient.get<any>("/labs/results/");
+      const payload = Array.isArray(response)
+        ? response
+        : (response as any)?.results || [];
       setData(payload);
     } catch (error) {
-      toast({
-        title: "Refresh failed",
+      toast.error("Refresh failed", {
         description: "Could not refresh lab history.",
-        variant: "destructive",
       });
     }
   };
@@ -180,18 +175,15 @@ function CompletedTestsView() {
       const payload = new FormData();
       payload.append("file_attachment", file);
       await apiClient.patch(`/labs/results/${selectedResult.id}/`, payload);
-      toast({
-        title: "Attachment uploaded",
+      toast.success("Attachment uploaded", {
         description: "Lab result attachment updated.",
       });
       setSelectedResult(null);
       setFile(null);
       await refreshHistory();
     } catch (error) {
-      toast({
-        title: "Upload failed",
+      toast.error("Upload failed", {
         description: "Could not upload attachment.",
-        variant: "destructive",
       });
     } finally {
       setUploading(false);
@@ -200,33 +192,29 @@ function CompletedTestsView() {
 
   const handleView = async (row: any) => {
     try {
-      const res = await apiClient.get(`/labs/results/${row.id}/presigned/`);
-      const url = res.data?.url as string | undefined;
+      const res = await apiClient.get<{ url?: string }>(`/labs/results/${row.id}/presigned/`);
+      const url = res?.url;
       if (!url) {
-        toast({
-          title: "No view link",
+        toast.error("No view link", {
           description: "Attachment not available.",
-          variant: "destructive",
         });
         return;
       }
       const viewUrl = url.startsWith("http") ? url : `${API_ORIGIN}${url}`;
       window.open(viewUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
-      toast({
-        title: "View failed",
+      toast.error("View failed", {
         description: "Could not open attachment.",
-        variant: "destructive",
       });
     }
   };
 
   const handleDownload = async (row: any) => {
     try {
-      const res = await apiClient.get(`/labs/results/${row.id}/download/`, {
+      const res = await apiClient.get<Blob>(`/labs/results/${row.id}/download/`, {
         responseType: "blob",
       });
-      const blob = new Blob([res.data]);
+      const blob = new Blob([res as any]);
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.href = url;
@@ -236,10 +224,8 @@ function CompletedTestsView() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
-      toast({
-        title: "Download failed",
+      toast.error("Download failed", {
         description: "Could not download attachment.",
-        variant: "destructive",
       });
     }
   };
@@ -403,21 +389,18 @@ function CompletedTestsView() {
 
 function ReportsView() {
   const router = useRouter();
-  const { toast } = useToast();
   const [downloading, setDownloading] = useState(false);
 
   const handleDownloadMonthlyReport = async () => {
     try {
       setDownloading(true);
-      const response = await apiClient.get("/labs/results/");
-      const rows = Array.isArray(response.data)
-        ? response.data
-        : response.data?.results || [];
+      const response = await apiClient.get<any>("/labs/results/");
+      const rows = Array.isArray(response)
+        ? response
+        : (response as any)?.results || [];
       if (!rows.length) {
-        toast({
-          title: "No data",
+        toast.error("No data", {
           description: "No lab results available for report.",
-          variant: "destructive",
         });
         return;
       }
@@ -451,15 +434,12 @@ function ReportsView() {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast({
-        title: "Report downloaded",
+      toast.success("Report downloaded", {
         description: "Monthly report exported as CSV.",
       });
     } catch (error) {
-      toast({
-        title: "Download failed",
+      toast.error("Download failed", {
         description: "Could not generate report.",
-        variant: "destructive",
       });
     } finally {
       setDownloading(false);

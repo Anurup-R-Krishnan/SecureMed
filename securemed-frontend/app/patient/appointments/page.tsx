@@ -11,11 +11,10 @@ import WaitingRoom from "@/components/telemedicine/waiting-room";
 import VideoRoom from "@/components/telemedicine/video-room";
 import { appointmentService } from "@/services/appointments";
 import { videoService } from "@/services/telemedicine";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 function AppointmentsContent() {
   const { isAuthenticated } = useAuth();
-  const { toast } = useToast();
   const searchParams = useSearchParams();
   const initialDoctorId = searchParams.get("doctorId") || undefined;
   const initialDoctorName = searchParams.get("doctorName") || undefined;
@@ -86,18 +85,16 @@ function AppointmentsContent() {
     }
 
     if (!roomId) {
-      toast({
-        title: "Waiting room not ready",
+      toast.error("Waiting room not ready", {
         description:
           "Your doctor has not started the room yet. Please try again shortly.",
-        variant: "destructive",
       });
       return;
     }
 
     setShowTelemed(true);
     setTelemedStatus("waiting");
-  }, [activeRoomId, nextAppointment, toast]);
+  }, [activeRoomId, nextAppointment]);
 
   useEffect(() => {
     if (autoJoin && nextAppointment) {

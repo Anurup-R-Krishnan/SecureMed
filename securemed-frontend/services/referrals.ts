@@ -71,7 +71,7 @@ export const referralService = {
      */
     getReferrals: async (): Promise<Referral[]> => {
         const response = await apiClient.get('/appointments/referrals/');
-        return Array.isArray(response.data) ? response.data : response.data.results || [];
+        return Array.isArray(response) ? response : (response as any)?.results || [];
     },
 
     /**
@@ -79,7 +79,7 @@ export const referralService = {
      */
     getPatientReferrals: async (): Promise<PatientReferral[]> => {
         const response = await apiClient.get('/appointments/my-referrals/');
-        return Array.isArray(response.data) ? response.data : [];
+        return Array.isArray(response) ? response : [];
     },
 
     /**
@@ -87,7 +87,7 @@ export const referralService = {
      */
     createReferral: async (data: CreateReferralData): Promise<Referral> => {
         const response = await apiClient.post('/appointments/referrals/', data);
-        return response.data;
+        return response;
     },
 
     /**
@@ -95,7 +95,7 @@ export const referralService = {
      */
     getMyPatients: async (): Promise<ReferredPatient[]> => {
         const response = await apiClient.get('/appointments/referrals/my_patients/');
-        return response.data;
+        return response;
     },
 
     /**
@@ -103,7 +103,7 @@ export const referralService = {
      */
     acceptReferral: async (referralId: number): Promise<Referral> => {
         const response = await apiClient.post(`/appointments/referrals/${referralId}/accept/`);
-        return response.data;
+        return response;
     },
 
     /**
@@ -111,7 +111,7 @@ export const referralService = {
      */
     declineReferral: async (referralId: number): Promise<Referral> => {
         const response = await apiClient.post(`/appointments/referrals/${referralId}/decline/`);
-        return response.data;
+        return response;
     },
 
     /**
@@ -119,7 +119,7 @@ export const referralService = {
      */
     completeReferral: async (referralId: number): Promise<Referral> => {
         const response = await apiClient.post(`/appointments/referrals/${referralId}/complete/`);
-        return response.data;
+        return response;
     },
 
     /**
@@ -127,7 +127,7 @@ export const referralService = {
      */
     extendAccess: async (referralId: number, days: number = 30): Promise<Referral> => {
         const response = await apiClient.post(`/appointments/referrals/${referralId}/extend_access/`, { days });
-        return response.data;
+        return response;
     },
 };
 

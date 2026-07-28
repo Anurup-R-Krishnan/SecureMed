@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/unified-api-client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface TriageRequest {
   triage_id: number;
@@ -29,7 +29,6 @@ interface TriageRequest {
 }
 
 export default function TriageInboxPage() {
-  const { toast } = useToast();
   const [requests, setRequests] = useState<TriageRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState<number | null>(null);
@@ -40,14 +39,11 @@ export default function TriageInboxPage() {
       const res = await apiClient.get("/telemedicine/triage/inbox/");
       setRequests(Array.isArray(res.data) ? res.data : []);
     } catch {
-      toast({
-        title: "Failed to load triage requests",
-        variant: "destructive",
-      });
+      toast.error("Failed to load triage requests");
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchInbox();
@@ -64,18 +60,14 @@ export default function TriageInboxPage() {
         action,
       });
       setRequests((prev) => prev.filter((r) => r.triage_id !== triageId));
-      toast({
-        title: action === "APPROVED" ? "Request Approved" : "Request Declined",
+      toast.success(action === "APPROVED" ? "Request Approved" : "Request Declined", {
         description:
           action === "APPROVED"
             ? "The patient will be notified and can book an appointment."
             : "The triage request has been declined.",
       });
     } catch {
-      toast({
-        title: "Action failed. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Action failed. Please try again.");
     } finally {
       setActioning(null);
     }

@@ -74,25 +74,23 @@ export const drugInteractionService = {
     async searchMedications(query: string, patientId?: number): Promise<string[]> {
         const params: Record<string, string | number> = { q: query };
         if (patientId) params.patient_id = patientId;
-        const response = await apiClient.get('/medical-records/drug-interactions/search/', { params });
-        return response.data?.results || [];
+        const response = await apiClient.get<any>('/medical-records/drug-interactions/search/', { params });
+        return response.results || [];
     },
 
     async checkInteractions(medications: string[], patientId?: number): Promise<InteractionCheckResult> {
-        const response = await apiClient.post('/medical-records/drug-interactions/check/', {
+        return await apiClient.post('/medical-records/drug-interactions/check/', {
             medications,
             limit_findings: 30,
             ...(patientId ? { patient_id: patientId } : {}),
         });
-        return response.data;
     },
 
     async getLatestReport(patientId?: number): Promise<InteractionReport | null> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
         try {
-            const response = await apiClient.get('/medical-records/drug-interactions/reports/latest/', { params });
-            return response.data || null;
+            return await apiClient.get('/medical-records/drug-interactions/reports/latest/', { params }) || null;
         } catch (error: any) {
             if (error?.response?.status === 404) {
                 return null;
@@ -104,32 +102,30 @@ export const drugInteractionService = {
     async getReportHistory(patientId?: number): Promise<InteractionReport[]> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await apiClient.get('/medical-records/drug-interactions/reports/', { params });
-        return Array.isArray(response.data) ? response.data : [];
+        const response = await apiClient.get<any>('/medical-records/drug-interactions/reports/', { params });
+        return Array.isArray(response) ? response : [];
     },
 
     async regenerateReport(patientId?: number): Promise<ReportGenerationJob> {
         const payload: Record<string, number> = {};
         if (patientId) payload.patient_id = patientId;
-        const response = await apiClient.post('/medical-records/drug-interactions/reports/generate/', payload);
-        return response.data;
+        return await apiClient.post('/medical-records/drug-interactions/reports/generate/', payload);
     },
 
     async getReportJobStatus(taskId: string): Promise<ReportJobStatus> {
-        const response = await apiClient.get('/medical-records/drug-interactions/reports/status/', {
+        return await apiClient.get('/medical-records/drug-interactions/reports/status/', {
             params: { task_id: taskId },
         });
-        return response.data;
     },
 
     async downloadReportPDF(patientId?: number): Promise<Blob> {
         const params: Record<string, string | number> = {};
         if (patientId) params.patient_id = patientId;
-        const response = await apiClient.get('/medical-records/drug-interactions/reports/latest/pdf/', {
+        const response = await apiClient.get<Blob>('/medical-records/drug-interactions/reports/latest/pdf/', {
             params,
             responseType: 'blob',
         });
-        return response.data;
+        return response as any;
     },
 
     async downloadReportPDFWithGeneration(

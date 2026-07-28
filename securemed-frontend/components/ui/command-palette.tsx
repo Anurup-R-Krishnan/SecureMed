@@ -80,12 +80,12 @@ export function CommandPalette() {
           setResults(docs);
           setPatientResults([]);
         } else if (user?.role === "doctor") {
-          const response = await apiClient.get("/medical-records/records/", {
+          const response = await apiClient.get<any>("/medical-records/records/", {
             params: { search: query },
           });
-          const rows = Array.isArray(response.data)
-            ? response.data
-            : response.data.results || [];
+          const rows = Array.isArray(response)
+            ? response
+            : (response as any)?.results || [];
           const unique = new Map<number, PatientResult>();
           rows.forEach((row: any) => {
             if (row.patient && !unique.has(row.patient)) {
