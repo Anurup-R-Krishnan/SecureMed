@@ -4,7 +4,7 @@ import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 interface CopyButtonProps extends React.ComponentProps<typeof Button> {
   value: string;

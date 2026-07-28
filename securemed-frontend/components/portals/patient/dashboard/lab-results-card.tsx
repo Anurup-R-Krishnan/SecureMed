@@ -6,7 +6,7 @@ import { Microscope, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/unified-api-client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { API_ORIGIN } from "@/lib/urls";
 import {
   Dialog,

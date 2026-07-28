@@ -11,7 +11,7 @@ import WaitingRoom from "@/components/telemedicine/waiting-room";
 import VideoRoom from "@/components/telemedicine/video-room";
 import { appointmentService } from "@/services/appointments";
 import { videoService } from "@/services/telemedicine";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 function AppointmentsContent() {
   const { isAuthenticated } = useAuth();

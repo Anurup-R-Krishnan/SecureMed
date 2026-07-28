@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { TermsOfServiceModal } from '@/components/auth/terms-of-service-modal';
 import { API_BASE_URL, API_ORIGIN } from '@/lib/urls';
 import { parseJSON } from '@/lib/auth-utils';

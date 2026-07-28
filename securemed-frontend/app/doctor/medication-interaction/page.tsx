@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Printer, Info } from "lucide-react";
 import Link from "next/link";
-import { patientService } from "@/services/patients";
+import { patientService } from "@/services/patients-new";
 
 export default function MedicationInteractionPage() {
   const [patients, setPatients] = React.useState<any[]>([]);

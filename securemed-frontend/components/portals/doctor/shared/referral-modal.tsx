@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserPlus, Send, CheckCircle2, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { referralService } from "@/services/referrals";
 import { appointmentService, Doctor } from "@/services/appointments";
 

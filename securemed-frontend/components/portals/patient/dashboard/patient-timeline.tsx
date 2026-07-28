@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { patientService, TimelineEvent } from "@/services/patients";
+import { patientService, TimelineEvent } from "@/services/patients-new";
 import { apiClient } from "@/lib/unified-api-client";
 import { API_ORIGIN } from "@/lib/urls";
 import {
@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 interface EnhancedPatientTimelineProps {
   patientId?: string;

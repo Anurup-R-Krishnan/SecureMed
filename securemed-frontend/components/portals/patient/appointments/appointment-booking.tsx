@@ -24,7 +24,7 @@ import {
   CreditCard,
   Coffee,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/auth-context";
 
 type BookingStep = "doctor" | "date" | "time" | "confirm" | "success";

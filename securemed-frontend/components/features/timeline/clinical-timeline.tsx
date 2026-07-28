@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Play, Pause, FastForward, Rewind, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { TimelineEvent } from "@/services/patients";
+import { TimelineEvent } from "@/services/patients-new";
 
 interface TimeTravelScrubberProps {
   onTimeChange?: (timestamp: number) => void;

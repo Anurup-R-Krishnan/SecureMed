@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload, FileText, Loader2, X } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 // We'll need to extend the service to support uploads, assumed to be in medicalRecordService
 import { medicalRecordService } from "@/services/appointments";
 

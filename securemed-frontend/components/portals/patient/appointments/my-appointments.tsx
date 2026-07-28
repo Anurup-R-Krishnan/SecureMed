@@ -15,7 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { appointmentService, Appointment } from "@/services/appointments";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function MyAppointments() {
   const { toast } = useToast();

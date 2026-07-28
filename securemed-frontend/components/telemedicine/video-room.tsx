@@ -19,7 +19,7 @@ import {
 import { getAccessToken } from "@/lib/auth-utils";
 import { API_BASE_URL } from "@/lib/urls";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { videoService } from "@/services/telemedicine";
 
 interface VideoRoomProps {

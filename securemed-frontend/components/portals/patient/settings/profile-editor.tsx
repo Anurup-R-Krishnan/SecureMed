@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Save, User } from "lucide-react";
 import { apiClient } from "@/lib/unified-api-client";
 import { getAccessToken } from "@/lib/auth-utils";
