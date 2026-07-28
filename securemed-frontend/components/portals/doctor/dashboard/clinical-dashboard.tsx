@@ -44,8 +44,7 @@ export default function ClinicalDashboard({
 
     const fetchPatientData = async () => {
       try {
-        // @ts-ignore - Importing from service
-        const { patientService } = await import("@/services/patients");
+        const { patientService } = await import("@/services/patients-new");
 
         const [overviewData, timelineData] = await Promise.all([
           patientService.getPatientOverview(selectedPatientId),

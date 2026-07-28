@@ -192,7 +192,7 @@ function TraceDetail({ trace }: { trace: InfectionTrace }) {
       <div className="space-y-3">
         <PatientCard
           title="Source case"
-          name={trace.source_report?.patient_name || trace.source_patient_name}
+          name={trace.source_report?.patient_name ?? trace.source_patient_name}
           diagnosedAt={trace.source_report?.diagnosed_at}
           severity={
             trace.source_report?.severity_display ||
