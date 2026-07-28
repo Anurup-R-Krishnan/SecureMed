@@ -1,5 +1,7 @@
 from django.test import TestCase
+
 from apps.scheduling.availability.models import Department
+
 
 class DepartmentTestCase(TestCase):
     def test_department_creation(self):

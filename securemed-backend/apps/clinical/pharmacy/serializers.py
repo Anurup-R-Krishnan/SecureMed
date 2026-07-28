@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Drug, DrugStock, DrugBatch, StockTransaction
+
+from .models import Drug, DrugBatch, DrugStock, StockTransaction
 
 
 class DrugSerializer(serializers.ModelSerializer):

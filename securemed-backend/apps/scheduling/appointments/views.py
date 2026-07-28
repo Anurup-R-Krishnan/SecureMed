@@ -1,14 +1,17 @@
-from django.shortcuts import render
-from rest_framework import viewsets, permissions, status, serializers
-from rest_framework.response import Response
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import PermissionDenied
+import uuid
+
 from django.db.models import Q
 from django.utils import timezone
-from .models import Doctor, Appointment, Referral
-from .serializers import DoctorSerializer, AppointmentSerializer, ReferralSerializer
+from rest_framework import permissions, serializers, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+
 from apps.accounts.users.permissions import IsDoctor
-import uuid
+
+from .models import Appointment, Doctor, Referral
+from .serializers import AppointmentSerializer, DoctorSerializer, ReferralSerializer
+
 
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Doctor.objects.all()
@@ -86,7 +89,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Appointment.objects.none()
 
     def perform_create(self, serializer):
-        from datetime import datetime, timedelta
+        from datetime import timedelta
         
         appointment_id = f"APT-{uuid.uuid4().hex[:8].upper()}"
         

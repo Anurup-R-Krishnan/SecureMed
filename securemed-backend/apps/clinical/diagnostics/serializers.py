@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import LabTest, LabOrder, LabResult, LabResultNotification
+
+from .models import LabOrder, LabResult, LabResultNotification, LabTest
+
 
 class LabTestSerializer(serializers.ModelSerializer):
     class Meta:

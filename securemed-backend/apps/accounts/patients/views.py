@@ -1,10 +1,11 @@
-from rest_framework import viewsets, permissions, status, filters, pagination
-from rest_framework.decorators import api_view, permission_classes, action
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, viewsets
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
-from django.shortcuts import get_object_or_404
-from django.db.models import Q
+
 from .models import Patient
 from .serializers import PatientSerializer
 

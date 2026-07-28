@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Patient, EmergencyContact
+
+from .models import EmergencyContact, Patient
+
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:

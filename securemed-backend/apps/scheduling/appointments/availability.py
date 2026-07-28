@@ -1,14 +1,16 @@
 """
 Doctor availability and time slot management for appointments.
 """
+from datetime import datetime, timedelta
+
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.utils import timezone
-from datetime import datetime, timedelta, time as time_value
 
 from apps.scheduling.availability.models import Doctor
+
 from .models import Appointment, DoctorAvailabilitySlot
 
 

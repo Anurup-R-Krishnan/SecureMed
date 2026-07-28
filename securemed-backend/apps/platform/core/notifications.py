@@ -2,9 +2,10 @@
 Notification service for sending emails and SMS.
 Supports appointment reminders, lab results, and other notifications.
 """
-from django.core.mail import send_mail
-from django.conf import settings
 import logging
+
+from django.conf import settings
+from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ SecureMed Team
             return True
             
         except Exception as e:
-            logger.error(f"Failed to send appointment confirmation: {str(e)}")
+            logger.error(f"Failed to send appointment confirmation: {e!s}")
             return False
     
     @staticmethod
@@ -105,7 +106,7 @@ SecureMed Team
             return True
             
         except Exception as e:
-            logger.error(f"Failed to send appointment reminder: {str(e)}")
+            logger.error(f"Failed to send appointment reminder: {e!s}")
             return False
     
     @staticmethod
@@ -151,7 +152,7 @@ SecureMed Team
             return True
             
         except Exception as e:
-            logger.error(f"Failed to send lab result notification: {str(e)}")
+            logger.error(f"Failed to send lab result notification: {e!s}")
             return False
 
     @staticmethod
@@ -215,7 +216,7 @@ Please review this result and contact the patient immediately.
             logger.info(f"Critical alerts sent for LabResult #{lab_result.id}")
             return True
         except Exception as e:
-            logger.error(f"Failed to send critical alerts: {str(e)}")
+            logger.error(f"Failed to send critical alerts: {e!s}")
             return False
     
     @staticmethod
@@ -257,7 +258,7 @@ Please review this result and contact the patient immediately.
             logger.warning(f"Security alert sent to admins: {subject}")
             return True
         except Exception as e:
-            logger.error(f"Failed to send security alert: {str(e)}")
+            logger.error(f"Failed to send security alert: {e!s}")
             return False
 
     @staticmethod

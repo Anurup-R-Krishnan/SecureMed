@@ -15,10 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
 from django.http import JsonResponse
+from django.urls import include, path
+
 from apps.accounts.users import views as auth_views
-from apps.platform.core.health_views import HealthCheckView, ReadinessCheckView, LivenessCheckView
+from apps.platform.core.health_views import (
+    HealthCheckView,
+    LivenessCheckView,
+    ReadinessCheckView,
+)
+
 
 def api_root(request):
     return JsonResponse({

@@ -1,8 +1,11 @@
+import uuid
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+
 from .models import Invoice, InvoiceItem
-import uuid
+
 
 @receiver(post_save, sender='labs.LabOrder')
 def create_lab_invoice(sender, instance, created, **kwargs):

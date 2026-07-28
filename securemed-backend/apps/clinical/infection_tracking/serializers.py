@@ -1,7 +1,12 @@
 from rest_framework import serializers
+
 from .models import (
-    Room, Equipment, EquipmentUsageLog,
-    InfectionReport, InfectionTrace, RoomRiskScore,
+    Equipment,
+    EquipmentUsageLog,
+    InfectionReport,
+    InfectionTrace,
+    Room,
+    RoomRiskScore,
 )
 
 

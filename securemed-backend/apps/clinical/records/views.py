@@ -1,23 +1,25 @@
-from django.shortcuts import render
 import logging
-from django.utils import timezone
-from rest_framework import viewsets, permissions, status, serializers
-from rest_framework.exceptions import ValidationError, PermissionDenied
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
+
 from django.db.models import Q
-from django_ratelimit.decorators import ratelimit
+from django.utils import timezone
 from django.utils.decorators import method_decorator
-from .models import MedicalRecord, MedicalRecordAccess
-from .serializers import MedicalRecordSerializer
-from apps.accounts.users.permissions import IsPatient
+from django_ratelimit.decorators import ratelimit
+from rest_framework import permissions, serializers, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.response import Response
+
 from apps.accounts.patients.models import Patient
+from apps.accounts.users.permissions import IsPatient
 from apps.clinical.pharmacy.models import Drug
+
 from .interaction_service import (
     enqueue_report_generation,
     evaluate_medication_safety,
     get_active_medications_for_patient,
 )
+from .models import MedicalRecord, MedicalRecordAccess
+from .serializers import MedicalRecordSerializer
 
 logger = logging.getLogger('security')
 
@@ -236,6 +238,7 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
              
         # Clone and create new record
         import uuid
+
         from django.utils import timezone
         
         new_record = MedicalRecord.objects.create(
@@ -359,10 +362,10 @@ class MedicalRecordViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        from .models import EmergencyAccessLog
-
         # ── Duplicate check: skip if active access already exists ──────
         from datetime import timedelta
+
+        from .models import EmergencyAccessLog
         recent_cutoff = timezone.now() - timedelta(hours=24)
         existing = EmergencyAccessLog.objects.filter(
             patient=patient,
@@ -464,9 +467,11 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         return Response(response_payload, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        from .models import MedicalRecord
-        from django.utils import timezone
         import uuid
+
+        from django.utils import timezone
+
+        from .models import MedicalRecord
         
         patient_id = serializer.validated_data.pop('patient_id', None)
         if not patient_id:
@@ -539,9 +544,9 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
              
         try:
             prescription.sign(request.user)
-            from .models import MedicationHistoryEvent, PharmacyOrder
-            from django.utils import timezone
             import secrets
+
+            from .models import MedicationHistoryEvent, PharmacyOrder
 
             MedicationHistoryEvent.objects.create(
                 prescription=prescription,
@@ -589,8 +594,15 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
 
 
 class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
-    from .models import MedicationInteractionKnowledge, MedicationInteractionReport, MedicationInteractionReportJob
-    from .serializers import MedicationInteractionKnowledgeSerializer, MedicationInteractionReportSerializer
+    from .models import (
+        MedicationInteractionKnowledge,
+        MedicationInteractionReport,
+        MedicationInteractionReportJob,
+    )
+    from .serializers import (
+        MedicationInteractionKnowledgeSerializer,
+        MedicationInteractionReportSerializer,
+    )
     queryset = MedicationInteractionKnowledge.objects.all()
     serializer_class = MedicationInteractionKnowledgeSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -761,9 +773,10 @@ class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
         patient = self._resolve_patient(request)
         if not patient:
             raise ValidationError({"patient_id": "patient_id is required for doctor/admin."})
-        from django.utils import timezone
         from datetime import timedelta
+
         from django.conf import settings
+        from django.utils import timezone
         recent_cutoff = timezone.now() - timedelta(minutes=10)
         existing_job = (
             self.MedicationInteractionReportJob.objects
@@ -831,6 +844,7 @@ class DrugInteractionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='reports/latest/pdf')
     def download_latest_report_pdf(self, request):
         from django.http import HttpResponse
+
         from .pdf_reports import generate_interaction_report_pdf
 
         patient = self._resolve_patient(request)
@@ -1064,11 +1078,12 @@ def patient_dashboard_stats(request):
         return Response({"error": "Unauthorized role."}, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        from .models import VitalSign, Prescription, MedicalRecord
-        from .serializers import VitalSignSerializer
-        from apps.clinical.diagnostics.models import LabResult, LabOrder
-        from apps.finance.billing.models import Invoice
         from apps.accounts.patients.models import WellnessTip
+        from apps.clinical.diagnostics.models import LabOrder
+        from apps.finance.billing.models import Invoice
+
+        from .models import MedicalRecord, Prescription, VitalSign
+        from .serializers import VitalSignSerializer
         
         # 1. Vitals History (Last 7 entries for Sparklines)
         vitals_history_qs = VitalSign.objects.filter(patient=patient).order_by('-recorded_at')[:7]
@@ -1287,9 +1302,11 @@ def patient_access_log(request):
 # ---------------------------------------------------------------------------
 # Emergency Case public API (no auth required for create / status lookup)
 # ---------------------------------------------------------------------------
-from .models import EmergencyCase
 import uuid as _uuid
+
 from rest_framework.views import APIView
+
+from .models import EmergencyCase
 
 
 @method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True), name='post')

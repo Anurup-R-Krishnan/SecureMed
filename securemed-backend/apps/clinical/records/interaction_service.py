@@ -1,20 +1,20 @@
-from uuid import uuid4
+from collections.abc import Iterable, Sequence
 from itertools import combinations
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from uuid import uuid4
 
 from django.core.cache import cache
+
+from apps.clinical.pharmacy.models import Drug
 
 from .models import (
     MedicationInteractionKnowledge,
     MedicationInteractionReport,
-    MedicationInteractionReportJob,
     MedicationInteractionReportItem,
+    MedicationInteractionReportJob,
     MedicationReference,
     MedicationSideEffect,
     Prescription,
 )
-from apps.clinical.pharmacy.models import Drug
-
 
 SEVERITY_ORDER = {
     "critical": 0,
@@ -36,13 +36,13 @@ def canonical_signature(medications: Sequence[str]) -> str:
     return "|".join(normalized)
 
 
-def resolve_medications_for_knowledge(medications: Sequence[str]) -> List[str]:
+def resolve_medications_for_knowledge(medications: Sequence[str]) -> list[str]:
     normalized_inputs = [normalize_medication_name(m) for m in medications if m]
     if not normalized_inputs:
         return []
 
     refs = MedicationReference.objects.filter(normalized_name__in=normalized_inputs).order_by("id")
-    by_name: Dict[str, str] = {}
+    by_name: dict[str, str] = {}
     for ref in refs:
         # First seen mapping wins for deterministic behavior.
         by_name.setdefault(ref.normalized_name, normalize_medication_name(ref.identifier))
@@ -60,7 +60,7 @@ def resolve_medications_for_knowledge(medications: Sequence[str]) -> List[str]:
                 normalized_name = normalize_medication_name(drug.name)
                 by_name.setdefault(normalized_name, normalize_medication_name(drug.drug_code))
 
-    resolved: List[str] = []
+    resolved: list[str] = []
     for med in normalized_inputs:
         if med.startswith("db") and med[2:].isdigit():
             resolved.append(med)
@@ -72,7 +72,7 @@ def resolve_medications_for_knowledge(medications: Sequence[str]) -> List[str]:
 def _build_medication_display_resolver(
     normalized_meds: Sequence[str],
     original_inputs: Sequence[str],
-) -> Dict[str, str]:
+) -> dict[str, str]:
     original_map = {
         normalize_medication_name(med): med
         for med in original_inputs
@@ -85,7 +85,7 @@ def _build_medication_display_resolver(
     return {**original_map, **display_map}
 
 
-def _get_active_medications_for_patient(patient_id: int) -> List[str]:
+def _get_active_medications_for_patient(patient_id: int) -> list[str]:
     rows = Prescription.objects.filter(
         medical_record__patient_id=patient_id,
         status__in=["signed", "dispensed"],
@@ -95,12 +95,12 @@ def _get_active_medications_for_patient(patient_id: int) -> List[str]:
     return sorted(set(meds))
 
 
-def get_active_medications_for_patient(patient_id: int) -> List[str]:
+def get_active_medications_for_patient(patient_id: int) -> list[str]:
     return _get_active_medications_for_patient(patient_id)
 
 
-def _single_drug_findings(medications: Iterable[str]) -> List[Dict]:
-    findings: List[Dict] = []
+def _single_drug_findings(medications: Iterable[str]) -> list[dict]:
+    findings: list[dict] = []
     for med in medications:
         for effect in MedicationSideEffect.objects.filter(medication_name__iexact=med):
             findings.append(
@@ -118,8 +118,8 @@ def _single_drug_findings(medications: Iterable[str]) -> List[Dict]:
     return findings
 
 
-def _knowledge_findings_for_combos(combo_groups: Iterable[Tuple[str, ...]]) -> List[Dict]:
-    findings: List[Dict] = []
+def _knowledge_findings_for_combos(combo_groups: Iterable[tuple[str, ...]]) -> list[dict]:
+    findings: list[dict] = []
     for meds in combo_groups:
         signature = canonical_signature(meds)
         if not signature:
@@ -141,7 +141,7 @@ def _knowledge_findings_for_combos(combo_groups: Iterable[Tuple[str, ...]]) -> L
     return findings
 
 
-def _compute_medication_safety(medications: Sequence[str]) -> Dict:
+def _compute_medication_safety(medications: Sequence[str]) -> dict:
     normalized = resolve_medications_for_knowledge(medications)
     if not normalized:
         return {
@@ -222,7 +222,7 @@ def bump_safety_cache_namespace() -> str:
     return version
 
 
-def evaluate_medication_safety(medications: Sequence[str]) -> Dict:
+def evaluate_medication_safety(medications: Sequence[str]) -> dict:
     original_inputs = list(medications)
     normalized = resolve_medications_for_knowledge(medications)
     signature = canonical_signature(normalized)
@@ -264,7 +264,7 @@ def generate_and_store_report(
     patient,
     generated_by=None,
     trigger_event: str = "manual",
-    candidate_medications: Optional[Sequence[str]] = None,
+    candidate_medications: Sequence[str] | None = None,
 ) -> MedicationInteractionReport:
     current_meds = _get_active_medications_for_patient(patient.id)
     if candidate_medications:
@@ -325,7 +325,7 @@ def enqueue_report_generation(
     patient,
     generated_by=None,
     trigger_event: str = "manual_refresh",
-    candidate_medications: Optional[Sequence[str]] = None,
+    candidate_medications: Sequence[str] | None = None,
 ) -> MedicationInteractionReportJob:
     from django.conf import settings
 

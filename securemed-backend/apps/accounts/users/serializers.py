@@ -1,17 +1,18 @@
-import re
-import requests
 import hashlib
-from rest_framework import serializers
-from django.contrib.auth import get_user_model
+import re
+
+import requests
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
+from rest_framework import serializers
 
 User = get_user_model()
 
 
 def _hash_reset_token(token: str) -> str:
-    return hashlib.sha256(f"{token}{settings.SECRET_KEY}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{token}{settings.SECRET_KEY}".encode()).hexdigest()
 
 
 def encode_reset_token(token: str) -> str:
@@ -135,9 +136,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "CAPTCHA verification timed out. Please try again."
             )
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             raise serializers.ValidationError(
-                f"CAPTCHA verification error: Unable to connect to verification service."
+                "CAPTCHA verification error: Unable to connect to verification service."
             )
     
     def validate(self, data):

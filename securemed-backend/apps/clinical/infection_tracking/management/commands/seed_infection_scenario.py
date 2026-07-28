@@ -8,21 +8,25 @@ and graph service — no mocks or shortcuts.
 Usage:
     docker compose run --rm backend python manage.py seed_infection_scenario
 """
-from datetime import date, time, timedelta, datetime
-from django.core.management.base import BaseCommand
+from datetime import date, datetime, time, timedelta
+
 from django.core.management import call_command
+from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.users.models import User
 from apps.accounts.patients.models import Patient
-from apps.scheduling.availability.models import Doctor, Department
-from apps.scheduling.appointments.models import Appointment
-from apps.clinical.infection_tracking.models import (
-    Room, Equipment, EquipmentUsageLog, InfectionReport, InfectionTrace,
-)
+from apps.accounts.users.models import User
 from apps.clinical.infection_tracking.graph_service import HospitalGraphService
-
+from apps.clinical.infection_tracking.models import (
+    Equipment,
+    EquipmentUsageLog,
+    InfectionReport,
+    InfectionTrace,
+    Room,
+)
+from apps.scheduling.appointments.models import Appointment
+from apps.scheduling.availability.models import Department, Doctor
 
 # Real patient demographics — varied enough for a realistic graph
 PATIENTS = [

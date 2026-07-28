@@ -1,10 +1,11 @@
 """
 Database query optimization utilities
 """
-from functools import wraps
-from django.db import connection
-from django.conf import settings
 import logging
+from functools import wraps
+
+from django.conf import settings
+from django.db import connection
 
 logger = logging.getLogger('performance')
 

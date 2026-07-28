@@ -1,12 +1,13 @@
-from django.utils import timezone
-from datetime import timedelta
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-import io
 import hashlib
+import io
+from datetime import timedelta
+
+from django.utils import timezone
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 
 def generate_deletion_certificate(user):
@@ -176,7 +177,7 @@ def generate_policy_receipt(user, version):
     )
     
     # Generate Consent ID
-    consent_data = f"{user.id}:{user.policy_accepted_at}:{version}".encode('utf-8')
+    consent_data = f"{user.id}:{user.policy_accepted_at}:{version}".encode()
     consent_id = hashlib.sha256(consent_data).hexdigest()[:16].upper()
     
     story.append(Spacer(1, 0.5 * inch))

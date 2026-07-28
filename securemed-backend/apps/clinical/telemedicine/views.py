@@ -1,10 +1,10 @@
 """
 Telemedicine API views for video room management.
 """
-import time
 import json
 import re
 import socket as _socket
+import time
 
 # httpx (used by google-genai) tries IPv6 first; Docker containers typically
 # have no IPv6 route, causing immediate ENETUNREACH before any IPv4 fallback.
@@ -26,14 +26,14 @@ def _ipv4_prefer_gemini_hosts_getaddrinfo(host, port, family=0, type=0, proto=0,
 
 _socket.getaddrinfo = _ipv4_prefer_gemini_hosts_getaddrinfo
 
+from django.conf import settings
+from django.core.cache import cache
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from django.conf import settings
-from django.core.cache import cache
 
 try:
     from google import genai as google_genai
@@ -158,8 +158,8 @@ def ai_triage_chat(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-from .models import VideoRoom, RoomParticipant
-from .serializers import VideoRoomSerializer, RoomParticipantSerializer
+from .models import RoomParticipant, VideoRoom
+from .serializers import VideoRoomSerializer
 
 
 class VideoRoomViewSet(viewsets.ModelViewSet):
@@ -406,14 +406,13 @@ class VideoRoomViewSet(viewsets.ModelViewSet):
 # Import models for Q object
 from django.db import models
 
-
 from .models import Conversation, Message
 from .serializers import (
-    ConversationSerializer,
-    MessageSerializer,
     AnatomyRegionExplainerSerializer,
     ConditionCatalogListSerializer,
     ConditionVisualizationSerializer,
+    ConversationSerializer,
+    MessageSerializer,
 )
 
 
@@ -485,7 +484,8 @@ class MessageViewSet(viewsets.ModelViewSet):
 # ============================================
 
 from django.contrib.auth import get_user_model
-from .models import TriageRequest, AnatomyRegionExplainer, ConditionCatalog
+
+from .models import AnatomyRegionExplainer, ConditionCatalog, TriageRequest
 
 _User = get_user_model()
 

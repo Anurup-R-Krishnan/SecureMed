@@ -2,7 +2,11 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .interaction_service import bump_safety_cache_namespace
-from .models import MedicationInteractionKnowledge, MedicationReference, MedicationSideEffect
+from .models import (
+    MedicationInteractionKnowledge,
+    MedicationReference,
+    MedicationSideEffect,
+)
 
 
 @receiver([post_save, post_delete], sender=MedicationInteractionKnowledge)

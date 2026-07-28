@@ -17,8 +17,9 @@ Graph schema:
 """
 import logging
 from contextlib import contextmanager
+from datetime import date as py_date
 from datetime import datetime, timedelta
-from datetime import date as py_date, time as py_time
+from datetime import time as py_time
 
 from django.conf import settings
 from neo4j import GraphDatabase
@@ -586,10 +587,12 @@ class HospitalGraphService:
         Wipe and rebuild the entire graph from PostgreSQL data.
         Called by the nightly Celery beat task.
         """
-        from apps.accounts.patients.models import Patient
-        from apps.scheduling.availability.models import Doctor
+        from apps.clinical.infection_tracking.models import (
+            Equipment,
+            EquipmentUsageLog,
+            Room,
+        )
         from apps.scheduling.appointments.models import Appointment
-        from apps.clinical.infection_tracking.models import Room, Equipment, EquipmentUsageLog
 
         self.clear_graph()
         self.ensure_indexes()

@@ -1,5 +1,7 @@
 from django.core.management.base import BaseCommand
-from apps.platform.analytics.models import Disease, Symptom, DiseaseSymptom
+
+from apps.platform.analytics.models import Disease, DiseaseSymptom, Symptom
+
 
 class Command(BaseCommand):
     help = 'Seeds the knowledge base for the AI Expert System'

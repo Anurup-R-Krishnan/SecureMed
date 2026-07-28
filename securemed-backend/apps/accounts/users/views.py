@@ -1,12 +1,14 @@
-from datetime import timedelta
 import logging
-from django.utils import timezone
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password, check_password
-from django.core.mail import send_mail
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+
 try:
     from django_ratelimit.decorators import ratelimit
 except ImportError:
@@ -14,36 +16,41 @@ except ImportError:
         def decorator(fn):
             return fn
         return decorator
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import TokenError
-import pyotp
-import jwt
 import secrets
 import string
+
+import jwt
+import pyotp
 from django.conf import settings
+from rest_framework import status
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from apps.platform.analytics.audit import get_client_ip, log_audit
 
 from .serializers import (
-    _hash_reset_token,
-    UserRegistrationSerializer,
-    UserLoginSerializer,
-    MFASetupSerializer,
-    MFAVerifySerializer,
-    MFALoginSerializer,
-    MFADeactivateSerializer,
-    RegenerateRecoveryCodesSerializer,
-    UserSerializer,
-    UserListSerializer,
-    UserRoleUpdateSerializer,
-    PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer,
     AdminUserCreateSerializer,
-    UserUpdateSerializer
+    MFADeactivateSerializer,
+    MFALoginSerializer,
+    MFAVerifySerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
+    RegenerateRecoveryCodesSerializer,
+    UserListSerializer,
+    UserLoginSerializer,
+    UserRegistrationSerializer,
+    UserRoleUpdateSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+    _hash_reset_token,
 )
-from apps.platform.analytics.audit import log_audit, get_client_ip
 
 User = get_user_model()
 logger = logging.getLogger('security')
@@ -327,8 +334,9 @@ def register_view(request):
         
         # Auto-create Patient profile for patient role users
         if user.role == 'patient':
-            from apps.accounts.patients.models import Patient
             import uuid
+
+            from apps.accounts.patients.models import Patient
             
             # Generate unique patient ID
             patient_id = f"PT-{uuid.uuid4().hex[:8].upper()}"
@@ -908,6 +916,7 @@ def admin_dashboard_test(request):
 
 from rest_framework.views import APIView
 
+
 class LogoutView(APIView):
     """
     Logout endpoint - blacklists the refresh token to invalidate it.
@@ -1069,6 +1078,7 @@ class PasswordResetConfirmView(APIView):
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_test_view(request):
@@ -1104,6 +1114,7 @@ def admin_test_view(request):
 # ============================================
 
 from .models import Invitation
+
 
 class SendInviteView(APIView):
     """
@@ -1285,9 +1296,9 @@ def verify_invite_view(request):
 # User Management Views (Admin Only) - Story 1.2
 # ============================================================================
 
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from django.shortcuts import get_object_or_404
 
 
 class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1565,6 +1576,7 @@ class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
 
 from rest_framework.views import APIView
 
+
 class RequestAccountDeletionView(APIView):
     """
     Request account deletion endpoint (Story 2.3: Right to be Forgotten).
@@ -1630,6 +1642,7 @@ class DownloadDeletionCertificateView(APIView):
             PDF file download
         """
         from django.http import FileResponse
+
         from .utils import generate_deletion_certificate
         
         user = request.user
@@ -1726,8 +1739,9 @@ class DownloadPolicyReceiptView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        from .utils import generate_policy_receipt
         from django.http import FileResponse
+
+        from .utils import generate_policy_receipt
         
         user = request.user
         

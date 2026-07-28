@@ -1,11 +1,17 @@
-from rest_framework import viewsets, permissions, status, serializers
-from rest_framework.exceptions import PermissionDenied
+from django.utils import timezone
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
-from django.utils import timezone
-from .models import LabTest, LabOrder, LabResult, LabResultNotification
-from .serializers import LabTestSerializer, LabOrderSerializer, LabResultSerializer, LabResultNotificationSerializer
+
+from .models import LabOrder, LabResult, LabResultNotification, LabTest
+from .serializers import (
+    LabOrderSerializer,
+    LabResultNotificationSerializer,
+    LabResultSerializer,
+    LabTestSerializer,
+)
 
 
 class LabCatalogThrottle(AnonRateThrottle):
@@ -53,8 +59,9 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         if not items:
             raise serializers.ValidationError({"items": "At least one test is required"})
         
-        from apps.accounts.patients.models import Patient
         import uuid
+
+        from apps.accounts.patients.models import Patient
         
         try:
             # Accept both numeric PK and human-readable patient_id (e.g. P-0001)
@@ -118,7 +125,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("No permission to access this patient.")
             return patient.user
         if hasattr(request.user, 'doctor_profile') or request.user.role == 'doctor':
-            from apps.clinical.records.models import MedicalRecord, EmergencyAccessLog
+            from apps.clinical.records.models import EmergencyAccessLog, MedicalRecord
             has_access = MedicalRecord.objects.filter(
                 patient=patient,
                 doctor=request.user.doctor_profile
@@ -153,9 +160,10 @@ class LabResultViewSet(viewsets.ModelViewSet):
         raise PermissionDenied("Only lab technicians or staff can modify lab results.")
 
     def perform_create(self, serializer):
-        from django.core.files.base import ContentFile
-        from django.utils import timezone
         import uuid
+
+        from django.core.files.base import ContentFile
+
         from .crypto import encrypt_bytes
 
         self._ensure_lab_staff(self.request)
@@ -172,8 +180,10 @@ class LabResultViewSet(viewsets.ModelViewSet):
             serializer.save()
 
     def perform_update(self, serializer):
-        from django.core.files.base import ContentFile
         import uuid
+
+        from django.core.files.base import ContentFile
+
         from .crypto import encrypt_bytes
 
         self._ensure_lab_staff(self.request)
@@ -207,8 +217,10 @@ class LabResultViewSet(viewsets.ModelViewSet):
         else:
             return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
-        from django.http import FileResponse
         from io import BytesIO
+
+        from django.http import FileResponse
+
         from .crypto import decrypt_bytes
         encrypted_payload = result.file_attachment.read()
         decrypted = decrypt_bytes(encrypted_payload)
@@ -256,8 +268,8 @@ class LabResultViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def presigned(self, request, pk=None):
         """Generate a temporary signed URL for secure viewing."""
-        from django.urls import reverse
         from django.core.signing import TimestampSigner
+        from django.urls import reverse
         signer = TimestampSigner()
         token = signer.sign(f"{pk}:{request.user.id}")
         path = reverse('lab-results-secure-view', kwargs={'pk': pk})
@@ -269,9 +281,11 @@ class LabResultViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='secure-view', url_name='secure-view')
     def secure_view(self, request, pk=None):
         """Serve decrypted file if token is valid and user has access."""
-        from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
-        from django.http import FileResponse
         from io import BytesIO
+
+        from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+        from django.http import FileResponse
+
         from .crypto import decrypt_bytes
 
         token = request.query_params.get('token')
@@ -359,8 +373,8 @@ class LabWorklistViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['post'])
     def enter_result(self, request, pk=None):
         """Enter result for a specific order/test (blinded)"""
+
         from .serializers import LabResultInputSerializer
-        from apps.platform.analytics.audit import log_audit, get_client_ip
         
         if not request.user.is_staff and request.user.role != 'lab_technician':
             return Response({"error": "Unauthorized. Only lab technicians can enter results."}, status=status.HTTP_403_FORBIDDEN)
@@ -408,8 +422,10 @@ class LabWorklistViewSet(viewsets.ViewSet):
         # Optional attachment handling
         attachment_payload = {}
         if file_obj:
-            from django.core.files.base import ContentFile
             import uuid
+
+            from django.core.files.base import ContentFile
+
             from .crypto import encrypt_bytes
             try:
                 LabResultSerializer().validate_file_attachment(file_obj)

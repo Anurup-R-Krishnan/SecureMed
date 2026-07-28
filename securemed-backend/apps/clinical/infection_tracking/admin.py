@@ -1,7 +1,12 @@
 from django.contrib import admin
+
 from .models import (
-    Room, Equipment, EquipmentUsageLog,
-    InfectionReport, InfectionTrace, RoomRiskScore,
+    Equipment,
+    EquipmentUsageLog,
+    InfectionReport,
+    InfectionTrace,
+    Room,
+    RoomRiskScore,
 )
 
 

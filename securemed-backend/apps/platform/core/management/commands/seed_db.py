@@ -12,8 +12,8 @@ from datetime import date, time, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
 from django.core.management import call_command
+from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 User = get_user_model()
@@ -207,14 +207,25 @@ class Command(BaseCommand):
     def _flush(self):
         self.stdout.write(self.style.WARNING("Flushing existing seed data …"))
         # Import models here to avoid circular imports during startup
-        from apps.scheduling.appointments.models import Appointment, Referral
-        from apps.finance.billing.models import Invoice, InvoiceItem, Payment
-        from apps.clinical.diagnostics.models import LabOrder, LabResult, LabTest as LabsCatalog
-        from apps.clinical.records.models import (
-            EmergencyAccessLog, LabTest as MRLabTest, MedicalRecord,
-            MedicalRecordAccess, Prescription, VitalSign,
-        )
         from apps.accounts.patients.models import Patient, WellnessTip
+        from apps.clinical.diagnostics.models import LabOrder, LabResult
+        from apps.clinical.diagnostics.models import LabTest as LabsCatalog
+        from apps.clinical.pharmacy.models import (
+            Drug,
+            DrugBatch,
+            DrugStock,
+            StockTransaction,
+        )
+        from apps.clinical.records.models import (
+            EmergencyAccessLog,
+            MedicalRecord,
+            MedicalRecordAccess,
+            Prescription,
+            VitalSign,
+        )
+        from apps.clinical.records.models import (
+            LabTest as MRLabTest,
+        )
         from apps.clinical.telemedicine.models import (
             AnatomyRegionExplainer,
             ConditionCatalog,
@@ -224,8 +235,9 @@ class Command(BaseCommand):
             TriageRequest,
             VideoRoom,
         )
-        from apps.clinical.pharmacy.models import Drug, DrugStock, DrugBatch, StockTransaction
-        from apps.scheduling.availability.models import Doctor, Department
+        from apps.finance.billing.models import Invoice, InvoiceItem, Payment
+        from apps.scheduling.appointments.models import Appointment, Referral
+        from apps.scheduling.availability.models import Department, Doctor
 
         # Delete in order of dependencies
         StockTransaction.objects.all().delete()
@@ -283,7 +295,7 @@ class Command(BaseCommand):
         return result
 
     def _seed_doctors(self, depts):
-        from apps.scheduling.availability.models import Doctor, Department
+        from apps.scheduling.availability.models import Department, Doctor
         self.stdout.write("[-] Seeding doctors...")
         result = []
         for i, (uname, email, first, last, spec, dept_name, lic, qual, exp, fee) in enumerate(DOCTORS, 1):
@@ -326,8 +338,8 @@ class Command(BaseCommand):
         return result
 
     def _seed_patients(self):
+
         from apps.accounts.patients.models import Patient
-        from django.db import IntegrityError
         self.stdout.write("[-] Seeding patients...")
         result = []
         for i, (uname, email, first, last, dob, gender, blood, phone, ins_prov, ins_num, allergies, chronic, city) in enumerate(PATIENTS, 1):
@@ -551,7 +563,12 @@ class Command(BaseCommand):
         return result
 
     def _seed_pharmacy_data(self):
-        from apps.clinical.pharmacy.models import Drug, DrugStock, DrugBatch, StockTransaction
+        from apps.clinical.pharmacy.models import (
+            Drug,
+            DrugBatch,
+            DrugStock,
+            StockTransaction,
+        )
         self.stdout.write("[-] Seeding drugs and stock...")
         
         pharmacist = User.objects.filter(role='pharmacist').first() or User.objects.filter(is_superuser=True).first()
@@ -659,7 +676,7 @@ class Command(BaseCommand):
         return result
 
     def _seed_prescriptions(self, records, doctors):
-        from apps.clinical.records.models import Prescription, PharmacyOrder
+        from apps.clinical.records.models import PharmacyOrder, Prescription
         self.stdout.write("[-] Seeding prescriptions...")
         count = 0
         for rec in records:
@@ -818,9 +835,9 @@ class Command(BaseCommand):
                 status=random.choice(['paid', 'paid', 'issued']),  # Most are paid
                 subtotal=fee,
                 tax_amount=tax,
-                discount_amount=Decimal("0"),
+                discount_amount=Decimal(0),
                 total_amount=total,
-                paid_amount=total if random.choice([True, False]) else Decimal("0"),
+                paid_amount=total if random.choice([True, False]) else Decimal(0),
                 due_date=date.today() + timedelta(days=15)
             )
             
@@ -880,10 +897,15 @@ class Command(BaseCommand):
 
     def _seed_showcase_patient(self, patients, doctors, depts, lab_tests):
         from apps.accounts.patients.models import Patient
-        from apps.scheduling.appointments.models import Appointment, Referral
-        from apps.clinical.records.models import MedicalRecord, Prescription, PharmacyOrder, VitalSign
         from apps.clinical.diagnostics.models import LabOrder, LabResult
+        from apps.clinical.records.models import (
+            MedicalRecord,
+            PharmacyOrder,
+            Prescription,
+            VitalSign,
+        )
         from apps.finance.billing.models import Invoice, InvoiceItem, Payment
+        from apps.scheduling.appointments.models import Appointment, Referral
 
         target = next((p for p in patients if p.user.email == "rahul.verma@example.com"), None)
         if not target:
@@ -998,7 +1020,7 @@ class Command(BaseCommand):
                 status="paid",
                 subtotal=fee,
                 tax_amount=tax,
-                discount_amount=Decimal("0"),
+                discount_amount=Decimal(0),
                 total_amount=total,
                 paid_amount=total,
                 due_date=date.today() + timedelta(days=10),

@@ -1,33 +1,36 @@
 import csv
 from pathlib import Path
-from typing import Dict
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.clinical.records.interaction_service import (
-    bump_safety_cache_namespace,
-    canonical_signature,
-    normalize_medication_name,
-)
 from apps.clinical.records.hoddi_import.helpers import (
     DESCRIPTION_COLUMNS,
     DRUG_MAP_ID_COLUMNS,
     DRUG_MAP_NAME_COLUMNS,
     INTERACTION_COLUMNS,
     LABEL_COLUMNS,
-    SOURCE_COLUMNS,
-    TARGET_COLUMNS,
     SEVERITY_COLUMNS,
     SIDE_EFFECT_COLUMNS,
     SIDE_EFFECT_MAP_CODE_COLUMNS,
     SIDE_EFFECT_MAP_LABEL_COLUMNS,
+    SOURCE_COLUMNS,
+    TARGET_COLUMNS,
     detect_column,
     infer_dataset_version,
     iter_csv_files,
     parse_interaction_row_with_reason,
 )
-from apps.clinical.records.models import MedicationInteractionKnowledge, MedicationReference, MedicationSideEffect
+from apps.clinical.records.interaction_service import (
+    bump_safety_cache_namespace,
+    canonical_signature,
+    normalize_medication_name,
+)
+from apps.clinical.records.models import (
+    MedicationInteractionKnowledge,
+    MedicationReference,
+    MedicationSideEffect,
+)
 
 
 class Command(BaseCommand):
@@ -65,10 +68,10 @@ class Command(BaseCommand):
             help="Optional CSV mapping DrugBank IDs to medication names for name->ID resolution.",
         )
 
-    def _load_side_effect_map(self, map_path: str) -> Dict[str, str]:
+    def _load_side_effect_map(self, map_path: str) -> dict[str, str]:
         if not map_path:
             return {}
-        mapping: Dict[str, str] = {}
+        mapping: dict[str, str] = {}
         path = Path(map_path).expanduser()
         if not path.exists():
             raise CommandError(f"side-effect-map file not found: {path}")
@@ -163,7 +166,7 @@ class Command(BaseCommand):
         processed_files = 0
         skipped_rows = 0
         severity_normalized_count = 0
-        skip_reasons: Dict[str, int] = {}
+        skip_reasons: dict[str, int] = {}
         dataset_version = options.get("dataset_version", "") or options.get("version", "")
         include_negative = options["include_negative"]
         strict = options["strict"]

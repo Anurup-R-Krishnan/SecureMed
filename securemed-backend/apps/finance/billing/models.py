@@ -1,7 +1,8 @@
-from django.db import models
-from apps.platform.core.models import TimeStampedModel
 from django.conf import settings
+from django.db import models
+
 from apps.accounts.patients.models import Patient
+from apps.platform.core.models import TimeStampedModel
 from apps.scheduling.appointments.models import Appointment
 
 

@@ -3,24 +3,27 @@ Create test users and data for workflow testing
 """
 import os
 import sys
-import django
 from pathlib import Path
+
+import django
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
+import uuid
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
-from apps.accounts.patients.models import Patient
-from apps.scheduling.availability.models import Doctor
-from apps.clinical.diagnostics.models import LabTest, LabOrder, LabResult
-from apps.clinical.pharmacy.models import Drug, DrugStock
 from django.core.files.base import ContentFile
 from django.utils import timezone
-from decimal import Decimal
-import uuid
+
+from apps.accounts.patients.models import Patient
 from apps.clinical.diagnostics.crypto import encrypt_bytes
+from apps.clinical.diagnostics.models import LabOrder, LabResult, LabTest
+from apps.clinical.pharmacy.models import Drug, DrugStock
+from apps.scheduling.availability.models import Doctor
 
 User = get_user_model()
 
@@ -124,12 +127,15 @@ def create_test_data():
             }
         )
         if created:
+            pass
         else:
+            pass
 
     # 6. Create Lab Order + Result with Attachment (for end-to-end lab workflow)
     try:
         existing_result = LabResult.objects.filter(order__patient=patient_user).first()
         if existing_result:
+            pass
         else:
             primary_test = LabTest.objects.filter(code='CBC').first() or LabTest.objects.first()
             if primary_test:
@@ -171,8 +177,10 @@ def create_test_data():
                 result.released_at = timezone.now()
                 result.save()
             else:
-    except Exception as e:
-    
+                pass
+    except Exception:
+        pass
+
     # 7. Create Drugs
     drugs = [
         ('MED-001', 'Amoxicillin', 'Tablet', '500mg', '10.00'),
@@ -196,6 +204,7 @@ def create_test_data():
             # Create stock
             DrugStock.objects.create(drug=drug, quantity=1000)
         else:
+            pass
     
 
 if __name__ == '__main__':

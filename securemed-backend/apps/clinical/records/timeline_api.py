@@ -1,11 +1,10 @@
 """
 Patient Timeline API - Comprehensive view of patient's medical journey
 """
+
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.utils import timezone
-from datetime import datetime
+from rest_framework.response import Response
 
 
 @api_view(['GET'])
@@ -38,7 +37,7 @@ def patient_timeline(request):
     timeline_events = []
     
     # 1. LAB ORDERS AND RESULTS
-    from apps.clinical.diagnostics.models import LabOrder, LabResult
+    from apps.clinical.diagnostics.models import LabOrder
     lab_orders = LabOrder.objects.filter(patient=patient.user).prefetch_related('items', 'results')
     
     for order in lab_orders:
@@ -48,7 +47,7 @@ def patient_timeline(request):
             "date": order.created_at.isoformat(),
             "type": "lab_order",
             "category": "diagnostic",
-            "title": f"Lab Tests Ordered",
+            "title": "Lab Tests Ordered",
             "description": f"{order.items.count()} test(s) - Sample: {order.sample_id}",
             "status": order.status,
             "priority": order.priority,
@@ -87,7 +86,7 @@ def patient_timeline(request):
                 })
     
     # 2. PRESCRIPTIONS AND PHARMACY ORDERS
-    from apps.clinical.records.models import Prescription, PharmacyOrder
+    from apps.clinical.records.models import Prescription
     prescriptions = Prescription.objects.filter(
         medical_record__patient=patient
     ).select_related('medical_record__doctor', 'pharmacy_order')

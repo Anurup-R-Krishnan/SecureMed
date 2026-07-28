@@ -14,8 +14,8 @@ import logging
 import os
 import secrets
 from pathlib import Path
+
 from decouple import config
-import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -219,8 +219,9 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'authentication.User'
 
 # Simple JWT Settings
-from datetime import timedelta
 import hashlib
+from datetime import timedelta
+
 
 def _get_jwt_signing_key(raw_key: str) -> str:
     # Ensure a minimum length for HMAC signing; fall back to a derived key if too short.

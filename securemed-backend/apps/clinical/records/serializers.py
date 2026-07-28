@@ -1,17 +1,19 @@
+from datetime import timedelta
+
 from rest_framework import serializers
+
 from .models import (
     MedicalRecord,
-    Prescription,
-    VitalSign,
-    PharmacyOrder,
     MedicationAdherenceLog,
     MedicationHistoryEvent,
     MedicationInteractionKnowledge,
     MedicationInteractionReport,
     MedicationInteractionReportItem,
+    PharmacyOrder,
+    Prescription,
+    VitalSign,
 )
-from apps.scheduling.appointments.serializers import DoctorSerializer
-from datetime import timedelta
+
 
 class PrescriptionSerializer(serializers.ModelSerializer):
     patient_id = serializers.IntegerField(write_only=True, required=False)

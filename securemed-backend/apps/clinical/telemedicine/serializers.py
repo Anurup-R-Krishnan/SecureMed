@@ -2,12 +2,13 @@
 Serializers for telemedicine models.
 """
 from rest_framework import serializers
+
 from .models import (
-    VideoRoom,
-    RoomParticipant,
     AnatomyRegionExplainer,
     ConditionCatalog,
     ConditionPin,
+    RoomParticipant,
+    VideoRoom,
 )
 
 
@@ -55,6 +56,7 @@ class VideoRoomSerializer(serializers.ModelSerializer):
 
 
 from .models import Conversation, Message
+
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()

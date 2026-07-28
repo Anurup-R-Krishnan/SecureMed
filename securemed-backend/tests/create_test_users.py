@@ -6,6 +6,7 @@ Run this before running verify_rbac.py
 
 import os
 import sys
+
 import django
 
 # Setup Django

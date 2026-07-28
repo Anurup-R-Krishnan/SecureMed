@@ -1,10 +1,9 @@
 import ast
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
 
 from apps.clinical.records.interaction_service import normalize_medication_name
-
 
 INTERACTION_COLUMNS = ["drugs", "drugbankid", "drugbank_id", "medications", "drug_ids"]
 SIDE_EFFECT_COLUMNS = ["side_effect", "se_above_0.9", "se", "se_label", "umls_cui", "cui"]
@@ -41,7 +40,7 @@ VALID_SEVERITIES = {"low", "moderate", "high", "critical"}
 
 @dataclass(frozen=True)
 class ParsedInteractionRow:
-    medications: List[str]
+    medications: list[str]
     side_effect: str
     severity: str
     description: str
@@ -49,12 +48,12 @@ class ParsedInteractionRow:
 
 @dataclass(frozen=True)
 class RowParseOutcome:
-    row: Optional[ParsedInteractionRow]
+    row: ParsedInteractionRow | None
     skip_reason: str = ""
     severity_normalized: bool = False
 
 
-def detect_column(header: Iterable[str], candidates: Iterable[str]) -> Optional[str]:
+def detect_column(header: Iterable[str], candidates: Iterable[str]) -> str | None:
     normalized = {col.lower().strip(): col for col in header}
     for cand in candidates:
         if cand in normalized:
@@ -62,7 +61,7 @@ def detect_column(header: Iterable[str], candidates: Iterable[str]) -> Optional[
     return None
 
 
-def parse_medication_list(raw_value: str) -> List[str]:
+def parse_medication_list(raw_value: str) -> list[str]:
     value = (raw_value or "").strip()
     if not value:
         return []
@@ -82,15 +81,15 @@ def parse_medication_list(raw_value: str) -> List[str]:
 
 
 def parse_interaction_row(
-    row: Dict[str, str],
+    row: dict[str, str],
     *,
     meds_col: str,
     side_effect_col: str,
-    severity_col: Optional[str],
-    description_col: Optional[str],
-    label_col: Optional[str],
+    severity_col: str | None,
+    description_col: str | None,
+    label_col: str | None,
     include_negative: bool,
-) -> Optional[ParsedInteractionRow]:
+) -> ParsedInteractionRow | None:
     outcome = parse_interaction_row_with_reason(
         row,
         meds_col=meds_col,
@@ -104,13 +103,13 @@ def parse_interaction_row(
 
 
 def parse_interaction_row_with_reason(
-    row: Dict[str, str],
+    row: dict[str, str],
     *,
     meds_col: str,
     side_effect_col: str,
-    severity_col: Optional[str],
-    description_col: Optional[str],
-    label_col: Optional[str],
+    severity_col: str | None,
+    description_col: str | None,
+    label_col: str | None,
     include_negative: bool,
 ) -> RowParseOutcome:
     if label_col:
@@ -153,7 +152,7 @@ def infer_dataset_version(csv_path: Path, configured_version: str) -> str:
     return ""
 
 
-def iter_csv_files(root_path: Path) -> List[Path]:
+def iter_csv_files(root_path: Path) -> list[Path]:
     if root_path.is_file():
         return [root_path]
     return sorted([p for p in root_path.rglob("*.csv") if p.is_file()])

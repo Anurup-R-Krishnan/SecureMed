@@ -1,7 +1,9 @@
-from rest_framework import serializers
-from .models import Doctor, Appointment, AppointmentHistory, Referral
-from apps.scheduling.availability.models import Department
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
+
+from apps.scheduling.availability.models import Department
+
+from .models import Appointment, Doctor, Referral
 
 User = get_user_model()
 

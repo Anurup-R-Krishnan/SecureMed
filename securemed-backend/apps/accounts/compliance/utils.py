@@ -1,6 +1,8 @@
-from django.utils import timezone
-from django.db import DatabaseError
 import logging
+
+from django.db import DatabaseError
+from django.utils import timezone
+
 from .models import Consent
 
 

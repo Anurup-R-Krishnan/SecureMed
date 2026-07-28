@@ -1,14 +1,16 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.db import models
-from django.db.models import Sum, Count
-from .models import Invoice, Payment
-from .serializers import InvoiceSerializer, PaymentSerializer
-from apps.accounts.users.permissions import IsPatient
-from django.utils import timezone
 from datetime import datetime
 
+from django.db import models
+from django.db.models import Count, Sum
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from apps.accounts.users.permissions import IsPatient
+
+from .models import Invoice, Payment
+from .serializers import InvoiceSerializer
 
 PROVIDER_CODE_MAP = {
     'ins_001': 'national health insurance',
@@ -176,8 +178,9 @@ def download_invoice(request, invoice_id):
     serializer = InvoiceSerializer(invoice)
     data = serializer.data
 
-    from django.http import HttpResponse
     import json
+
+    from django.http import HttpResponse
     response = HttpResponse(
         json.dumps(data, default=str, indent=2),
         content_type='application/json'
@@ -195,8 +198,9 @@ def pay_invoice(request, invoice_id):
     For this prototype, it marks the invoice as paid.
     Input: { "payment_method": "card" | "bank_transfer" | "check" | "insurance" }
     """
+    from apps.platform.analytics.audit import get_client_ip, log_audit
+
     from .serializers import PaymentProcessingSerializer
-    from apps.platform.analytics.audit import log_audit, get_client_ip
     
     user = request.user
     patient = get_patient_profile(user)
@@ -221,8 +225,9 @@ def pay_invoice(request, invoice_id):
     payment_method = validated_data.get('payment_method', 'card')
     
     # Process "Payment"
-    from django.utils import timezone
     import uuid
+
+    from django.utils import timezone
     
     # Create payment record
     payment_id = f"PAY-{uuid.uuid4().hex[:8].upper()}"

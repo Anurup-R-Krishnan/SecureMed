@@ -1,20 +1,26 @@
 import logging
 
-from rest_framework import viewsets, permissions, status
+from django.db.models import Q
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Q
 
 from .models import (
-    Room, Equipment, EquipmentUsageLog,
-    InfectionReport, InfectionTrace, RoomRiskScore,
+    Equipment,
+    EquipmentUsageLog,
+    InfectionReport,
+    InfectionTrace,
+    Room,
+    RoomRiskScore,
 )
 from .serializers import (
-    RoomSerializer, EquipmentSerializer, EquipmentUsageLogSerializer,
-    InfectionReportSerializer, InfectionTraceSerializer,
+    EquipmentSerializer,
+    EquipmentUsageLogSerializer,
+    InfectionReportSerializer,
+    InfectionTraceSerializer,
     RoomRiskScoreSerializer,
+    RoomSerializer,
 )
-from apps.accounts.users.permissions import IsDoctor
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +282,7 @@ class InfectionTraceViewSet(viewsets.ModelViewSet):
         trace.save()
         
         # Log the update
-        from apps.platform.analytics.audit import log_audit, get_client_ip
+        from apps.platform.analytics.audit import get_client_ip, log_audit
         log_audit(
             actor=request.user,
             action='medical_record_updated',
