@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { patientService, TimelineEvent } from "@/services/patients";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { API_ORIGIN } from "@/lib/urls";
 import {
   Calendar,
@@ -205,7 +205,7 @@ export default function PatientTimeline({
 
   const openLabAttachment = async (labResultId: number) => {
     try {
-      const res = await api.get(`/labs/results/${labResultId}/presigned/`);
+      const res = await apiClient.get(`/labs/results/${labResultId}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
         toast({

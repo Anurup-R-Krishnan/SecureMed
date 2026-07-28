@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import PatientProfileView from "@/components/portals/doctor/patients/patient-profile-view";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ export default function PatientDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get(`/patients/${patientId}/`);
+        const response = await apiClient.get(`/patients/${patientId}/`);
         const userData = response.data;
         const parseList = (value: string | null | undefined) => {
           if (!value) return [];

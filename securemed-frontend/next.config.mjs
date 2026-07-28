@@ -4,7 +4,7 @@ const nextConfig = {
   // Prevent Next.js from stripping trailing slashes — Django requires them
   skipTrailingSlashRedirect: true,
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,

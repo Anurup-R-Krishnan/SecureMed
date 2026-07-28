@@ -7,7 +7,7 @@ import { Bot, X, Send, Loader2, CalendarCheck, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { AnatomySelectionPayload } from "@/components/features/anatomy/region-map";
 import {
   AnatomyRegionExplainer,
@@ -124,7 +124,7 @@ export default function AiTriageWidget() {
   const pollStatus = useCallback(async () => {
     if (!submittedTriageId) return;
     try {
-      const { data } = await api.get(
+      const { data } = await apiClient.get(
         `/telemedicine/triage/status/${submittedTriageId}/`,
       );
       if (data.status === "APPROVED") {
@@ -261,7 +261,7 @@ export default function AiTriageWidget() {
         contextLines.length > 0
           ? `${text}\n\n[Anatomy Context]\n${contextLines.join("\n")}`
           : text;
-      const { data } = await api.post(
+      const { data } = await apiClient.post(
         "/telemedicine/triage/chat/",
         {
           message: enrichedMessage,
@@ -289,7 +289,7 @@ export default function AiTriageWidget() {
   const findSpecialist = async () => {
     setTriageStatus("searching_doctor");
     try {
-      const { data } = await api.get("/auth/doctors/search/");
+      const { data } = await apiClient.get("/auth/doctors/search/");
       setDoctors(data);
     } catch {
       setTriageStatus("idle");
@@ -299,7 +299,7 @@ export default function AiTriageWidget() {
   const submitTriage = async (doctor: Doctor) => {
     const aiSummary = messages[messages.length - 1]?.content ?? "";
     try {
-      const { data } = await api.post("/telemedicine/triage/submit/", {
+      const { data } = await apiClient.post("/telemedicine/triage/submit/", {
         doctor_id: doctor.id,
         ai_summary: aiSummary,
       });

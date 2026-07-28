@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import PrescriptionWriter from "@/components/portals/doctor/prescriptions/prescription-writer";
 import SignPrescriptionModal from "@/components/portals/doctor/prescriptions/sign-prescription-modal";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ export default function PrescriptionsPage() {
 
   const fetchPatients = async () => {
     try {
-      const res = await api.get("/patients/");
+      const res = await apiClient.get("/patients/");
       const data = Array.isArray(res.data) ? res.data : res.data.results || [];
       setPatients(
         data.map((p: any) => ({
@@ -44,7 +44,7 @@ export default function PrescriptionsPage() {
 
   const fetchRecentPrescriptions = async () => {
     try {
-      const res = await api.get("/medical-records/prescriptions/");
+      const res = await apiClient.get("/medical-records/prescriptions/");
       const data = Array.isArray(res.data) ? res.data : res.data.results || [];
       setRecentPrescriptions(data.filter((p: any) => !p.is_signed));
     } catch (e) {}

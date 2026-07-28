@@ -42,6 +42,7 @@ type AdminTab =
   | "staff"
   | "patients"
   | "billing"
+  | "ward-map"
   | "infection-tracking"
   | "audit-logs";
 

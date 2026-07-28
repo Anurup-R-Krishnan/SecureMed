@@ -6,7 +6,7 @@ import { Download, Eye, Filter, CreditCard, TrendingUp } from "lucide-react";
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -47,7 +47,7 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
   const fetchBillingData = async (params?: Record<string, string>) => {
     try {
       setLoading(true);
-      const response = await api.get("/billing/invoices/", { params });
+      const response = await apiClient.get("/billing/invoices/", { params });
       setInvoices(response.data.invoices || []);
       setBillingSummary(response.data.summary);
     } catch (error: any) {
@@ -94,7 +94,7 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
     try {
       setDetailLoading(true);
       setDetailOpen(true);
-      const response = await api.get(`/billing/invoices/${invoiceId}/`);
+      const response = await apiClient.get(`/billing/invoices/${invoiceId}/`);
       setSelectedInvoice(response.data);
     } catch (error) {
     } finally {
@@ -104,7 +104,7 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
 
   const handleDownloadInvoice = async (invoiceId: string) => {
     try {
-      const response = await api.get(
+      const response = await apiClient.get(
         `/billing/invoices/${invoiceId}/download/`,
         {
           responseType: "blob",
@@ -130,7 +130,7 @@ export default function PatientBilling({ patient }: PatientBillingProps) {
     }
     try {
       setInsuranceLoading(true);
-      const response = await api.get("/patients/profile/");
+      const response = await apiClient.get("/patients/profile/");
       setInsuranceProfile(response.data);
     } catch (error) {
     } finally {

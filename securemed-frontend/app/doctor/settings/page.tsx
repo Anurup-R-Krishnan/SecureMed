@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/context/auth-context";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { useToast } from "@/hooks/use-toast";
 import MfaSetup from "@/components/auth/mfa-setup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -102,7 +102,7 @@ export default function SettingsPage() {
 
     setSavingProfile(true);
     try {
-      await api.put("/auth/user/", {
+      await apiClient.put("/auth/user/", {
         first_name: firstName,
         last_name: lastName,
         email: emailValue,
@@ -158,7 +158,7 @@ export default function SettingsPage() {
 
     setSavingPassword(true);
     try {
-      await api.post("/auth/user/password/", {
+      await apiClient.post("/auth/user/password/", {
         current_password: currentPassword,
         new_password: newPassword,
         confirm_password: confirmPassword,

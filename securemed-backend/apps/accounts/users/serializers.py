@@ -464,10 +464,11 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     """Serializer for confirming password reset with token."""
+    uid = serializers.IntegerField(required=False, help_text="User ID for efficient lookup (preferred)")
     token = serializers.CharField()
     password = serializers.CharField(write_only=True, min_length=12)
     password_confirm = serializers.CharField(write_only=True)
-    
+
     def validate_password(self, value):
         """Validate password strength."""
         if len(value) < 12:
@@ -475,19 +476,36 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
             raise serializers.ValidationError("Password must contain at least one special character.")
         return value
-    
+
     def validate(self, data):
         """Validate passwords match and token is valid."""
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
-        
+
+        uid = data.get('uid')
         token = data.get('token')
-        try:
-            user = User.objects.get(password_reset_token=token, is_active=True)
-            if not user.password_reset_expires or user.password_reset_expires < timezone.now():
+        user = None
+
+        if uid:
+            # Fast path: look up by user ID and verify token
+            try:
+                user = User.objects.get(id=uid, is_active=True)
+            except User.DoesNotExist:
+                raise serializers.ValidationError({"token": "Invalid reset request."})
+            if not user.password_reset_token or not user.password_reset_expires:
+                raise serializers.ValidationError({"token": "No reset token found."})
+            if user.password_reset_expires < timezone.now():
                 raise serializers.ValidationError({"token": "Reset token has expired."})
-            data['user'] = user
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"token": "Invalid reset token."})
-        
+            if not match_reset_token(token, user.password_reset_token):
+                raise serializers.ValidationError({"token": "Invalid reset token."})
+        else:
+            # Fallback: legacy lookup by raw token (supports old links)
+            try:
+                user = User.objects.get(password_reset_token=token, is_active=True)
+                if not user.password_reset_expires or user.password_reset_expires < timezone.now():
+                    raise serializers.ValidationError({"token": "Reset token has expired."})
+            except User.DoesNotExist:
+                raise serializers.ValidationError({"token": "Invalid reset token."})
+
+        data['user'] = user
         return data

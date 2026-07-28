@@ -9,7 +9,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { API_BASE_URL } from "@/lib/urls";
 
 interface ExportState {
@@ -32,7 +32,7 @@ export default function FHIRExportButton({ patientId }: FHIRExportButtonProps) {
 
     try {
       // Call Django backend for FHIR export
-      const response = await api.get("/patient/export/fhir/", {
+      const response = await apiClient.get("/patient/export/fhir/", {
         params: { patient_id: patientId },
       });
 

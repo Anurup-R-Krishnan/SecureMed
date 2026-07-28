@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { Beaker, FileText, Pill, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ export default function PatientTimeline({
         setRefreshing(true);
       }
       try {
-        const response = await api.get("/patients/timeline/", {
+        const response = await apiClient.get("/patients/timeline/", {
           params: { patient_id: patientId },
         });
         // Map backend response to frontend format

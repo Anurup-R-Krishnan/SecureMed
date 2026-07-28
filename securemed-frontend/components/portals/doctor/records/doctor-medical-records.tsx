@@ -17,7 +17,7 @@ import {
   User,
   Plus,
 } from "lucide-react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { API_ORIGIN } from "@/lib/urls";
 import {
   Dialog,
@@ -97,8 +97,8 @@ export default function DoctorMedicalRecords({
         }
 
         const [recordsResponse, prescriptionsResponse] = await Promise.all([
-          api.get("/medical-records/records/", { params }),
-          api.get("/medical-records/prescriptions/"),
+          apiClient.get("/medical-records/records/", { params }),
+          apiClient.get("/medical-records/prescriptions/"),
         ]);
 
         const records = Array.isArray(recordsResponse.data)
@@ -157,7 +157,7 @@ export default function DoctorMedicalRecords({
       if (newRecord.notes) formData.append("notes", newRecord.notes);
       if (newFile) formData.append("file", newFile);
 
-      await api.post("/medical-records/records/", formData, {
+      await apiClient.post("/medical-records/records/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast({

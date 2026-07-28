@@ -26,7 +26,7 @@ import {
   Search,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { toast } from "sonner";
 
 interface Drug {
@@ -112,9 +112,9 @@ export default function PharmacyInventory() {
     setLoading(true);
     try {
       const [drugsRes, batchesRes, transactionsRes] = await Promise.all([
-        api.get("/pharmacy/drugs/"),
-        api.get("/pharmacy/batches/"),
-        api.get("/pharmacy/transactions/"),
+        apiClient.get("/pharmacy/drugs/"),
+        apiClient.get("/pharmacy/batches/"),
+        apiClient.get("/pharmacy/transactions/"),
       ]);
 
       const normalize = (res: any) =>
@@ -131,7 +131,7 @@ export default function PharmacyInventory() {
 
   const handleAddDrug = async () => {
     try {
-      const response = await api.post("/pharmacy/drugs/", drugForm);
+      const response = await apiClient.post("/pharmacy/drugs/", drugForm);
 
       if (response.status === 201 || response.status === 200) {
         setShowAddDrug(false);
@@ -155,7 +155,7 @@ export default function PharmacyInventory() {
 
   const handleAddBatch = async () => {
     try {
-      const response = await api.post("/pharmacy/batches/", batchForm);
+      const response = await apiClient.post("/pharmacy/batches/", batchForm);
 
       if (response.status === 201 || response.status === 200) {
         setShowAddBatch(false);
@@ -177,7 +177,7 @@ export default function PharmacyInventory() {
 
   const handleTransaction = async () => {
     try {
-      const response = await api.post(
+      const response = await apiClient.post(
         "/pharmacy/transactions/",
         transactionForm,
       );

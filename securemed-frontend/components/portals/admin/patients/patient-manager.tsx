@@ -188,7 +188,7 @@ export default function PatientManager({
       </div>
 
       <div className="bg-card rounded-lg border border-border">
-        <DataTable columns={columns} data={filteredPatients} />
+        <DataTable columns={columns} data={filteredPatients} keyExtractor={(p) => p.id} />
       </div>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>

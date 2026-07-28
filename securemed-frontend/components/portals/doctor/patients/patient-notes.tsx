@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   CheckCircle,
 } from "lucide-react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import AIDecisionSupport from "../shared/ai-decision-support";
 import { AIDiagnosisSuggestion } from "@/lib/types";
 
@@ -67,7 +67,7 @@ export default function PatientNotes({ patient }: PatientNotesProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.post("/medical-records/records/", {
+      await apiClient.post("/medical-records/records/", {
         patient: patient.id,
         record_type: "consultation",
         record_date: new Date().toISOString().split("T")[0],

@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -80,7 +80,7 @@ export default function LabTechnicianWorklist() {
   const fetchWorklist = async () => {
     setLoading(true);
     try {
-      const response = await api.get("/labs/worklist/");
+      const response = await apiClient.get("/labs/worklist/");
       setWorklist(response.data);
     } catch (error) {
       toast.error("Unable to load lab worklist.");
@@ -112,7 +112,7 @@ export default function LabTechnicianWorklist() {
         payload.append("file_attachment", attachment);
       }
 
-      const response = await api.post(
+      const response = await apiClient.post(
         `/labs/worklist/${selectedItem.id}/enter_result/`,
         payload,
       );
@@ -156,7 +156,7 @@ export default function LabTechnicianWorklist() {
 
   const handleFlagCritical = async (resultId: number) => {
     try {
-      await api.post(`/labs/worklist/${resultId}/flag_critical/`);
+      await apiClient.post(`/labs/worklist/${resultId}/flag_critical/`);
       toast.error(
         "Result flagged as critical. Alert sent to ordering physician.",
       );

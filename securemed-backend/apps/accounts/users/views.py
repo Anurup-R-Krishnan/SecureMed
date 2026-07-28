@@ -26,6 +26,7 @@ import string
 from django.conf import settings
 
 from .serializers import (
+    _hash_reset_token,
     UserRegistrationSerializer,
     UserLoginSerializer,
     MFASetupSerializer,
@@ -976,12 +977,12 @@ class PasswordResetRequestView(APIView):
             
             # Generate reset token (valid for 1 hour)
             reset_token = secrets.token_urlsafe(32)
-            user.password_reset_token = reset_token
+            user.password_reset_token = _hash_reset_token(reset_token)
             user.password_reset_expires = timezone.now() + timedelta(hours=1)
             user.save(update_fields=['password_reset_token', 'password_reset_expires'])
-            
-            # Send password reset email
-            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+
+            # Send password reset email (include user id for efficient lookup)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={user.id}&token={reset_token}"
             subject = "Password Reset Request - SecureMed"
             message = f"""
 Dear {user.get_full_name() or user.username},
@@ -1472,7 +1473,9 @@ class UserManagementViewSet(viewsets.ReadOnlyModelViewSet):
             ip_address=get_client_ip(request),
         )
 
-        return Response({'message': 'Password reset', 'temporary_password': temp_password})
+        # NOTE: temporary_password is returned in the response so the admin can communicate it to the user.
+        # In a high-security deployment, consider sending it via a separate channel (e.g. email) instead.
+        return Response({'message': 'Password reset successful', 'temporary_password': temp_password})
 
     @action(detail=False, methods=['post'], url_path='create')
     def create_user(self, request):

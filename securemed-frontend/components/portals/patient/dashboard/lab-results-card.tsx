@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Microscope, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { useToast } from "@/hooks/use-toast";
 import { API_ORIGIN } from "@/lib/urls";
 import {
@@ -61,7 +61,7 @@ export default function LabResultsCard({
 
   const handleViewAttachment = async (id: number) => {
     try {
-      const res = await api.get(`/labs/results/${id}/presigned/`);
+      const res = await apiClient.get(`/labs/results/${id}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
         toast({

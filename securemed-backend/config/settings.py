@@ -177,9 +177,11 @@ CORS_ALLOWED_ORIGINS = config(
     default=','.join(_default_cors_origins)
 ).split(',')
 
-for _origin in _default_cors_origins:
-    if _origin not in CORS_ALLOWED_ORIGINS:
-        CORS_ALLOWED_ORIGINS.append(_origin)
+# In development, add localhost origins for local development convenience
+if DEBUG:
+    for _origin in _default_cors_origins:
+        if _origin not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(_origin)
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -254,7 +256,7 @@ MFA_TOTP_VALID_WINDOW = max(
 )
 
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = 'Strict'
 CSRF_COOKIE_SAMESITE = 'Strict'
 

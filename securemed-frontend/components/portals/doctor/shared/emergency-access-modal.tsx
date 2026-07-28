@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ShieldAlert, AlertTriangle, CheckCircle } from "lucide-react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { toast } from "sonner";
 
 interface EmergencyAccessModalProps {
@@ -53,7 +53,7 @@ export default function EmergencyAccessModal({
 
     setLoading(true);
     try {
-      const response = await api.post("/medical-records/records/break_glass/", {
+      const response = await apiClient.post("/medical-records/records/break_glass/", {
         patient_id: pid,
         reason: reason.trim(),
         emergency_type: emergencyType,

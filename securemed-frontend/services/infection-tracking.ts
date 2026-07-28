@@ -40,6 +40,7 @@ export interface InfectionTrace {
         infection_name: string;
         diagnosed_at: string;
         severity: string;
+        severity_display?: string;
     };
     target_report: {
         report_id: string;
@@ -48,6 +49,7 @@ export interface InfectionTrace {
         infection_name: string;
         diagnosed_at: string;
         severity: string;
+        severity_display?: string;
     };
     infection_name: string;
     transmission_path: {
@@ -64,6 +66,8 @@ export interface InfectionTrace {
     vector_type: string;
     status: string;
     detected_at: string;
+    source_patient_name?: string;
+    target_patient_name?: string;
 }
 
 export interface InfectionReport {

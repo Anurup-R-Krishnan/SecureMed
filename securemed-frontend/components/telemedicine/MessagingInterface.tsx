@@ -8,7 +8,7 @@ import { getCurrentUser, AuthUser } from "@/lib/auth-utils";
 import { Loader2, Plus, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 
 interface ContactUser {
   id: number;
@@ -55,7 +55,7 @@ export function MessagingInterface() {
     setLoadingContacts(true);
     try {
       if (currentUser?.role === "doctor") {
-        const patientsRes = await api.get("/patients/");
+        const patientsRes = await apiClient.get("/patients/");
         const patients = Array.isArray(patientsRes.data)
           ? patientsRes.data
           : patientsRes.data.results || [];
@@ -72,7 +72,7 @@ export function MessagingInterface() {
         }));
         setContacts(contactList);
       } else {
-        const doctorsRes = await api.get("/appointments/doctors/");
+        const doctorsRes = await apiClient.get("/appointments/doctors/");
         const doctors = Array.isArray(doctorsRes.data)
           ? doctorsRes.data
           : doctorsRes.data.results || [];

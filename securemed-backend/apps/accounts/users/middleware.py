@@ -30,7 +30,7 @@ class RoleMiddleware:
         path = request.path
         role = getattr(request.user, 'role', '').lower()
 
-        if path.startswith('/api/doctor/') and role != 'provider':
+        if path.startswith('/api/doctor/') and role not in ('doctor', 'provider'):
             return JsonResponse({'error': 'Forbidden: Doctor Access Only'}, status=403)
 
         if path.startswith('/api/patient/') and role != 'patient':

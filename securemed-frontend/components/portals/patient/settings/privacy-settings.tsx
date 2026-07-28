@@ -10,7 +10,7 @@ import {
   FileText,
   Download,
 } from "lucide-react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import MfaSetup from "@/components/auth/mfa-setup";
@@ -83,7 +83,7 @@ export default function PrivacySettings() {
   const fetchConsents = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await api.get<Consent[]>(CONSENTS_ENDPOINT);
+      const response = await apiClient.get<Consent[]>(CONSENTS_ENDPOINT);
 
       // Ensure we have an array
       if (Array.isArray(response.data)) {
@@ -118,7 +118,7 @@ export default function PrivacySettings() {
   useEffect(() => {
     const fetchAccessLogs = async () => {
       try {
-        const response = await api.get("/medical-records/my-access-log/");
+        const response = await apiClient.get("/medical-records/my-access-log/");
         if (Array.isArray(response.data)) {
           setAccessLogs(response.data);
         }
@@ -183,7 +183,7 @@ export default function PrivacySettings() {
     );
 
     try {
-      await api.patch(`${CONSENTS_ENDPOINT}${id}/`, { is_granted: false });
+      await apiClient.patch(`${CONSENTS_ENDPOINT}${id}/`, { is_granted: false });
 
       toast.success(`Access for ${consent.department} revoked`);
     } catch (error) {
@@ -215,7 +215,7 @@ export default function PrivacySettings() {
     setShowDurationDialog(false);
 
     try {
-      await api.patch(`${CONSENTS_ENDPOINT}${selectedConsent.id}/`, {
+      await apiClient.patch(`${CONSENTS_ENDPOINT}${selectedConsent.id}/`, {
         is_granted: true,
         expires_at: expiresAt,
       });
@@ -482,7 +482,7 @@ export default function PrivacySettings() {
               className="gap-2"
               onClick={async () => {
                 try {
-                  const response = await api.get(
+                  const response = await apiClient.get(
                     "/auth/download-policy-receipt/",
                     {
                       responseType: "blob",
@@ -559,7 +559,7 @@ export default function PrivacySettings() {
 
                   try {
                     // Single API call: Fetch certificate (auto-marks account for deletion)
-                    const certificateResponse = await api.get(
+                    const certificateResponse = await apiClient.get(
                       "/auth/deletion-certificate/",
                       {
                         responseType: "blob",

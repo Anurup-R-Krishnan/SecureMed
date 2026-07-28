@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,7 +81,7 @@ export default function PrescriptionWriter({
         override_reason: overrideReason.trim() || "",
       };
 
-      await api.post("/medical-records/prescriptions/", payload);
+      await apiClient.post("/medical-records/prescriptions/", payload);
 
       setSubmitted(true);
       if (onSuccess) onSuccess();

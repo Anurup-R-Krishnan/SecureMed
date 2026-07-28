@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/routes";
@@ -52,7 +52,7 @@ export default function LabTestsPage() {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const response = await api.get("/labs/tests/");
+        const response = await apiClient.get("/labs/tests/");
         const payload = Array.isArray(response.data)
           ? response.data
           : (response.data?.results ?? []);
@@ -109,7 +109,7 @@ export default function LabTestsPage() {
       const patientId =
         user && "patient_id" in user ? (user as any).patient_id : undefined;
 
-      const res = await api.post("/labs/orders/", {
+      const res = await apiClient.post("/labs/orders/", {
         items: cart.map((t) => t.id),
         priority: "routine",
         ...(patientId ? { patient_id: patientId } : {}),

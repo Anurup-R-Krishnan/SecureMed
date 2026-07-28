@@ -16,6 +16,7 @@ import {
   Download,
   Microscope,
 } from "lucide-react";
+import { apiClient } from "@/lib/unified-api-client";
 import { medicalRecordService } from "@/services/appointments";
 import { drugInteractionService } from "@/services/drug-interactions";
 import FHIRExportButton from "@/components/portals/patient/records/fhir-export-button";
@@ -49,7 +50,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
       const [recordsData, prescriptionsData, labRes] = await Promise.all([
         medicalRecordService.getMedicalRecords(),
         medicalRecordService.getPrescriptions(),
-        api.get("/labs/results/"),
+        apiClient.get("/labs/results/"),
       ]);
       setMedicalRecords(recordsData);
       setPrescriptions(prescriptionsData);
@@ -153,7 +154,7 @@ export default function MedicalRecords({ patientId }: MedicalRecordsProps) {
 
   const handleViewLabAttachment = async (id: number) => {
     try {
-      const res = await api.get(`/labs/results/${id}/presigned/`);
+      const res = await apiClient.get(`/labs/results/${id}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
         setLabError("This lab result does not have an attachment.");

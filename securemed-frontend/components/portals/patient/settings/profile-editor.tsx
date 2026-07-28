@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, User } from "lucide-react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { getAccessToken } from "@/lib/auth-utils";
 
 interface PatientProfile {
@@ -44,7 +44,7 @@ export default function ProfileEditor() {
       const token = getAccessToken();
       if (!token) return;
 
-      const response = await api.get("/patients/profile/", {
+      const response = await apiClient.get("/patients/profile/", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProfile(response.data);
@@ -72,7 +72,7 @@ export default function ProfileEditor() {
       const token = getAccessToken();
       if (!token) throw new Error("No auth token");
 
-      await api.put("/patients/profile/", profile, {
+      await apiClient.put("/patients/profile/", profile, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

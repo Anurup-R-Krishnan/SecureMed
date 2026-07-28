@@ -23,7 +23,7 @@ import { NotificationCenter } from "@/components/ui/notification-center";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -134,7 +134,7 @@ function CompletedTestsView() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await api.get("/labs/results/");
+        const response = await apiClient.get("/labs/results/");
         const payload = Array.isArray(response.data)
           ? response.data
           : response.data?.results || [];
@@ -154,7 +154,7 @@ function CompletedTestsView() {
 
   const refreshHistory = async () => {
     try {
-      const response = await api.get("/labs/results/");
+      const response = await apiClient.get("/labs/results/");
       const payload = Array.isArray(response.data)
         ? response.data
         : response.data?.results || [];
@@ -179,7 +179,7 @@ function CompletedTestsView() {
     try {
       const payload = new FormData();
       payload.append("file_attachment", file);
-      await api.patch(`/labs/results/${selectedResult.id}/`, payload);
+      await apiClient.patch(`/labs/results/${selectedResult.id}/`, payload);
       toast({
         title: "Attachment uploaded",
         description: "Lab result attachment updated.",
@@ -200,7 +200,7 @@ function CompletedTestsView() {
 
   const handleView = async (row: any) => {
     try {
-      const res = await api.get(`/labs/results/${row.id}/presigned/`);
+      const res = await apiClient.get(`/labs/results/${row.id}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
         toast({
@@ -223,7 +223,7 @@ function CompletedTestsView() {
 
   const handleDownload = async (row: any) => {
     try {
-      const res = await api.get(`/labs/results/${row.id}/download/`, {
+      const res = await apiClient.get(`/labs/results/${row.id}/download/`, {
         responseType: "blob",
       });
       const blob = new Blob([res.data]);
@@ -409,7 +409,7 @@ function ReportsView() {
   const handleDownloadMonthlyReport = async () => {
     try {
       setDownloading(true);
-      const response = await api.get("/labs/results/");
+      const response = await apiClient.get("/labs/results/");
       const rows = Array.isArray(response.data)
         ? response.data
         : response.data?.results || [];

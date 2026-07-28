@@ -23,7 +23,7 @@ import PatientAnatomyCard from "./patient-anatomy-card";
 import EmergencyAccessModal from "@/components/portals/doctor/shared/emergency-access-modal";
 import { PatientInfoCard } from "@/components/ui/patient-info-card";
 import { Button } from "@/components/ui/button";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import {
   drugInteractionService,
   type InteractionReport,
@@ -127,7 +127,7 @@ export default function PatientProfileView({
         setLabLoading(true);
         setLabError(null);
         const [rxRes, report, labRes] = await Promise.all([
-          api.get(`/medical-records/prescriptions/`, {
+          apiClient.get(`/medical-records/prescriptions/`, {
             params: { patient_id: patient.id },
           }),
           drugInteractionService
@@ -369,7 +369,7 @@ export default function PatientProfileView({
                         size="sm"
                         onClick={async () => {
                           try {
-                            const res = await api.get(
+                            const res = await apiClient.get(
                               `/labs/results/${result.id}/presigned/`,
                             );
                             const url = res.data?.url as string | undefined;
@@ -395,7 +395,7 @@ export default function PatientProfileView({
                         size="sm"
                         onClick={async () => {
                           try {
-                            const res = await api.get(
+                            const res = await apiClient.get(
                               `/labs/results/${result.id}/download/`,
                               { responseType: "blob" },
                             );
@@ -423,7 +423,7 @@ export default function PatientProfileView({
                           size="sm"
                           onClick={async () => {
                             try {
-                              await api.post(
+                              await apiClient.post(
                                 `/labs/results/${result.id}/release/`,
                               );
                               setLabResults((prev) =>

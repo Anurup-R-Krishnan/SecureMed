@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import LabOrderForm from "@/components/portals/doctor/labs/lab-order-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,7 @@ export default function LabsPage() {
     if (!isAuthenticated) return;
     const fetchPatients = async () => {
       try {
-        const res = await api.get("/patients/");
+        const res = await apiClient.get("/patients/");
         const data = Array.isArray(res.data)
           ? res.data
           : res.data.results || [];
@@ -70,7 +70,7 @@ export default function LabsPage() {
       const params = preselectPatientId
         ? { patient_id: preselectPatientId }
         : undefined;
-      const res = await api.get("/labs/results/", { params });
+      const res = await apiClient.get("/labs/results/", { params });
       const data = Array.isArray(res.data) ? res.data : res.data.results || [];
       setResults(data);
     } catch (error) {
@@ -87,7 +87,7 @@ export default function LabsPage() {
   const handleRelease = async (id: number) => {
     setReleaseId(id);
     try {
-      await api.post(`/labs/results/${id}/release/`);
+      await apiClient.post(`/labs/results/${id}/release/`);
       toast.success("Result released to patient");
       await fetchResults();
     } catch (error) {
@@ -99,7 +99,7 @@ export default function LabsPage() {
 
   const handleViewAttachment = async (id: number) => {
     try {
-      const res = await api.get(`/labs/results/${id}/presigned/`);
+      const res = await apiClient.get(`/labs/results/${id}/presigned/`);
       const url = res.data?.url as string | undefined;
       if (!url) {
         toast.error("No view link available");
@@ -114,7 +114,7 @@ export default function LabsPage() {
 
   const handleDownloadAttachment = async (id: number, filename?: string) => {
     try {
-      const res = await api.get(`/labs/results/${id}/download/`, {
+      const res = await apiClient.get(`/labs/results/${id}/download/`, {
         responseType: "blob",
       });
       const blob = new Blob([res.data]);
@@ -256,7 +256,7 @@ export default function LabsPage() {
         initialPatientId={preselectPatientId}
         onSubmitOrder={async (order) => {
           try {
-            const res = await api.post("/labs/orders/", order);
+            const res = await apiClient.post("/labs/orders/", order);
             const sampleId = res?.data?.sample_id as string | undefined;
             toast.success(
               sampleId

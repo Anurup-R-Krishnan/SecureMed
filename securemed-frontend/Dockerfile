@@ -22,7 +22,7 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 
 RUN groupadd --system --gid 1001 nodejs \
-    && useradd --system --uid 1001 --gid 1001 --gid nodejs nextjs
+    && useradd --system --uid 1001 --gid 1001 nextjs
 
 # output: 'standalone' copies server.js to .next/standalone/ — copy its contents into /app
 COPY --from=builder --chown=nextjs:nodejs /app/public               ./public

@@ -15,7 +15,7 @@ import {
   Building2,
   Loader2,
 } from "lucide-react";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 
 type InsuranceProvider = { id: string; name: string; code: string };
 type BillingSummary = {
@@ -54,7 +54,7 @@ export default function InsuranceVerification() {
   useEffect(() => {
     const fetchProviders = async () => {
       try {
-        const response = await api.get("/billing/insurance/providers/");
+        const response = await apiClient.get("/billing/insurance/providers/");
         setProviders(response.data?.providers || []);
       } catch (err) {}
     };
@@ -65,7 +65,7 @@ export default function InsuranceVerification() {
     const fetchBillingSummary = async () => {
       setLoadingSummary(true);
       try {
-        const response = await api.get("/billing/admin/summary/");
+        const response = await apiClient.get("/billing/admin/summary/");
         setBillingSummary(response.data || null);
       } catch (err) {
       } finally {
@@ -86,7 +86,7 @@ export default function InsuranceVerification() {
     setVerificationResult(null);
 
     try {
-      const response = await api.post("/billing/insurance/verify/", {
+      const response = await apiClient.post("/billing/insurance/verify/", {
         providerId: selectedProvider,
         policyNumber: policyNumber,
         patientId: patientId,

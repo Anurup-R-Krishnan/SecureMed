@@ -18,7 +18,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { useToast } from "@/hooks/use-toast";
 
 interface TriageRequest {
@@ -37,7 +37,7 @@ export default function TriageInboxPage() {
   const fetchInbox = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/telemedicine/triage/inbox/");
+      const res = await apiClient.get("/telemedicine/triage/inbox/");
       setRequests(Array.isArray(res.data) ? res.data : []);
     } catch {
       toast({
@@ -59,7 +59,7 @@ export default function TriageInboxPage() {
   ) => {
     setActioning(triageId);
     try {
-      await api.post("/telemedicine/triage/approve/", {
+      await apiClient.post("/telemedicine/triage/approve/", {
         triage_id: triageId,
         action,
       });

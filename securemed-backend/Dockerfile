@@ -19,6 +19,7 @@ RUN groupadd -g 1000 app && useradd -m -u 1000 -g 1000 app \
     && chmod +x /app/scripts/start_backend.sh \
     && chown -R app:app /app
 
+USER app
 EXPOSE 8000
 
 CMD ["/app/scripts/start_backend.sh"]

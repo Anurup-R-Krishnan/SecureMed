@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { appointmentService, Appointment } from "@/services/appointments";
 import ClinicalDashboard from "@/components/portals/doctor/dashboard/clinical-dashboard";
 import ReferralModal from "@/components/portals/doctor/shared/referral-modal";
@@ -55,7 +55,7 @@ export default function DashboardPage() {
 
         // Fetch patients
         try {
-          const patientsRes = await api.get("/patients/");
+          const patientsRes = await apiClient.get("/patients/");
           const patientData: RawPatient[] = Array.isArray(patientsRes.data)
             ? patientsRes.data
             : patientsRes.data.results || [];

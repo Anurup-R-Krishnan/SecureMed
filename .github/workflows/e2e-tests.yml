@@ -31,7 +31,7 @@ jobs:
       - name: Wait for Neo4j readiness
         run: |
           for i in {1..30}; do
-            if docker compose -f docker-compose.yml exec -T neo4j cypher-shell -u neo4j -p securemed_graph "RETURN 1" >/dev/null 2>&1; then
+            if docker compose -f docker-compose.yml exec -T -e NEO4J_PASSWORD=securemed_graph neo4j sh -c 'cypher-shell -u neo4j -p "$NEO4J_PASSWORD" "RETURN 1"' >/dev/null 2>&1; then
               echo "Neo4j is ready"
               exit 0
             fi

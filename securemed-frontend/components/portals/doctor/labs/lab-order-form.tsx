@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -96,7 +96,7 @@ export function LabOrderForm({
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const response = await api.get("/labs/tests/");
+        const response = await apiClient.get("/labs/tests/");
         const data = Array.isArray(response.data)
           ? response.data
           : response.data.results || [];

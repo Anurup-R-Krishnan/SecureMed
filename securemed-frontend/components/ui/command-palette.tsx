@@ -29,7 +29,7 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { appointmentService, Doctor } from "@/services/appointments";
 import { adminService } from "@/services/admin";
-import api from "@/lib/api";
+import { apiClient } from "@/lib/unified-api-client";
 
 interface PatientResult {
   id: number;
@@ -80,7 +80,7 @@ export function CommandPalette() {
           setResults(docs);
           setPatientResults([]);
         } else if (user?.role === "doctor") {
-          const response = await api.get("/medical-records/records/", {
+          const response = await apiClient.get("/medical-records/records/", {
             params: { search: query },
           });
           const rows = Array.isArray(response.data)

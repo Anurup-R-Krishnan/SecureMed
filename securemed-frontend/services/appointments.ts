@@ -58,7 +58,7 @@ export const appointmentService = {
         if (search) params.append('search', search);
 
         try {
-            const response = await api.get<any>(`/appointments/doctors/?${params.toString()}`);
+            const response = await apiClient.get<any>(`/appointments/doctors/?${params.toString()}`);
 
             // Handle paginated (results) or plain array response
             const results = Array.isArray(response.data) ? response.data :

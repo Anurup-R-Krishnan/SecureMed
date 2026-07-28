@@ -27,7 +27,7 @@ const AnatomyEducationCard = dynamic(() => import("./anatomy-education-card"), {
     </div>
   ),
 });
-import { getDashboardStats } from "@/lib/api";
+import { getDashboardStats } from "@/lib/unified-api-client";
 import { getAccessToken } from "@/lib/auth-utils";
 
 interface Appointment extends Omit<BaseAppointment, "doctor_name"> {
