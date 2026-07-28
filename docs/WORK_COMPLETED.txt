@@ -1,3 +1,19 @@
 Container build failed due to no internet access: 'Temporary failure in name resolution' during apt-get and pip install.
 The database, redis, and neo4j containers were already running, suggesting they rely on local images.
 Builds require an environment with outbound network access or a pre-populated local artifact repository.
+
+======================================================
+LOCAL BUILD ENVIRONMENT NOTES (Proper Fix)
+======================================================
+The CI pipeline is now standardized to trigger on both 'main' and 'ci-cd-hardening'.
+Local container builds ('docker compose build') rely on external network reachability
+to pull dependencies (apt-get, pip/bun). 
+
+In isolated environments:
+1. Docker build stages for 'backend' and 'frontend' will fail due to DNS resolution
+   blockers when accessing external repositories (deb.debian.org, pypi, etc.).
+2. This is expected behavior for this local build environment.
+3. Proper Development Workflow: Use an internet-enabled local machine for the *initial*
+   'docker compose build --no-cache' to pull and cache base layers and application
+   dependencies. Subsequent runs will use the local Docker cache and run without
+   external network requirements.
