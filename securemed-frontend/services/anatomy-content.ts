@@ -59,21 +59,21 @@ export async function fetchRegionExplainer(regionId: string, role: 'patient' | '
   const response = await apiClient.get<AnatomyRegionExplainer>('/telemedicine/anatomy/explainers/', {
     params: { region: regionId, role },
   });
-  return response.data;
+  return response;
 }
 
 export async function fetchConditionCatalog(scope = 'top20', role: 'patient' | 'doctor' = 'patient') {
   const response = await apiClient.get<ConditionCatalogItem[]>('/telemedicine/conditions/', {
     params: { scope, role },
   });
-  return response.data;
+  return response;
 }
 
 export async function fetchConditionVisualization(conditionId: string, role: 'patient' | 'doctor' = 'patient') {
   const response = await apiClient.get<ConditionVisualization>(`/telemedicine/conditions/${conditionId}/visualization/`, {
     params: { role },
   });
-  return response.data;
+  return response;
 }
 
 export async function fetchConditionMatches(
@@ -84,5 +84,5 @@ export async function fetchConditionMatches(
     regions,
     intensityByRegion,
   });
-  return response.data.matches || [];
+  return response.matches || [];
 }

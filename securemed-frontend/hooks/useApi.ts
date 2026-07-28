@@ -500,8 +500,8 @@ export function useDashboardStats(options?: UseQueryOptions<any>) {
   return useQuery({
     queryKey: queryKeys.dashboardStats(),
     queryFn: () => apiClient.get("/medical-records/dashboard/stats/"),
-    staleTime: 2 * 60 * 1000, // 2 minutes (shorter for stats)
     ...defaultQueryOptions,
+    staleTime: 2 * 60 * 1000, // 2 minutes (shorter for stats)
     ...options,
   });
 }

@@ -237,6 +237,7 @@ export default function MyPatientsTable({
               onCompleteReferral: handleComplete,
             })}
             data={filteredPatients}
+            keyExtractor={(p) => p.id}
           />
         </Card>
       ) : (
@@ -248,6 +249,7 @@ export default function MyPatientsTable({
               onDecline: handleDecline,
             })}
             data={filteredPending}
+            keyExtractor={(r) => r.id}
           />
         </Card>
       )}

@@ -205,7 +205,7 @@ function TraceDetail({ trace }: { trace: InfectionTrace }) {
         />
         <PatientCard
           title="Linked case"
-          name={trace.target_report?.patient_name || trace.target_patient_name}
+          name={trace.target_report?.patient_name ?? trace.target_patient_name}
           diagnosedAt={trace.target_report?.diagnosed_at}
           severity={
             trace.target_report?.severity_display ||

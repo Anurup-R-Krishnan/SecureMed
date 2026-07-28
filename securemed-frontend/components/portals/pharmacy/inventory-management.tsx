@@ -280,7 +280,7 @@ export default function PharmacyInventory() {
     },
   ];
 
-  const batchColumns: Column<Batch>[] = [
+  const batchColumns: Column<DrugBatch>[] = [
     {
       header: "Batch Info",
       cell: (batch) => (

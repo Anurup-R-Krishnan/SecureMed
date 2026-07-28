@@ -47,7 +47,6 @@ export const getColumns = ({
     ),
   },
   {
-    accessorKey: "name",
     header: "Name",
     cell: (patient) => {
       const fullName = [

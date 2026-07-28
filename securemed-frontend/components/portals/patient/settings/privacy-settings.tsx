@@ -86,9 +86,9 @@ export default function PrivacySettings() {
       const response = await apiClient.get<Consent[]>(CONSENTS_ENDPOINT);
 
       // Ensure we have an array
-      if (Array.isArray(response.data)) {
-        setDepartments(response.data);
-      } else if (response.data && typeof response.data === "object") {
+      if (Array.isArray(response)) {
+        setDepartments(response);
+      } else if (response && typeof response === "object") {
         // Backend might return empty object for no data
         setDepartments([]);
       } else {

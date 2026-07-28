@@ -133,7 +133,7 @@ export default function PatientProfileView({
           drugInteractionService
             .getLatestReport(parseInt(patient.id))
             .catch(() => null),
-          api
+          apiClient
             .get("/labs/results/", { params: { patient_id: patient.id } })
             .catch(() => ({ data: [] })),
         ]);

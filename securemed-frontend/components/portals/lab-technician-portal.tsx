@@ -365,7 +365,7 @@ function CompletedTestsView() {
           />
         </div>
       </div>
-      <DataTable columns={columns} data={filteredData} />
+      <DataTable columns={columns} data={filteredData} keyExtractor={(row) => (row as any).sample_id || (row as any).id} />
       <Dialog
         open={Boolean(selectedResult)}
         onOpenChange={(open) => !open && setSelectedResult(null)}
@@ -439,7 +439,7 @@ function ReportsView() {
       ]);
       const csv = [header, ...lines]
         .map((row) =>
-          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
+          row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
         )
         .join("\n");
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

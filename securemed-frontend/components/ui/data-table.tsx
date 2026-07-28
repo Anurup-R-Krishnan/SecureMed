@@ -19,11 +19,30 @@ export interface Column<T> {
 
 interface DataTableProps<T> {
   data: T[];
-  columns: Column<T>[];
+  columns: any[];
   keyExtractor: (item: T) => string | number;
   emptyMessage?: string;
   onRowClick?: (item: T) => void;
   className?: string;
+}
+
+function isTanStackColumn(col: any): boolean {
+  // TanStack ColumnDef columns use `id` for key-based columns
+  // Custom Column<T> columns never have `id`
+  return "id" in col && typeof col.id === "string";
+}
+
+function renderCell<T>(col: any, item: T): React.ReactNode {
+  if (!col.cell) {
+    if (col.accessorKey && typeof col.accessorKey === "string" && col.accessorKey in (item as any)) {
+      return String((item as any)[col.accessorKey]);
+    }
+    return null;
+  }
+  if (isTanStackColumn(col)) {
+    return col.cell({ row: { original: item } });
+  }
+  return col.cell(item);
 }
 
 export function DataTable<T>({
@@ -63,11 +82,7 @@ export function DataTable<T>({
             >
               {columns.map((col, i) => (
                 <TableCell key={i} className={col.className}>
-                  {col.cell
-                    ? col.cell(item)
-                    : col.accessorKey
-                      ? String(item[col.accessorKey])
-                      : null}
+                  {renderCell(col, item)}
                 </TableCell>
               ))}
             </TableRow>
