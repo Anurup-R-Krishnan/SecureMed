@@ -64,6 +64,9 @@ jobs:
       - name: Lint
         run: ruff check .
 
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
       - name: Run test suite
         env:
           DJANGO_SETTINGS_MODULE: config.settings
