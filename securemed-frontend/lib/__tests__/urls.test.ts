@@ -1,3 +1,5 @@
+import { afterEach, describe, expect, it } from "@jest/globals";
+
 describe("urls", () => {
   const ORIGINAL_API_URL = process.env.NEXT_PUBLIC_API_URL;
   const ORIGINAL_ORIGIN = process.env.NEXT_PUBLIC_BACKEND_ORIGIN;

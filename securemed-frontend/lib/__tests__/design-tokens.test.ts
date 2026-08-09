@@ -1,3 +1,4 @@
+import { describe, expect, it } from "@jest/globals";
 import { tokens } from "../design-tokens";
 
 describe("design tokens", () => {
