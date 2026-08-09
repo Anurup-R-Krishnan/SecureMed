@@ -111,7 +111,10 @@ export default function LoginModal({
           </div>
 
           {error && (
-            <div className="mb-6 p-3 rounded-xl bg-destructive/10 border border-destructive/20 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <div
+              role="alert"
+              className="mb-6 p-3 rounded-xl bg-destructive/10 border border-destructive/20 flex items-start gap-3 animate-in fade-in slide-in-from-top-2"
+            >
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <p className="text-sm font-medium text-destructive">{error}</p>
             </div>

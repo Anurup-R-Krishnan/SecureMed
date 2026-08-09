@@ -285,7 +285,7 @@ export default function RegisterPage({
                   />
                 </div>
                 {errors.username && (
-                  <p className="text-xs text-destructive mt-1">
+                  <p role="alert" className="text-xs text-destructive mt-1">
                     {errors.username.message}
                   </p>
                 )}
@@ -334,7 +334,7 @@ export default function RegisterPage({
                   />
                 </div>
                 {errors.password && (
-                  <p className="text-xs text-destructive mt-1">
+                  <p role="alert" className="text-xs text-destructive mt-1">
                     {errors.password.message}
                   </p>
                 )}
@@ -363,7 +363,7 @@ export default function RegisterPage({
                   />
                 </div>
                 {errors.password_confirm && (
-                  <p className="text-xs text-destructive mt-1">
+                  <p role="alert" className="text-xs text-destructive mt-1">
                     {errors.password_confirm.message}
                   </p>
                 )}
@@ -389,7 +389,7 @@ export default function RegisterPage({
                   </label>
                 </div>
                 {errors.role && (
-                  <p className="text-xs text-destructive mt-1">
+                  <p role="alert" className="text-xs text-destructive mt-1">
                     {errors.role.message}
                   </p>
                 )}
@@ -417,7 +417,7 @@ export default function RegisterPage({
                     />
                   </div>
                   {errors.medicalLicenseNumber && (
-                    <p className="text-xs text-destructive mt-1">
+                    <p role="alert" className="text-xs text-destructive mt-1">
                       {errors.medicalLicenseNumber.message}
                     </p>
                   )}
