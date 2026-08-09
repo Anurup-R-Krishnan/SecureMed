@@ -281,10 +281,10 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
               ))}
             </div>
 
-            <div className="max-w-5xl mx-auto mb-10 rounded-3xl border border-red-200 bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 p-6 text-left shadow-lg shadow-red-100/40">
+            <div className="max-w-5xl mx-auto mb-10 rounded-3xl border border-alert-crimson/25 bg-gradient-to-r from-alert-crimson/5 via-alert-crimson/5 to-amber-50 dark:from-alert-crimson/10 dark:via-alert-crimson/10 dark:to-transparent p-6 text-left shadow-lg shadow-alert-crimson/10">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="max-w-3xl">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-red-700">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-alert-crimson/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-alert-crimson">
                     <AlertTriangle className="h-4 w-4" />
                     Emergency Intake
                   </div>
@@ -298,16 +298,16 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                     standard consent is unavailable.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-foreground">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1">
-                      <HeartPulse className="h-3.5 w-3.5 text-red-600" />
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 dark:bg-gray-900/60 px-3 py-1">
+                      <HeartPulse className="h-3.5 w-3.5 text-alert-crimson" />
                       Trauma
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1">
-                      <HeartPulse className="h-3.5 w-3.5 text-red-600" />
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 dark:bg-gray-900/60 px-3 py-1">
+                      <HeartPulse className="h-3.5 w-3.5 text-alert-crimson" />
                       Life-Threatening
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1">
-                      <HeartPulse className="h-3.5 w-3.5 text-red-600" />
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 dark:bg-gray-900/60 px-3 py-1">
+                      <HeartPulse className="h-3.5 w-3.5 text-alert-crimson" />
                       Critical Lab
                     </span>
                   </div>
@@ -315,7 +315,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 <div className="flex flex-col gap-3 min-w-[220px]">
                   <Button
                     size="lg"
-                    className="bg-red-600 text-white hover:bg-red-700"
+                    className="bg-alert-crimson text-white hover:bg-alert-crimson-dark"
                     onClick={() => router.push(ROUTES.EMERGENCY)}
                   >
                     Clinician Emergency Login
@@ -335,16 +335,16 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
               >
                 {/* Location Select */}
                 <div className="flex-1 w-full md:w-auto relative border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4">
-                  <div className="flex items-center gap-3 mb-1">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <MapPin className="h-4 w-4 text-precision-blue" />
+                    <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                       Location
                     </span>
                   </div>
                   <input
                     type="text"
                     placeholder="Select Location"
-                    className="w-full bg-transparent outline-none text-foreground font-medium"
+                    className="w-full bg-transparent outline-none text-foreground font-medium placeholder:text-muted-foreground/60"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                   />
@@ -352,16 +352,16 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
 
                 {/* Specialty Select */}
                 <div className="flex-1 w-full md:w-auto relative border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4 md:pl-4">
-                  <div className="flex items-center gap-3 mb-1">
-                    <Stethoscope className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <Stethoscope className="h-4 w-4 text-precision-blue" />
+                    <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                       Specialty
                     </span>
                   </div>
                   <input
                     type="text"
                     placeholder="Select Specialty"
-                    className="w-full bg-transparent outline-none text-foreground font-medium"
+                    className="w-full bg-transparent outline-none text-foreground font-medium placeholder:text-muted-foreground/60"
                     value={specialty}
                     onChange={(e) => setSpecialty(e.target.value)}
                   />
@@ -369,16 +369,16 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
 
                 {/* Doctor Select (Search Input) */}
                 <div className="flex-[1.5] w-full md:w-auto relative pb-4 md:pb-0 md:pl-4">
-                  <div className="flex items-center gap-3 mb-1">
-                    <Users className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <Users className="h-4 w-4 text-precision-blue" />
+                    <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                       Doctor
                     </span>
                   </div>
                   <input
                     type="text"
                     placeholder="Search by Name"
-                    className="w-full bg-transparent outline-none text-foreground font-medium"
+                    className="w-full bg-transparent outline-none text-foreground font-medium placeholder:text-muted-foreground/60"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -388,7 +388,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 <Button
                   type="submit"
                   size="lg"
-                  className="h-14 px-8 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 w-full md:w-auto"
+                  className="h-14 px-8 rounded-xl bg-precision-blue hover:bg-precision-blue-dark shadow-lg shadow-precision-blue/20 w-full md:w-auto"
                 >
                   Search
                 </Button>
@@ -406,7 +406,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
         <div className="mx-auto max-w-7xl">
           <div className="flex justify-between items-end mb-12">
             <div>
-              <span className="text-primary font-semibold tracking-wider uppercase text-sm">
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-precision-blue">
                 {isSearching
                   ? `Search Results (${filteredDoctors.length})`
                   : "Top Doctors"}
@@ -450,15 +450,17 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
               {filteredDoctors.map((doctor, index) => (
                 <div
                   key={doctor.id}
-                  className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:border-primary/20 transition-all duration-300 transform hover:-translate-y-1"
+                  className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:border-precision-blue/40 transition-all duration-300 transform hover:-translate-y-1"
                 >
-                  <div className="p-1 min-h-[160px] bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center relative overflow-hidden">
+                  <div className="p-1 min-h-[160px] bg-gradient-to-br from-cool-grey-50 to-cool-grey-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
                     {/* Dynamic Avatar using Lucide */}
                     <div className="relative">
                       <div
                         className={`w-24 h-24 rounded-full flex items-center justify-center border-4 border-background shadow-xl ${
-                          index % 2 === 0 ? "bg-blue-600" : "bg-indigo-600"
+                          index % 2 === 0
+                            ? "bg-precision-blue"
+                            : "bg-steel-contrast"
                         }`}
                       >
                         <Users className="h-12 w-12 text-white" />
@@ -470,10 +472,10 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+                        <h3 className="text-xl font-bold text-foreground group-hover:text-precision-blue transition-colors">
                           Dr. {doctor.name.replace(/^Dr\. /, "")}
                         </h3>
-                        <p className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded-md inline-block mt-1">
+                        <p className="text-sm font-medium text-precision-blue bg-precision-blue/10 px-2 py-1 rounded-md inline-block mt-1">
                           {doctor.specialization}
                         </p>
                       </div>
@@ -489,10 +491,10 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                     </p>
 
                     <div className="flex items-center justify-between text-sm text-muted-foreground pt-4 border-t border-border">
-                      <span className="flex items-center">
+                      <span className="flex items-center font-mono text-xs">
                         <MapPin className="h-3 w-3 mr-1" /> {doctor.hospital}
                       </span>
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-foreground font-mono text-xs">
                         ₹ {doctor.consultation_fee}
                       </span>
                     </div>
@@ -511,7 +513,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                             `${ROUTES.PATIENT_APPOINTMENTS}?doctorId=${doctor.id}`,
                           )
                         }
-                        className="flex-1"
+                        className="flex-1 bg-precision-blue hover:bg-precision-blue-dark"
                       >
                         Book
                       </Button>
@@ -538,7 +540,10 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-card">
         <div className="mx-auto max-w-7xl">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-precision-blue">
+              Trust &amp; Compliance
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-2 mb-4">
               Why Patients Trust SecureMed
             </h2>
             <p className="text-muted-foreground text-lg">
@@ -553,30 +558,30 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 icon: Calendar,
                 title: "Instant Booking",
                 desc: "Book appointments instantly with real-time doctor availability.",
-                color: "text-blue-500 bg-blue-50 dark:bg-blue-900/20",
+                color: "text-precision-blue bg-precision-blue/10",
               },
               {
                 icon: Shield,
                 title: "Secure Records",
                 desc: "Bank-grade encryption keeps your medical history safe and private.",
-                color: "text-green-500 bg-green-50 dark:bg-green-900/20",
+                color: "text-steel-contrast bg-cool-grey-100 dark:bg-gray-800",
               },
               {
                 icon: Users,
                 title: "Top Specialists",
                 desc: "Access a network of board-certified doctors across 30+ specialties.",
-                color: "text-purple-500 bg-purple-50 dark:bg-purple-900/20",
+                color: "text-precision-blue-dark bg-precision-blue/10",
               },
               {
                 icon: Clock,
                 title: "24/7 Access",
                 desc: "Manage your health anytime, anywhere from our mobile-friendly portal.",
-                color: "text-orange-500 bg-orange-50 dark:bg-orange-900/20",
+                color: "text-steel-contrast bg-cool-grey-100 dark:bg-gray-800",
               },
             ].map((feature, i) => (
               <div
                 key={i}
-                className="p-6 rounded-2xl bg-background border border-border hover:border-primary/50 transition-colors"
+                className="p-6 rounded-2xl bg-background border border-border hover:border-precision-blue/40 transition-colors"
               >
                 <div
                   className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 ${feature.color}`}
@@ -598,12 +603,17 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
       {/* Testimonials Section (New) */}
       <section
         id="testimonials"
-        className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-t from-blue-50/50 to-transparent dark:from-blue-950/20"
+        className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-t from-cool-grey-50/60 to-transparent dark:from-gray-900/40"
       >
         <div className="mx-auto max-w-7xl">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-foreground mb-16">
-            Patient Stories
-          </h2>
+          <div className="text-center mb-16">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-precision-blue">
+              Patient Stories
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mt-2">
+              Hear from the SecureMed Community
+            </h2>
+          </div>
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
@@ -630,9 +640,9 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
             ].map((story, i) => (
               <div
                 key={i}
-                className="bg-card p-8 rounded-2xl shadow-sm border border-border relative"
+                className="bg-card p-8 rounded-2xl shadow-sm border border-border relative hover:border-precision-blue/40 transition-colors"
               >
-                <div className="absolute top-6 right-8 text-6xl text-primary/10 font-serif leading-none">
+                <div className="absolute top-6 right-8 text-6xl text-precision-blue/10 font-serif leading-none">
                   &quot;
                 </div>
                 <div className="flex gap-1 mb-4">
