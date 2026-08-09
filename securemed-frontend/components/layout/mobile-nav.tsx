@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, FlaskConical, Settings, Menu } from "lucide-react";
+import { Home, Users, FlaskConical, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function MobileNav() {
@@ -47,9 +47,6 @@ export function MobileNav() {
             </Link>
           );
         })}
-        <button className="flex flex-col items-center justify-center w-12 h-12 rounded-full text-muted-foreground">
-          <Menu className="h-6 w-6" />
-        </button>
       </div>
     </div>
   );

@@ -133,6 +133,9 @@ export default function Header({ onLoginClick }: HeaderProps) {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
             className="md:hidden p-2 text-foreground hover:bg-muted rounded-md"
           >
             {mobileMenuOpen ? (
@@ -146,7 +149,10 @@ export default function Header({ onLoginClick }: HeaderProps) {
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-background border-b border-border shadow-xl animate-in slide-in-from-top-5">
+        <div
+          id="mobile-menu"
+          className="md:hidden absolute top-full left-0 right-0 bg-background border-b border-border shadow-xl animate-in slide-in-from-top-5"
+        >
           <div className="p-4 space-y-4">
             {navItems.map((item) => (
               <button
