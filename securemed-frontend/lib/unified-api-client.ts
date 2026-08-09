@@ -346,10 +346,18 @@ export class UnifiedApiClient {
 
   /**
    * Check if error is retryable
+   *
+   * The response interceptor rejects with a formatted ApiErrorResponse (which
+   * carries `status` but no axios `error.response`), so both shapes must be
+   * handled here. Only status-less errors (true network failures) and the
+   * configured retryable statuses are retried.
    */
-  private isRetryable(error: AxiosError): boolean {
-    if (!error.response) return true; // Network errors are retryable
-    return this.retryConfig.retryableStatuses.includes(error.response.status);
+  private isRetryable(error: any): boolean {
+    const status = error?.response?.status ?? error?.status;
+    if (typeof status === "number") {
+      return this.retryConfig.retryableStatuses.includes(status);
+    }
+    return true; // Network errors are retryable
   }
 
   /**
