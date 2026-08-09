@@ -1,23 +1,17 @@
-describe('Pharmacist Inventory Workflow', () => {
+describe("Pharmacist Inventory Workflow", () => {
   beforeEach(() => {
     cy.viewport(1280, 720);
-    cy.clearCookies();
-    cy.clearLocalStorage();
-    cy.visit('http://localhost:3000/login');
-    cy.get('#email').type('pharmacist@securemed.com');
-    cy.get('#password').type('SecureMed@123');
-    cy.get('button[type="submit"]').click();
-    cy.location('pathname', { timeout: 10000 }).should('not.include', '/login');
+    cy.login("pharmacist@securemed.com", "SecureMed@123");
   });
 
-  it('Allows pharmacist to check stock levels', () => {
-    cy.url().should('include', '/pharmacy');
-    cy.visit('http://localhost:3000/pharmacy/inventory');
-    cy.contains(/Drugs \(/i).should('be.visible');
+  it("Allows pharmacist to check stock levels", () => {
+    cy.url().should("include", "/pharmacy");
+    cy.visit("/pharmacy/inventory");
+    cy.contains(/Drugs \(/i).should("be.visible");
   });
 
-  it('Allows pharmacist to view orders', () => {
-    cy.visit('http://localhost:3000/pharmacy/orders');
-    cy.contains('h2', /^Orders$/i).should('be.visible');
+  it("Allows pharmacist to view orders", () => {
+    cy.visit("/pharmacy/orders");
+    cy.contains("h2", /^Orders$/i).should("be.visible");
   });
 });

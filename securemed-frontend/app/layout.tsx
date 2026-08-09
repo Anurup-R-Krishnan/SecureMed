@@ -11,7 +11,7 @@ import SessionTimeout from "@/components/session-timeout";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fortis Healthcare - Hospital Management System",
+  title: "SecureMed Healthcare - Hospital Management System",
   description:
     "Comprehensive hospital management system for patients, doctors, and administrators",
   icons: {
