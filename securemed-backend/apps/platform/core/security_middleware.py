@@ -2,12 +2,33 @@
 Security middleware for SecureMed
 Implements rate limiting, security headers, and request validation
 """
+import re
 import time
 
 from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
+
+
+class CollapseDuplicateSlashMiddleware(MiddlewareMixin):
+    """Normalize repeated slashes in the request path before URL resolution.
+
+    Proxies and rewrite rules (e.g. Next.js rewrites that append a trailing
+    slash to a path that already ends with one) can produce doubled slashes
+    such as /api/auth/login//. Django's URLconf does not match those, so they
+    surface as 404s. Collapse runs of slashes while leaving APPEND_SLASH to
+    handle paths missing a single trailing slash.
+    """
+
+    def process_request(self, request):
+        if '//' in request.path_info:
+            collapsed = re.sub(r'/{2,}', '/', request.path_info)
+            # `path` and `path_info` are plain attributes on Django's request
+            # objects (not cached properties), so update both in place.
+            request.path = collapsed
+            request.path_info = collapsed
+            request.environ['PATH_INFO'] = collapsed
 
 
 class SecurityHeadersMiddleware(MiddlewareMixin):

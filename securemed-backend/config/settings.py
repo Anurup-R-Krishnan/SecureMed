@@ -77,6 +77,8 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
+    # Must run before CommonMiddleware so APPEND_SLASH sees a normalized path.
+    'apps.platform.core.security_middleware.CollapseDuplicateSlashMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     # CSRF middleware re-enabled: DRF APIViews are csrf_exempt by default, so the
