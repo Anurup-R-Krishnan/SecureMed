@@ -220,7 +220,9 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'apps.platform.core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
-    #'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
+    # Standardize error responses as {"error", "code", "details"}; the
+    # frontend client (extractErrorMessage) supports this format natively.
+    'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
 }
 
 # Custom User Model
