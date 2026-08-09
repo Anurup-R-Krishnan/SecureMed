@@ -72,6 +72,34 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
     fetchDoctors();
   }, []);
 
+  // Vitality indicator: reflect live system status from the readiness probe.
+  const [systemOperational, setSystemOperational] = useState<boolean | null>(null);
+
+  // Service card availability labels (high-density status chips).
+  const serviceStatuses = ["Available", "Open", "Self-serve", "Online"];
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkHealth = async () => {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch("/api/health/ready/", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        clearTimeout(timer);
+        if (!cancelled) setSystemOperational(res.ok);
+      } catch {
+        if (!cancelled) setSystemOperational(false);
+      }
+    };
+    checkHealth();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -125,17 +153,68 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
     <main className="bg-background min-h-screen relative">
       {/* Hero Section with Service Bar and Widget */}
       <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 -z-10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-cool-grey-50 via-white to-cool-grey-100 dark:from-gray-900 dark:to-gray-800 -z-10" />
         <div className="mx-auto max-w-7xl relative z-10">
           {/* Main Hero Content */}
-          <div className="text-center mb-16">
-            <h1 className="text-5xl sm:text-7xl font-extrabold text-foreground mb-6 tracking-tight leading-tight">
-              Healthcare <span className="text-primary">Reimagined</span>
+          <div className="text-center mb-12">
+            {/* Vitality indicator — live readiness pulse */}
+            <div className="inline-flex items-center gap-3 rounded-full border border-border/60 bg-white/70 dark:bg-gray-900/70 px-4 py-2 backdrop-blur mb-8">
+              <span className="relative flex h-2 w-2">
+                <span
+                  className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${
+                    systemOperational === null
+                      ? "bg-muted-foreground"
+                      : systemOperational
+                        ? "bg-precision-blue"
+                        : "bg-alert-crimson"
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex h-2 w-2 rounded-full ${
+                    systemOperational === null
+                      ? "bg-muted-foreground"
+                      : systemOperational
+                        ? "bg-precision-blue"
+                        : "bg-alert-crimson"
+                  }`}
+                />
+              </span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground">
+                {systemOperational === null
+                  ? "Checking system status…"
+                  : systemOperational
+                    ? "All systems operational"
+                    : "System degraded — emergency intake available"}
+              </span>
+            </div>
+
+            <h1 className="text-5xl sm:text-6xl font-extrabold text-foreground mb-6 tracking-tight leading-tight">
+              Healthcare <span className="text-precision-blue">Reimagined</span>
             </h1>
-            <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
-              Experience modern healthcare management. Book appointments, access
-              records, and connect with specialists securely.
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+              Book appointments, access records, and connect with specialists
+              through a security-first platform engineered for clinical clarity.
             </p>
+
+            {/* Platform facts — dense, data-first */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto mb-14">
+              {[
+                { value: "JWT + MFA", label: "Security-first auth" },
+                { value: "HIPAA-aligned", label: "Clinical records" },
+                { value: "24/7", label: "Emergency triage" },
+                { value: "Live", label: "System readiness" },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-lg border border-border/50 bg-white/60 dark:bg-gray-900/60 px-3 py-2.5 text-left"
+                >
+                  <div className="font-mono text-sm font-semibold text-foreground">
+                    {stat.value}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">{stat.label}</div>
+                </div>
+              ))}
+            </div>
 
             {/* Service Icon Bar (Inspiration from reference) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto mb-16">
@@ -184,10 +263,15 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 <div
                   key={idx}
                   onClick={service.action}
-                  className="bg-card hover:bg-primary/5 border border-border/50 hover:border-primary/50 p-6 rounded-xl cursor-pointer transition-all duration-300 group shadow-sm hover:shadow-md text-center flex flex-col items-center"
+                  className="bg-card hover:bg-precision-blue/5 border border-border/50 hover:border-precision-blue/50 p-5 rounded-xl cursor-pointer transition-all duration-300 group shadow-sm hover:shadow-md text-left flex flex-col"
                 >
-                  <div className="p-3 bg-primary/10 rounded-full text-primary mb-3 group-hover:scale-110 transition-transform">
-                    <service.icon className="h-8 w-8" />
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2.5 bg-precision-blue/10 rounded-lg text-precision-blue group-hover:scale-110 transition-transform">
+                      <service.icon className="h-5 w-5" />
+                    </div>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] px-2 py-0.5 rounded-full bg-cool-grey-100 dark:bg-gray-800 text-muted-foreground">
+                      {serviceStatuses[idx]}
+                    </span>
                   </div>
                   <h3 className="font-bold text-foreground">{service.label}</h3>
                   <p className="text-xs text-muted-foreground mt-1">

@@ -15,4 +15,14 @@ export const tokens = {
     },
     steelContrast: '#212529',
   },
+  fonts: {
+    sans: ["'Inter'", "'Segoe UI'", 'system-ui', 'sans-serif'],
+    mono: ["'JetBrains Mono'", "'Fira Code'", 'ui-monospace', 'monospace'],
+  },
+  radius: {
+    sm: 'calc(var(--radius) - 4px)',
+    md: 'calc(var(--radius) - 2px)',
+    lg: 'var(--radius)',
+    xl: 'calc(var(--radius) + 4px)',
+  },
 }

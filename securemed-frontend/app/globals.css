@@ -37,6 +37,14 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 260);
   --sidebar-border: oklch(0.28 0.02 260);
   --sidebar-ring: oklch(0.55 0.15 145);
+  --cool-grey-50: #F8F9FA;
+  --cool-grey-100: #E9ECEF;
+  --cool-grey-200: #DEE2E6;
+  --precision-blue: #0055FF;
+  --precision-blue-dark: #0044CC;
+  --alert-crimson: #D32F2F;
+  --alert-crimson-dark: #B71C1C;
+  --steel-contrast: #212529;
 }
 
 .dark {
@@ -101,6 +109,14 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-cool-grey-50: var(--cool-grey-50);
+  --color-cool-grey-100: var(--cool-grey-100);
+  --color-cool-grey-200: var(--cool-grey-200);
+  --color-precision-blue: var(--precision-blue);
+  --color-precision-blue-dark: var(--precision-blue-dark);
+  --color-alert-crimson: var(--alert-crimson);
+  --color-alert-crimson-dark: var(--alert-crimson-dark);
+  --color-steel-contrast: var(--steel-contrast);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -157,17 +173,5 @@
 
   .glass-panel {
     @apply bg-background/80 backdrop-blur-xl border border-white/20 shadow-2xl;
-  }
-}
-@layer base {
-  :root {
-    --cool-grey-50: #F8F9FA;
-    --cool-grey-100: #E9ECEF;
-    --cool-grey-200: #DEE2E6;
-    --precision-blue: #0055FF;
-    --precision-blue-dark: #0044CC;
-    --alert-crimson: #D32F2F;
-    --alert-crimson-dark: #B71C1C;
-    --steel-contrast: #212529;
   }
 }
