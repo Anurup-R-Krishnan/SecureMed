@@ -1,5 +1,5 @@
 # Improved .gitignore for securemed-frontend 🔧
-# Keep pnpm lock file committed: `pnpm-lock.yaml` should NOT be ignored
+# Keep bun.lock committed; ignore lockfiles of other package managers
 
 # Node dependencies
 /node_modules/
