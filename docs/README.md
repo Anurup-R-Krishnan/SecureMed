@@ -104,7 +104,7 @@ Run migrations and seed data:
 
 ```bash
 python manage.py migrate
-python manage.py runscript seed_data
+python manage.py seed_db
 ```
 
 Start server:
@@ -117,7 +117,7 @@ python manage.py runserver
 
 ### 🌐 Frontend Setup
 
-**Prerequisites:** Node.js v18+
+**Prerequisites:** Bun (the repo uses `bun.lock`), Node.js v18+
 
 ```bash
 cd securemed-frontend
@@ -126,20 +126,21 @@ cd securemed-frontend
 Install dependencies:
 
 ```bash
-npm install
+bun install
 ```
 
 Configure environment:
 
 ```bash
-cp .env.local.example .env.local
-# Ensure NEXT_PUBLIC_API_URL=http://localhost:8000
+cp .env.example .env.local
+# NEXT_PUBLIC_API_URL=/api is proxied to the backend via Next.js rewrites.
+# BACKEND_URL points at the Django server the proxy forwards to.
 ```
 
 Start development server:
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 ---
@@ -186,7 +187,9 @@ SecureMed implements strict Role-Based Access Control.
 
 * Patient
 * Doctor
-* Provider
+* Healthcare Provider
+* Pharmacist
+* Lab Technician
 * Admin
 
 **Security Features:**
@@ -275,11 +278,8 @@ python manage.py makemigrations --check --dry-run   # fail on un-migrated model 
 Verification scripts:
 
 ```bash
-# Verify RBAC
-python manage.py runscript verification_tests.verify_rbac
-
-# Verify MFA
-python manage.py runscript verification_tests.verify_mfa
+# Introspect every URL's effective DRF permission classes (read-only)
+python scripts/inspect_permissions.py
 ```
 
 Frontend unit tests (Jest + Testing Library):
