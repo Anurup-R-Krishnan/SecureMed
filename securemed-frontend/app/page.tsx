@@ -26,7 +26,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Header onLoginClick={handleOpenLogin} />
-      <LandingPage onGetStarted={handleOpenLogin} />
+      <LandingPage />
     </div>
   );
 }

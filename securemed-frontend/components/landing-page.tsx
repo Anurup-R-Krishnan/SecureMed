@@ -40,11 +40,7 @@ import {
 import { appointmentService, Doctor } from "@/services/appointments";
 import { ROUTES } from "@/lib/routes";
 
-interface LandingPageProps {
-  onGetStarted: () => void;
-}
-
-export default function LandingPage({ onGetStarted }: LandingPageProps) {
+export default function LandingPage() {
   const router = useRouter();
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
   const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
