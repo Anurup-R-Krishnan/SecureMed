@@ -2,11 +2,11 @@ name: Frontend CI
 
 on:
   push:
-    branches: [main, ci-cd-hardening]
+    branches: [main]
     paths:
       - "securemed-frontend/**"
   pull_request:
-    branches: [main, ci-cd-hardening]
+    branches: [main]
     paths:
       - "securemed-frontend/**"
 

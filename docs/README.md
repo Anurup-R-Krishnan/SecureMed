@@ -3,8 +3,8 @@
 
 # SecureMed 🏥
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/anurup-r-krishnan/securemed)
-[![Version](https://img.shields.io/badge/version-v1.0.0--beta-blue.svg)](https://github.com/anurup-r-krishnan/securemed)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/Anurup-R-Krishnan/SecureMed)
+[![Version](https://img.shields.io/badge/version-v1.0.0--beta-blue.svg)](https://github.com/Anurup-R-Krishnan/SecureMed)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Django](https://img.shields.io/badge/Backend-Django%20Rest%20Framework-092E20?logo=django)](https://www.djangoproject.com/)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js-black?logo=next.js)](https://nextjs.org/)
@@ -40,9 +40,9 @@
 `SecureMed` provides a decoupled, secure ecosystem for managing healthcare operations. Unlike standard hospital management systems, every interaction in SecureMed is governed by strict consent policies and audit trails.
 
 **Quick Glance:**
-- **Frontend:** Next.js 14 (App Router), Tailwind CSS, Shadcn UI.
-- **Backend:** Django 5.0+, Django REST Framework, SimpleJWT.
-- **Infra:** Docker, PostgreSQL 15+, Redis, Celery.
+- **Frontend:** Next.js 15 (App Router), Tailwind CSS, shadcn/ui.
+- **Backend:** Django 6.0+, Django REST Framework, SimpleJWT.
+- **Infra:** Docker, PostgreSQL 16, Redis 7, Neo4j 5, Celery.
 
 ## Architecture
 
@@ -60,9 +60,9 @@ SecureMed operates as a headless system where the Django backend serves as the s
 To **install** and **start** the entire SecureMed stack (Backend, Frontend, DB, Redis), run the following:
 
 ```sh
-git clone [https://github.com/anurup-r-krishnan/securemed.git](https://github.com/anurup-r-krishnan/securemed.git)
-cd securemed
-docker-compose up --build
+git clone https://github.com/Anurup-R-Krishnan/SecureMed.git
+cd SecureMed
+docker compose up --build
 
 This will spin up:
 
