@@ -1,3 +1,5 @@
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -5,6 +7,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.patients.models import Patient
 
+from . import views as telemedicine_views
 from .models import ConditionCatalog
 
 User = get_user_model()
@@ -42,7 +45,8 @@ class TelemedicineTestCase(TestCase):
         )
         self.assertIsNotNone(patient)
 
-    def test_condition_visualization_contains_pain_payload(self):
+    @mock.patch.object(telemedicine_views, '_generate_condition_pain_profile', return_value=None)
+    def test_condition_visualization_contains_pain_payload(self, _mock_profile):
         user = User.objects.create_user(
             username='viewer',
             email='viewer@example.com',

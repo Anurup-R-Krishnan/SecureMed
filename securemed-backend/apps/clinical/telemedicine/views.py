@@ -651,16 +651,22 @@ def condition_visualization(request, condition_id):
     payload = ConditionVisualizationSerializer(condition).data
 
     # AI-generated pain profile (cached) to avoid static/dummy mappings.
+    # Fail soft: if the AI call errors (key, quota, network), fall back to the
+    # curated static payload instead of returning a 500 to the patient.
     if GEMINI_AVAILABLE:
-        cache_key = f"telemedicine:condition-pain-profile:{condition.condition_id}"
-        ai_profile = cache.get(cache_key)
-        if not ai_profile:
-            ai_profile = _generate_condition_pain_profile(condition)
+        try:
+            cache_key = f"telemedicine:condition-pain-profile:{condition.condition_id}"
+            ai_profile = cache.get(cache_key)
+            if not ai_profile:
+                ai_profile = _generate_condition_pain_profile(condition)
+                if ai_profile:
+                    cache.set(cache_key, ai_profile, 60 * 60 * 6)  # 6h cache
             if ai_profile:
-                cache.set(cache_key, ai_profile, 60 * 60 * 6)  # 6h cache
-        if ai_profile:
-            payload['region_pain_levels'] = ai_profile.get('region_pain_levels', payload.get('region_pain_levels', {}))
-            payload['pain_interpretations'] = ai_profile.get('pain_interpretations', payload.get('pain_interpretations', {}))
+                payload['region_pain_levels'] = ai_profile.get('region_pain_levels', payload.get('region_pain_levels', {}))
+                payload['pain_interpretations'] = ai_profile.get('pain_interpretations', payload.get('pain_interpretations', {}))
+        except Exception:
+            # Static payload already reflects the curated catalog; keep serving it.
+            pass
 
     return Response(payload, status=status.HTTP_200_OK)
 
