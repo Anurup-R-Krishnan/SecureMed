@@ -12,6 +12,11 @@ const customJestConfig = {
     moduleNameMapper: {
         // Handle module aliases (this will be automatically configured for you soon)
         '^@/(.*)$': '<rootDir>/$1',
+        // jest.mock() factories are unreliable under next/jest's SWC transform,
+        // so redirect framework/browser-bound modules to deterministic stubs.
+        '^next/navigation$': '<rootDir>/__mocks__/next-navigation.ts',
+        '^sonner$': '<rootDir>/__mocks__/sonner.ts',
+        '^@/components/auth/terms-of-service-modal$': '<rootDir>/__mocks__/terms-of-service-modal.tsx',
     },
     collectCoverageFrom: [
         'components/**/*.{js,jsx,ts,tsx}',
