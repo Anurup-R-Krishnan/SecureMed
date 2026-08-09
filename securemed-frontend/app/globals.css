@@ -159,3 +159,15 @@
     @apply bg-background/80 backdrop-blur-xl border border-white/20 shadow-2xl;
   }
 }
+@layer base {
+  :root {
+    --cool-grey-50: #F8F9FA;
+    --cool-grey-100: #E9ECEF;
+    --cool-grey-200: #DEE2E6;
+    --precision-blue: #0055FF;
+    --precision-blue-dark: #0044CC;
+    --alert-crimson: #D32F2F;
+    --alert-crimson-dark: #B71C1C;
+    --steel-contrast: #212529;
+  }
+}
