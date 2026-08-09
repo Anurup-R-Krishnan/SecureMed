@@ -78,7 +78,9 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',  <-- KEEP COMMENTED
+    # CSRF middleware re-enabled: DRF APIViews are csrf_exempt by default, so the
+    # JWT API is unaffected, while the Django admin regains CSRF protection.
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # 'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware', <-- COMMENT THIS TEMPORARILY
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -199,7 +201,8 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # This is the "Magic" setting to stop 403s on cross-domain APIs
-CORS_ALLOW_ALL_ORIGINS = True 
+# NOTE: CORS_ALLOW_ALL_ORIGINS is intentionally NOT set. Credentialed requests
+# are restricted to CORS_ALLOWED_ORIGINS above (localhost + deployed domains).
 CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework Settings
@@ -208,7 +211,9 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Change this from IsAuthenticated
+        # Default to authenticated; each view/viewset must explicitly opt in
+        # to AllowAny for genuinely public endpoints (login, register, health, etc.).
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_PAGINATION_CLASS': 'apps.platform.core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
