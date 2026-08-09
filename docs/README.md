@@ -262,6 +262,15 @@ cd securemed-backend
 python manage.py test
 ```
 
+The same suite runs under pytest (used by CI), with PostgreSQL and Redis
+required locally (or via `docker compose up -d`):
+
+```bash
+cd securemed-backend
+venv/bin/python -m pytest -q
+venv/bin/python -m ruff check .
+```
+
 Verification scripts:
 
 ```bash
@@ -271,6 +280,31 @@ python manage.py runscript verification_tests.verify_rbac
 # Verify MFA
 python manage.py runscript verification_tests.verify_mfa
 ```
+
+Frontend unit tests (Jest + Testing Library):
+
+```bash
+cd securemed-frontend
+bun install
+bun run test        # or bunx jest --watch during development
+bunx tsc --noEmit   # type check
+bun run lint
+bun run build       # production build (typechecks all 40+ pages)
+```
+
+End-to-end tests (Cypress). Requires the Next dev server and Django backend
+running with seeded data:
+
+```bash
+cd securemed-frontend
+bunx cypress install   # first time only
+bun run cy:open        # interactive runner
+bun run cy:run         # headless run
+```
+
+The landing-page smoke spec runs without authentication; role-specific specs
+log in as seeded users (`cy.login`). CI runs these suites in
+`.github/workflows/` (`frontend-ci.yml`, `backend-ci.yml`, `e2e-tests.yml`).
 
 ---
 
