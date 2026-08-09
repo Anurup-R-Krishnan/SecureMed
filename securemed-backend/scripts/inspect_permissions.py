@@ -40,7 +40,11 @@ def walk(patterns, prefix=''):
             route = prefix + str(pat.pattern)
             try:
                 view = pat.callback
-            except Exception:
+            except Exception as exc:  # views may be lazy imports
+                print(
+                    f"[skip] could not resolve view for {route}: {exc}",
+                    file=sys.stderr,
+                )
                 continue
             kind, perms = view_info(view)
             if kind == 'drf':
