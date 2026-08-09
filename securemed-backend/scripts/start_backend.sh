@@ -5,6 +5,9 @@ mkdir -p /tmp/staticfiles /app/media
 
 python manage.py migrate --noinput
 
+# Collect static files (WhiteNoise serves them; admin UI needs these assets).
+python manage.py collectstatic --noinput --clear
+
 if [ "${AUTO_SEED_INFECTION_TRACKING:-false}" = "true" ]; then
   # Never fail API startup if demo seeding dependencies (e.g. Neo4j warm-up) lag behind.
   if ! python manage.py ensure_infection_demo_data; then
