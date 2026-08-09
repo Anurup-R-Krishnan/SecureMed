@@ -76,15 +76,18 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # MUST be first
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     # CSRF middleware re-enabled: DRF APIViews are csrf_exempt by default, so the
     # JWT API is unaffected, while the Django admin regains CSRF protection.
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # 'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware', <-- COMMENT THIS TEMPORARILY
+    'apps.platform.core.security_middleware.RateLimitMiddleware',
+    'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.platform.core.security_middleware.RequestLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
