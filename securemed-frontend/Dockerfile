@@ -17,7 +17,11 @@ FROM oven/bun:1 AS runner
 
 WORKDIR /app
 
-ENV NODE_ENV=production \
+# BACKEND_URL is read by next.config.mjs at runtime for /api rewrites, so it
+# must be available to the running server, not only the build stage.
+ARG BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL \
+    NODE_ENV=production \
     PORT=8080 \
     HOSTNAME=0.0.0.0
 

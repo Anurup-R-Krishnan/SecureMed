@@ -269,6 +269,7 @@ required locally (or via `docker compose up -d`):
 cd securemed-backend
 venv/bin/python -m pytest -q
 venv/bin/python -m ruff check .
+python manage.py makemigrations --check --dry-run   # fail on un-migrated model changes
 ```
 
 Verification scripts:
