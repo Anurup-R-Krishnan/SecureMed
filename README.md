@@ -1,4 +1,19 @@
-# SecureMed
+<div align="center">
+
+# 🩺 SecureMed
+
+### Experimental healthcare operations software for local research
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=next.js&logoColor=white)](securemed-frontend/)
+[![Django](https://img.shields.io/badge/Django-5-092E20?style=for-the-badge&logo=django&logoColor=white)](securemed-backend/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-supported-336791?style=for-the-badge&logo=postgresql&logoColor=white)](docker-compose.yml)
+[![Redis](https://img.shields.io/badge/Redis-supported-DC382D?style=for-the-badge&logo=redis&logoColor=white)](docker-compose.yml)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
+[![Research](https://img.shields.io/badge/type-research%20prototype-6C5CE7?style=for-the-badge)](#limitations)
+
+<p><a href="#implemented-areas">Capabilities</a> · <a href="#architecture">Architecture</a> · <a href="#run-with-docker">Quickstart</a> · <a href="#limitations">Boundaries</a></p>
+
+</div>
 
 SecureMed is an experimental healthcare operations platform with separate patient, doctor, laboratory, pharmacy, and administrator interfaces. It combines a Next.js frontend with a Django REST API, PostgreSQL, Redis, and an optional Neo4j graph for infection-tracing experiments.
 
