@@ -1,44 +1,24 @@
-# SecureMed Frontend
+# SecureMed frontend
 
-Next.js frontend application for SecureMed healthcare platform.
+Next.js interface for the SecureMed research and demonstration platform.
 
 ## Setup
 
 ```bash
-npm install
-# or
-pnpm install
+cp .env.example .env.local
+bun install
+bun run dev
 ```
 
-## Configuration
+Open `http://localhost:3000`. Set `NEXT_PUBLIC_API_URL` for browser requests and `BACKEND_URL` for the server-side API proxy.
 
-Copy `.env.local.example` to `.env.local` and configure:
-
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-## Development
+## Checks
 
 ```bash
-npm run dev
-# or
-pnpm dev
+bun run test
+bunx tsc --noEmit
+bun run lint
+bun run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
-
-## Build
-
-```bash
-npm run build
-npm start
-```
-
-// Triggering new build
-
-## Backend Repository
-
-This frontend connects to the SecureMed backend API. Ensure the backend is running at the configured API URL.
-
-<!-- ci-trigger -->
+See the [repository README](../README.md) for the backend setup, architecture, and clinical safety limitations.

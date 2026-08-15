@@ -1,127 +1,152 @@
-# SecureMed 🏥
+# SecureMed
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/Anurup-R-Krishnan/SecureMed)
-[![Version](https://img.shields.io/badge/version-v1.0.0--beta-blue.svg)](https://github.com/Anurup-R-Krishnan/SecureMed)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Django](https://img.shields.io/badge/Backend-Django%20Rest%20Framework-092E20?logo=django)](https://www.djangoproject.com/)
-[![Next.js](https://img.shields.io/badge/Frontend-Next.js-black?logo=next.js)](https://nextjs.org/)
+SecureMed is an experimental healthcare operations platform with separate patient, doctor, laboratory, pharmacy, and administrator interfaces. It combines a Next.js frontend with a Django REST API, PostgreSQL, Redis, and an optional Neo4j graph for infection-tracing experiments.
 
-**SecureMed** is an enterprise-grade healthcare management platform designed with a "Security First" approach. It connects patients, doctors, and administrators through a secure, role-based environment, facilitating appointment scheduling, medical record management, and telemedicine services while ensuring data privacy and compliance.
+> SecureMed is not a certified medical device, electronic health-record product, emergency service, or production clinical system. The repository is suitable for software research and local demonstrations only; it must not be used for real patient care or protected health information without a formal security, privacy, safety, and regulatory programme.
 
-> **Note:** Building containers requires internet access on first run (dependency caching).
+## Implemented areas
 
-## Table of Contents
-
-- [Features](#features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Quickstart (Docker)](#quickstart-docker)
-- [Environment Variables](#environment-variables)
-- [Project Structure](#project-structure)
-- [CI/CD](#cicd)
-- [Security](#security)
-- [Documentation](#documentation)
-- [License](#license)
-
-## Features
-
-- **Identity & Access Control (RBAC):** role-based access for patients, doctors, pharmacists, lab staff, and administrators.
-- **Patient Management & Consent:** strict consent policies govern every interaction with patient data.
-- **Clinical Tools & E-Prescribing:** prescriptions, lab orders, medication interaction checks, and records.
-- **Telemedicine:** virtual rooms for remote consultations.
-- **Audit Trails:** every security-relevant action is logged and auditable.
+- Invitation-based accounts, JWT sessions, TOTP MFA, recovery codes, and password reset
+- Role-specific routes for patients, doctors, pharmacists, laboratory staff, and administrators
+- Patient profiles, consent records, access logs, and account-deletion requests
+- Appointments, doctor availability, referrals, and reminders
+- Medical records, prescriptions, digital-signature checks, lab orders, and medication-interaction data
+- Telemedicine rooms, messaging, and triage requests
+- Billing records and insurance-verification demonstrations
+- Audit logs, emergency-access records, and policy-acceptance receipts
+- Optional infection-contact graph and risk computation through Neo4j
+- Optional Gemini-assisted endpoints that degrade when no API key is configured
 
 ## Architecture
 
-SecureMed operates as a headless system where the Django backend serves as the single source of truth for security policy enforcement. The Next.js frontend consumes the REST API; PostgreSQL, Redis, and Neo4j back the data, caching, and graph (referral/relationship) layers.
-
 ```mermaid
 flowchart LR
-  FE["Next.js Frontend :3000"] -->|"/api"| BE["Django REST API :8000"]
-  BE --> PG[("PostgreSQL 16")]
-  BE --> RD[("Redis 7")]
-  BE --> N4J[("Neo4j 5")]
+  U[Role-based Next.js interface] --> API[Django REST API]
+  API --> PG[(PostgreSQL)]
+  API --> R[(Redis)]
+  API --> N[(Neo4j graph)]
+  API -. optional .-> G[Gemini API]
 ```
 
-- **Authentication:** JWT (JSON Web Tokens) with rotation and refresh mechanisms.
-- **MFA:** Time-based One-Time Passwords (TOTP) via `pyotp`.
-- **Compliance:** HIPAA-compliant data structures for medical records.
+## Run with Docker
 
-## Tech Stack
+Requirements: Docker Engine and Docker Compose v2.
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | Next.js 15 (App Router), Tailwind CSS, shadcn/ui, Bun |
-| Backend | Django 6+, Django REST Framework, SimpleJWT |
-| Data | PostgreSQL 16, Redis 7, Neo4j 5, Celery |
-| Infra | Docker, Docker Compose, GitHub Actions |
+Create a root `.env` with non-default development secrets:
 
-## Quickstart (Docker)
+```text
+DB_NAME=securemed
+DB_USER=postgres
+DB_PASSWORD=replace-this-database-password
+REDIS_PASSWORD=replace-this-redis-password
+SECRET_KEY=replace-this-django-secret
+DEBUG=False
+```
 
-**Prerequisites:** Docker and Docker Compose. The first build requires internet access to pull and cache dependencies.
+Then start the stack:
 
-```sh
-git clone https://github.com/Anurup-R-Krishnan/SecureMed.git
-cd SecureMed
+```bash
 docker compose up --build
 ```
 
-This spins up the full stack:
+Open:
 
-- Backend: <http://localhost:8000>
-- Frontend: <http://localhost:3000>
-- PostgreSQL: port 5432
-- Redis: port 6379
-- Neo4j: port 7687
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
+- API health: `http://localhost:8000/health/`
+- Swagger UI: `http://localhost:8000/api/docs/`
+- ReDoc: `http://localhost:8000/api/redoc/`
 
-For manual (non-Docker) setup, backend and frontend install steps, environment variable reference, tests, and deployment, see [`docs/README.md`](docs/README.md).
+The Compose stack keeps PostgreSQL, Redis, and Neo4j on an internal network. Its default credentials are for local development and must be replaced before any shared deployment.
 
-## Environment Variables
+## Manual development
 
-Set these in `.env` (see `securemed-backend/.env.example` and `securemed-frontend/.env.example`, or the defaults in `docker-compose.yml`):
+Backend requirements: Python, PostgreSQL, Redis, and Neo4j when graph features are used.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | `securemed` / `postgres` / `securemed_db_password` | PostgreSQL credentials |
-| `REDIS_PASSWORD` | `securemed_redis` | Redis password |
-| `SECRET_KEY` | `ci-secret-key` | Django secret key (change in production) |
-| `DEBUG` | `False` | Django debug mode |
-| `NEXT_PUBLIC_API_URL` | `/api` | Frontend API base URL |
-
-## Project Structure
-
-```text
-.
-├── docker-compose.yml          # Full stack orchestration
-├── .github/workflows/          # CI/CD pipelines
-├── securemed-backend/          # Django REST API
-├── securemed-frontend/         # Next.js application
-├── docs/                       # Project documentation
-└── scripts/                    # Utility scripts
+```bash
+cd securemed-backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements/dev.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py runserver
 ```
 
-## CI/CD
+Frontend requirements: Node.js and Bun.
 
-GitHub Actions runs on push to `main` and pull requests targeting `main`:
+```bash
+cd securemed-frontend
+cp .env.example .env.local
+bun install
+bun run dev
+```
 
-| Workflow | What it does |
-| --- | --- |
-| [`backend-ci.yml`](.github/workflows/backend-ci.yml) | Ruff lint, pytest suite (with PostgreSQL + Redis services), backend Docker image build |
-| [`frontend-ci.yml`](.github/workflows/frontend-ci.yml) | Bun install, ESLint, `next build`, frontend Docker image build |
-| [`e2e-tests.yml`](.github/workflows/e2e-tests.yml) | Boots the full `docker compose` stack and runs Cypress end-to-end tests |
+The frontend uses `NEXT_PUBLIC_API_URL` for browser requests and `BACKEND_URL` for its server-side proxy.
 
-## Security
+## Verification
 
-- **Docker hardening:** `no-new-privileges`, isolated internal backend network, and per-service memory limits.
-- **Auth:** JWT rotation, MFA (TOTP), rate limiting (5 failed attempts → 15 min lock).
-- **Data protection:** audit logging, break-glass protocol for emergency access, and data anonymization.
+Backend:
+
+```bash
+cd securemed-backend
+python -m pytest -q
+python -m ruff check .
+python manage.py makemigrations --check --dry-run
+```
+
+Frontend:
+
+```bash
+cd securemed-frontend
+bun run test
+bunx tsc --noEmit
+bun run lint
+bun run build
+```
+
+Authenticated browser tests require a running stack and seeded test users:
+
+```bash
+cd securemed-frontend
+bun run cy:run
+```
+
+## Configuration
+
+Backend settings are documented in [securemed-backend/.env.example](securemed-backend/.env.example). Important groups include:
+
+- Django secret, debug mode, hosts, and secure-cookie behaviour
+- PostgreSQL and Redis connections
+- CORS and frontend URLs
+- MFA and reCAPTCHA controls
+- Email delivery
+- Neo4j connection settings
+- Optional Gemini API access
+
+Do not commit populated `.env` files, access tokens, patient data, or production database exports.
 
 ## Documentation
 
-- [`docs/README.md`](docs/README.md) — detailed install, architecture, security, testing, and deployment guide.
-- [`docs/`](docs/) — implementation chapters, roles, and working notes.
-- API reference (when the backend is running): Swagger UI at <http://localhost:8000/api/docs/> and ReDoc at <http://localhost:8000/api/redoc/>.
+- [Role model](docs/ROLES.md)
+- [Disease-graph notes](docs/Graph_Disease.md)
+- [Implementation chapter](docs/chapter5_implementation.md)
+- [Backend API notes](securemed-backend/docs/API_DOCS.md)
+- [Backend run guide](securemed-backend/docs/RUN_GUIDE.md)
+- [Security-hardening notes](securemed-backend/SECURITY_HARDENING.md)
+- [HODDI data import](securemed-backend/docs/HODDI_IMPORT.md)
 
-## License
+## Security and safety boundaries
 
-MIT
+The code includes role checks, consent records, MFA, password reset, emergency-access logging, security headers, rate limiting, and audit events. Those controls are not proof of HIPAA, GDPR, ABDM, or any other regulatory compliance.
+
+A real deployment would still require threat modelling, independent security testing, clinical safety review, data classification, encryption and key management, immutable logging, backup and disaster recovery, retention and deletion policy, incident response, vendor review, staff training, and jurisdiction-specific legal approval.
+
+## Known limitations
+
+- Demonstration and seed data are not representative clinical datasets.
+- Several integrations and workflows are prototypes rather than validated hospital processes.
+- Optional AI output must be reviewed by a qualified clinician and must never be treated as diagnosis or treatment advice.
+- Infection-risk scoring is experimental and depends on the completeness and accuracy of graph data.
+- Automated tests do not establish clinical safety, privacy compliance, or production availability.
+- Local container defaults are not production configuration.
