@@ -2,6 +2,8 @@ FROM oven/bun:1 AS deps
 
 WORKDIR /app
 COPY package.json bun.lock ./
+COPY patches ./patches
+COPY scripts ./scripts
 RUN bun install --frozen-lockfile
 
 # ── production build ──────────────────────────────────────────────────────────
@@ -47,6 +49,8 @@ ENV NODE_ENV=development \
     HOSTNAME=0.0.0.0
 
 COPY package.json bun.lock ./
+COPY patches ./patches
+COPY scripts ./scripts
 RUN bun install
 
 COPY . .
